@@ -1,0 +1,139 @@
+# Diversified crypto configuration following Carver's principles
+#
+# Improvements over robust config:
+# 1. Added breakout rules for forecast diversification
+# 2. More instruments (12 vs 7) for instrument diversification
+# 3. Both standard and faster EWMAC lookbacks
+# 4. Recalibrated FDM for larger rule set
+
+# Capital and risk settings
+percentage_vol_target: 25.0
+notional_trading_capital: 100000
+base_currency: USD
+
+# Trading rules - EWMAC + Breakout ensemble
+trading_rules:
+  # EWMAC - Standard spans from Carver's book
+  ewmac8_32:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 8
+      Lslow: 32
+  ewmac16_64:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 16
+      Lslow: 64
+  ewmac32_128:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 32
+      Lslow: 128
+  ewmac64_256:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 64
+      Lslow: 256
+  # Breakout - provides diversification from EWMAC
+  breakout10:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 10
+  breakout20:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 20
+  breakout40:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 40
+  breakout80:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 80
+
+# Forecast scalars - from book (EWMAC) and calculated (breakout)
+# Breakout scalars: target 10 / avg|forecast|, where avg|forecast| ~11-13
+forecast_scalars:
+  ewmac8_32: 5.3
+  ewmac16_64: 3.75
+  ewmac32_128: 2.65
+  ewmac64_256: 1.87
+  breakout10: 0.8
+  breakout20: 0.9
+  breakout40: 0.9
+  breakout80: 0.9
+
+# Forecast weights - equal weighted across 8 rules
+# 50% EWMAC, 50% Breakout
+forecast_weights:
+  ewmac8_32: 0.125
+  ewmac16_64: 0.125
+  ewmac32_128: 0.125
+  ewmac64_256: 0.125
+  breakout10: 0.125
+  breakout20: 0.125
+  breakout40: 0.125
+  breakout80: 0.125
+
+# Forecast diversification multiplier
+# With 8 rules: ~0.55 avg corr (EWMAC-EWMAC ~0.68, EWMAC-breakout ~0.40)
+# FDM = sqrt(8) / sqrt(1 + 7*0.55) = 2.83 / 2.10 = 1.35
+forecast_div_multiplier: 1.35
+
+# Forecast capping
+forecast_cap: 20.0
+
+# Instruments - all with 3+ years of history, equal weighted
+# 12 instruments provides better diversification
+instrument_weights:
+  BTC: 0.083
+  ETH: 0.083
+  LTC: 0.083
+  XRP: 0.083
+  XLM: 0.083
+  ADA: 0.083
+  LINK: 0.083
+  ATOM: 0.083
+  DOT: 0.083
+  UNI: 0.083
+  AAVE: 0.083
+  SOL: 0.083
+
+# Instrument diversification multiplier
+# 12 instruments with ~0.64 avg correlation
+# IDM = sqrt(12) / sqrt(1 + 11*0.64) = 3.46 / 2.83 = 1.22
+instrument_div_multiplier: 1.22
+
+# Volatility calculation
+volatility_calculation:
+  func: sysquant.estimators.vol.robust_vol_calc
+  days: 35
+  min_periods: 10
+  vol_abs_min: 0.0000001
+  vol_floor: True
+  floor_min_periods: 100
+  floor_days: 500
+  floor_min_quant: 0.05
+
+# Position buffering
+buffer_method: forecast
+buffer_size: 0.10
+
+# Use FIXED weights - no estimation
+use_forecast_weight_estimates: False
+use_forecast_scale_estimates: False
+use_instrument_weight_estimates: False
+use_forecast_div_mult_estimates: False
+use_instrument_div_mult_estimates: False
+
+# Average absolute forecast
+average_absolute_forecast: 10.0
