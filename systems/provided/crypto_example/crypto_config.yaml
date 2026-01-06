@@ -1,0 +1,98 @@
+# Example configuration for crypto backtesting with pysystemtrade
+#
+# This config sets up a simple trend-following system using EWMAC rules
+# on crypto spot prices.
+
+# Instruments to trade (leave empty to auto-discover from CSV files)
+# instruments: ['BTC', 'ETH', 'SOL']
+
+# Capital and risk settings
+percentage_vol_target: 25.0
+notional_trading_capital: 100000
+base_currency: USD
+
+# Trading rules - using EWMAC (Exponential Weighted Moving Average Crossover)
+# Blend of short and medium timeframes for crypto
+trading_rules:
+  ewmac4:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 4
+      Lslow: 16
+  ewmac8:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 8
+      Lslow: 32
+  ewmac16:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 16
+      Lslow: 64
+  ewmac32:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 32
+      Lslow: 128
+
+# Forecast scaling - scales raw forecasts to have average absolute value of 10
+forecast_scalars:
+  ewmac4: 10.6
+  ewmac8: 5.9
+  ewmac16: 4.1
+  ewmac32: 2.79
+
+# Forecast weights - equal weighted across four timeframes
+forecast_weights:
+  ewmac4: 0.25
+  ewmac8: 0.25
+  ewmac16: 0.25
+  ewmac32: 0.25
+
+# Forecast diversification multiplier - accounts for correlation between rules
+# Higher with 4 rules due to more diversification benefit
+forecast_div_multiplier: 1.5
+
+# Forecast capping - limits extreme forecasts
+forecast_cap: 20.0
+
+# Instrument weights - focused on top Sharpe performers
+# SOL (0.84), ETH (0.43), ADA (0.34), DOT (0.20), LTC (0.11), UNI (0.11)
+instrument_weights:
+  SOL: 0.25
+  ETH: 0.25
+  ADA: 0.20
+  DOT: 0.15
+  LTC: 0.075
+  UNI: 0.075
+
+# Instrument diversification multiplier
+# Increases position size due to diversification benefit across instruments
+# 1.5 for diversified crypto portfolio (cryptos are correlated but not perfectly)
+instrument_div_multiplier: 1.5
+
+# Volatility calculation settings
+volatility_calculation:
+  func: sysquant.estimators.vol.robust_vol_calc
+  days: 35
+  min_periods: 10
+  vol_abs_min: 0.0000001
+  vol_floor: True
+  floor_min_periods: 100
+  floor_days: 500
+  floor_min_quant: 0.05
+
+# Position buffering - reduces trading frequency
+# Only trade when position moves outside buffer
+buffer_method: forecast
+buffer_size: 0.10
+
+# Use fixed weights (not estimated from data)
+use_forecast_weight_estimates: False
+use_forecast_scale_estimates: False
+use_instrument_weight_estimates: False
+use_forecast_div_mult_estimates: False
+use_instrument_div_mult_estimates: False
+
+# Average absolute forecast (used in position sizing)
+average_absolute_forecast: 10.0
