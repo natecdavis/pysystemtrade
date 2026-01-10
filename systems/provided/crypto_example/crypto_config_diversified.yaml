@@ -60,17 +60,15 @@ trading_rules:
     other_args:
       lookback: 80
 
-# Forecast scalars - from book (EWMAC) and calculated (breakout)
-# Breakout scalars: target 10 / avg|forecast|, where avg|forecast| ~11-13
-forecast_scalars:
-  ewmac8_32: 5.3
-  ewmac16_64: 3.75
-  ewmac32_128: 2.65
-  ewmac64_256: 1.87
-  breakout10: 0.8
-  breakout20: 0.9
-  breakout40: 0.9
-  breakout80: 0.9
+# Forecast scalars - WALK-FORWARD ESTIMATION
+# Using pysystemtrade's built-in walk-forward estimation to avoid lookahead bias.
+# Fixed scalars removed - they were calibrated on full dataset (lookahead).
+#
+# Reference - Carver's book values (Systematic Trading, Appendix B):
+#   ewmac8_32: 5.3, ewmac16_64: 3.75, ewmac32_128: 2.65, ewmac64_256: 1.87
+#
+# With walk-forward estimation, scalars are calculated at each point using
+# only historical data available up to that date.
 
 # Forecast weights - equal weighted across 8 rules
 # 50% EWMAC, 50% Breakout
@@ -84,10 +82,12 @@ forecast_weights:
   breakout40: 0.125
   breakout80: 0.125
 
-# Forecast diversification multiplier
-# With 8 rules: ~0.55 avg corr (EWMAC-EWMAC ~0.68, EWMAC-breakout ~0.40)
-# FDM = sqrt(8) / sqrt(1 + 7*0.55) = 2.83 / 2.10 = 1.35
-forecast_div_multiplier: 1.35
+# Forecast diversification multiplier - WALK-FORWARD ESTIMATION
+# FDM is calculated walk-forward based on observed correlations.
+# Fixed value removed to avoid lookahead bias.
+#
+# Formula: FDM = sqrt(n) / sqrt(1 + (n-1)*avg_correlation)
+# With 8 rules and ~0.55 avg corr: sqrt(8) / sqrt(1 + 7*0.55) ≈ 1.35
 
 # Forecast capping
 forecast_cap: 20.0
@@ -128,12 +128,30 @@ volatility_calculation:
 buffer_method: forecast
 buffer_size: 0.10
 
-# Use FIXED weights - no estimation
+# Walk-forward estimation for forecast scalars and FDM
+# Scalars: Estimated to achieve avg|forecast| = 10
+# FDM: Estimated from observed forecast correlations
+use_forecast_scale_estimates: True
+use_forecast_div_mult_estimates: True
+
+# Fixed weights (no estimation needed for these)
 use_forecast_weight_estimates: False
-use_forecast_scale_estimates: False
 use_instrument_weight_estimates: False
-use_forecast_div_mult_estimates: False
 use_instrument_div_mult_estimates: False
+
+# Forecast scalar estimation config
+forecast_scalar_estimate:
+  pool_instruments: True
+  min_periods: 250
+  backfill: True
+
+# Forecast correlation estimation config (for FDM)
+forecast_correlation_estimate:
+  pool_instruments: True
+  frequency: "W"
+  date_method: "expanding"
+  ew_lookback: 250
+  min_periods: 20
 
 # Average absolute forecast
 average_absolute_forecast: 10.0
