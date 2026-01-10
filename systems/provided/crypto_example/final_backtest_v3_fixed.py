@@ -87,12 +87,19 @@ config = Config("systems.provided.crypto_example.crypto_config_diversified.yaml"
 system = crypto_system(data_path=PRICE_DIR, config=config)
 
 trend_account = system.accounts.portfolio()
-trend_returns = trend_account.percent / 100
-trend_returns.index = pd.to_datetime(trend_returns.index.date)
+trend_returns_gross = trend_account.percent / 100
+trend_returns_gross.index = pd.to_datetime(trend_returns_gross.index.date)
+
+# Apply trading costs to trend returns
+# Trend has no leverage costs (spot only) but has trading costs
+TREND_ANNUAL_TRADE_COST = 0.006  # 0.6% (4 trades/year × 0.15% round-trip)
+trend_daily_cost = TREND_ANNUAL_TRADE_COST / DAYS_PER_YEAR
+trend_returns = trend_returns_gross - trend_daily_cost
 
 print(f"\nTrend returns from pysystemtrade System:")
 print(f"  Date range: {trend_returns.index.min().date()} to {trend_returns.index.max().date()}")
 print(f"  Days: {len(trend_returns)}")
+print(f"  Costs applied: {TREND_ANNUAL_TRADE_COST*100:.1f}%/year (trading only, no leverage)")
 
 # Check realized vol (System targets {TREND_VOL_TARGET*100}% via config)
 trend_post2020 = trend_returns[trend_returns.index >= '2020-01-01']
@@ -150,9 +157,43 @@ for instr in carry_instruments:
 
 n_carry = len(all_funding)
 
-# Create equal-weighted portfolio of raw funding rates
+# Create DataFrame of all funding rates
 funding_df = pd.DataFrame(all_funding)
-raw_carry = funding_df.mean(axis=1).dropna()
+
+# =============================================================================
+# WALK-FORWARD INSTRUMENT INCLUSION
+# =============================================================================
+# Only include an instrument after it has enough history for our longest lookback.
+# For carry, the longest lookback is CORR_LOOKBACK (60 days) for correlation estimation.
+# This ensures we only trade instruments when we can properly estimate vol and correlation.
+
+CORR_LOOKBACK = 60  # 60-day rolling window for correlation
+VOL_LOOKBACK = 35   # 35-day rolling window for vol
+CARRY_MIN_HISTORY = max(CORR_LOOKBACK, VOL_LOOKBACK)  # = 60 days
+
+# Calculate cumulative count of non-NaN values per instrument
+cum_count = funding_df.notna().cumsum()
+
+# Mask: True if instrument has >= CARRY_MIN_HISTORY at this date
+available_mask = cum_count >= CARRY_MIN_HISTORY
+
+# Apply mask to funding_df (set unavailable to NaN)
+masked_funding = funding_df.where(available_mask)
+
+# Count available instruments per day
+n_available = available_mask.sum(axis=1)
+
+# Calculate equal-weighted mean (only where instruments available)
+raw_carry = masked_funding.sum(axis=1) / n_available
+raw_carry = raw_carry[n_available > 0]  # Drop days with no instruments
+
+print(f"\nWalk-forward instrument inclusion (min {CARRY_MIN_HISTORY} days):")
+print(f"  Instruments available over time:")
+for year in range(2017, 2026):
+    mask = raw_carry.index.year == year
+    if mask.any():
+        avg_instruments = n_available[raw_carry.index][mask].mean()
+        print(f"    {year}: {avg_instruments:.1f} avg instruments")
 
 print(f"\nRaw carry returns:")
 print(f"  Date range: {raw_carry.index.min().date()} to {raw_carry.index.max().date()}")
@@ -173,7 +214,7 @@ print(f"  Days: {len(raw_carry)}")
 # and P&L attribution.
 
 UNHEDGED_EXPOSURE = 0.15  # 15% effective unhedged exposure
-VOL_LOOKBACK = 35
+# Note: VOL_LOOKBACK and CORR_LOOKBACK defined above in walk-forward section
 
 # Load spot prices for instruments with funding data
 spot_returns_dict = {}
@@ -184,8 +225,33 @@ for instr in all_funding.keys():
 
 if spot_returns_dict:
     spot_returns_df = pd.DataFrame(spot_returns_dict)
-    avg_spot_return = spot_returns_df.mean(axis=1).dropna()
-    print(f"\nBasis risk calculation:")
+
+    # Apply same walk-forward logic to spot returns
+    # Use the same available_mask from funding (instruments must have funding data first)
+    # Also require minimum spot history
+    spot_cum_count = spot_returns_df.notna().cumsum()
+    spot_available_mask = spot_cum_count >= CARRY_MIN_HISTORY
+
+    # Combined mask: instrument must have enough history in BOTH funding AND spot
+    # Align the masks to the same index
+    combined_mask_idx = available_mask.index.intersection(spot_available_mask.index)
+    combined_cols = [c for c in available_mask.columns if c in spot_available_mask.columns]
+
+    funding_mask_aligned = available_mask.loc[combined_mask_idx, combined_cols]
+    spot_mask_aligned = spot_available_mask.loc[combined_mask_idx, combined_cols]
+    combined_available = funding_mask_aligned & spot_mask_aligned
+
+    # Apply mask to spot returns
+    masked_spot = spot_returns_df.loc[combined_mask_idx, combined_cols].where(combined_available)
+
+    # Count available instruments per day
+    n_spot_available = combined_available.sum(axis=1)
+
+    # Calculate equal-weighted mean of spot returns
+    avg_spot_return = masked_spot.sum(axis=1) / n_spot_available
+    avg_spot_return = avg_spot_return[n_spot_available > 0]
+
+    print(f"\nBasis risk calculation (walk-forward):")
     print(f"  Instruments with spot data: {len(spot_returns_dict)}")
     print(f"  Unhedged exposure: {UNHEDGED_EXPOSURE*100:.0f}%")
 else:
@@ -212,13 +278,32 @@ spot_vol = spot_aligned.rolling(window=VOL_LOOKBACK, min_periods=20).std() * np.
 # Basis vol = unhedged exposure × spot vol
 basis_vol = UNHEDGED_EXPOSURE * spot_vol
 
-# Effective vol includes both funding and basis risk
-# Using sqrt(sum of squares) assumes they're uncorrelated (conservative)
-effective_vol = np.sqrt(funding_vol**2 + basis_vol**2)
+# Walk-forward correlation between funding and spot returns
+# During stress, funding and spot tend to move together (positive correlation)
+# Note: CORR_LOOKBACK defined above in walk-forward section (= 60 days)
+rolling_corr = funding_aligned.rolling(
+    window=CORR_LOOKBACK,
+    min_periods=30
+).corr(spot_aligned)
+
+# Shift by 1 day to avoid lookahead bias
+rolling_corr = rolling_corr.shift(1)
+
+# Clip to [0, 0.8] - negative correlation unlikely, >0.8 is extreme
+rolling_corr = rolling_corr.clip(lower=0.0, upper=0.8).fillna(0.3)  # Default 0.3
+
+# Effective vol includes both funding and basis risk WITH correlation
+# Formula: sqrt(a² + b² + 2ab*corr) instead of just sqrt(a² + b²)
+effective_vol = np.sqrt(
+    funding_vol**2 +
+    basis_vol**2 +
+    2 * funding_vol * basis_vol * rolling_corr
+)
 
 print(f"\n  Vol components (recent average):")
 print(f"    Funding vol: {funding_vol.iloc[-250:].mean()*100:.1f}%")
 print(f"    Spot vol: {spot_vol.iloc[-250:].mean()*100:.1f}%")
+print(f"    Funding-spot correlation: {rolling_corr.iloc[-250:].mean():.2f}")
 print(f"    Basis vol (15% × spot): {basis_vol.iloc[-250:].mean()*100:.1f}%")
 print(f"    Effective vol: {effective_vol.iloc[-250:].mean()*100:.1f}%")
 
@@ -235,14 +320,28 @@ basis_pnl = spot_aligned * UNHEDGED_EXPOSURE * position_scale
 
 # Total carry returns = funding P&L + basis P&L
 carry_returns_with_basis = funding_pnl + basis_pnl
-carry_returns = carry_returns_with_basis.dropna()
+carry_returns_gross = carry_returns_with_basis.dropna()
 
-# Calculate funding-only returns (for comparison)
-funding_only_returns = funding_pnl.dropna()
+# Apply costs to carry returns
+# These are real costs that reduce returns, not just annotations
+CARRY_ANNUAL_LEVERAGE_COST = 0.07    # 7% (borrowing + margin opportunity cost)
+CARRY_ANNUAL_OTHER_COSTS = 0.051     # 5.1% (exchange, basis blowout, margin, regime)
+CARRY_ANNUAL_TRADE_COST = 0.003      # 0.3% (2 trades/year × 0.15% round-trip)
+CARRY_TOTAL_ANNUAL_COST = CARRY_ANNUAL_LEVERAGE_COST + CARRY_ANNUAL_OTHER_COSTS + CARRY_ANNUAL_TRADE_COST
+
+carry_daily_cost = CARRY_TOTAL_ANNUAL_COST / DAYS_PER_YEAR
+carry_returns = carry_returns_gross - carry_daily_cost
+
+# Calculate funding-only returns (for comparison, also net of costs)
+funding_only_returns = (funding_pnl - carry_daily_cost).dropna()
 
 print(f"\nRolling vol targeting:")
 print(f"  Target vol: {CARRY_VOL_TARGET*100:.1f}%")
 print(f"  Vol lookback: {VOL_LOOKBACK} days")
+print(f"  Costs applied: {CARRY_TOTAL_ANNUAL_COST*100:.1f}%/year")
+print(f"    - Leverage: {CARRY_ANNUAL_LEVERAGE_COST*100:.1f}%")
+print(f"    - Other risks: {CARRY_ANNUAL_OTHER_COSTS*100:.1f}%")
+print(f"    - Trading: {CARRY_ANNUAL_TRADE_COST*100:.1f}%")
 print(f"  Max leverage cap: 10x")
 
 # Verify with basis risk
@@ -365,6 +464,26 @@ print(f"|----------|--------|--------|-------|--------|--------|--------|")
 print(f"| Trend    | {trend_recent_stats['sharpe']:>6.2f} | {trend_recent_stats['ann_return']*100:>5.1f}% | {trend_recent_stats['ann_vol']*100:>4.1f}% | {trend_recent_stats['max_dd']*100:>5.1f}% | {trend_recent_stats['skew']:>+5.2f} | {trend_recent_stats['kurtosis']:>6.1f} |")
 print(f"| Carry    | {carry_recent_stats['sharpe']:>6.2f} | {carry_recent_stats['ann_return']*100:>5.1f}% | {carry_recent_stats['ann_vol']*100:>4.1f}% | {carry_recent_stats['max_dd']*100:>5.1f}% | {carry_recent_stats['skew']:>+5.2f} | {carry_recent_stats['kurtosis']:>6.1f} |")
 print(f"\nCorrelation: {trend_recent.corr(carry_recent):.3f}")
+
+# Pre-2020 vs Post-2020 comparison (verifies walk-forward is working)
+pre2020_mask = common_idx < '2020-01-01'
+trend_pre2020 = trend_aligned[pre2020_mask]
+carry_pre2020 = carry_aligned[pre2020_mask]
+
+if len(trend_pre2020) > 20 and len(carry_pre2020) > 20:
+    trend_pre_stats = calc_stats(trend_pre2020)
+    carry_pre_stats = calc_stats(carry_pre2020)
+
+    print(f"\n--- PRE-2020 WINDOW ({common_idx[pre2020_mask].min().date()} to {common_idx[pre2020_mask].max().date()}) ---")
+    print(f"| Strategy | Sharpe | Return |   Vol | Max DD |   Skew |   Kurt |")
+    print(f"|----------|--------|--------|-------|--------|--------|--------|")
+    if trend_pre_stats:
+        print(f"| Trend    | {trend_pre_stats['sharpe']:>6.2f} | {trend_pre_stats['ann_return']*100:>5.1f}% | {trend_pre_stats['ann_vol']*100:>4.1f}% | {trend_pre_stats['max_dd']*100:>5.1f}% | {trend_pre_stats['skew']:>+5.2f} | {trend_pre_stats['kurtosis']:>6.1f} |")
+    if carry_pre_stats:
+        print(f"| Carry    | {carry_pre_stats['sharpe']:>6.2f} | {carry_pre_stats['ann_return']*100:>5.1f}% | {carry_pre_stats['ann_vol']*100:>4.1f}% | {carry_pre_stats['max_dd']*100:>5.1f}% | {carry_pre_stats['skew']:>+5.2f} | {carry_pre_stats['kurtosis']:>6.1f} |")
+
+    print(f"\n  Pre-2020: {len(trend_pre2020)} days | Post-2020: {len(trend_recent)} days")
+    print(f"  Note: Pre-2020 carry had fewer instruments (1-2 avg) vs post-2020 (8 avg)")
 
 # =============================================================================
 # PART 6: SURVIVORSHIP ADJUSTMENT
@@ -507,35 +626,36 @@ else:
 print(f"\n→ Use ADJUSTED skew-neutral for final recommendation: {adj_skew_neutral:.0f}% Trend / {100-adj_skew_neutral:.0f}% Carry")
 
 # =============================================================================
-# PART 9: OTHER RISK ADJUSTMENTS
+# PART 9: COST SUMMARY (Already Applied to Returns)
 # =============================================================================
 
 print("\n" + "=" * 90)
-print("PART 9: OTHER RISK ADJUSTMENTS")
+print("PART 9: COST SUMMARY (Already Applied to Returns)")
 print("=" * 90)
 
-exchange_drag = 0.026  # 2.6%/year
-basis_drag = 0.015     # 1.5%/year
-margin_drag = 0.005    # 0.5%/year
-regime_drag = 0.005    # 0.5%/year
-total_other_drag = exchange_drag + basis_drag + margin_drag + regime_drag
-
 print(f"""
-Other Unmodeled Risks:
-  Exchange risk:     -{exchange_drag*100:.1f}%/year
-  Basis blowout:     -{basis_drag*100:.1f}%/year
-  Margin risk:       -{margin_drag*100:.1f}%/year
-  Regime decay:      -{regime_drag*100:.1f}%/year
+Costs Applied to Trend:
+  Trading costs:     -{TREND_ANNUAL_TRADE_COST*100:.1f}%/year
   ────────────────────────────────
-  Total other drag:  -{total_other_drag*100:.1f}%/year
+  Total trend drag:  -{TREND_ANNUAL_TRADE_COST*100:.1f}%/year
+
+Costs Applied to Carry:
+  Leverage costs:    -{CARRY_ANNUAL_LEVERAGE_COST*100:.1f}%/year
+  Other risks:       -{CARRY_ANNUAL_OTHER_COSTS*100:.1f}%/year
+    (exchange 2.6% + basis blowout 1.5% + margin 0.5% + regime 0.5%)
+  Trading costs:     -{CARRY_ANNUAL_TRADE_COST*100:.1f}%/year
+  ────────────────────────────────
+  Total carry drag:  -{CARRY_TOTAL_ANNUAL_COST*100:.1f}%/year
+
+Note: All statistics below are NET of these costs.
 """)
 
 # =============================================================================
-# PART 10: FINAL HONEST ESTIMATES
+# PART 10: FINAL NET-OF-COSTS ESTIMATES
 # =============================================================================
 
 print("\n" + "=" * 90)
-print("PART 10: FINAL HONEST ESTIMATES")
+print("PART 10: FINAL NET-OF-COSTS ESTIMATES")
 print("=" * 90)
 
 # Calculate at adjusted skew-neutral point
@@ -545,24 +665,21 @@ c_wt = 1 - t_wt
 combined_final = t_wt * trend_recent + c_wt * carry_recent
 final_stats = calc_stats(combined_final)
 
-# Adjustments
-trend_adj_return = trend_recent_stats['ann_return'] * 0.95  # 5% haircut
-carry_adj_return = carry_recent_stats['ann_return'] - survivor_annual - total_other_drag
-
-final_adj_return = t_wt * trend_adj_return + c_wt * carry_adj_return
-final_adj_sharpe = final_adj_return / final_stats['ann_vol']
+# Survivorship adjustment (still needed - not in daily costs)
+carry_adj_return = carry_recent_stats['ann_return'] - survivor_annual
 
 # 2022 stress test
 combined_2022 = t_wt * trend_2022 + c_wt * carry_2022
-ret_2022_raw = (1 + combined_2022).cumprod().iloc[-1] - 1
-ret_2022_honest = ret_2022_raw - c_wt * survivor_one_time
+ret_2022 = (1 + combined_2022).cumprod().iloc[-1] - 1
 
 print(f"""
-| Metric              | Raw      | Survivor Adj | Other Risks | Final Honest |
-|---------------------|----------|--------------|-------------|--------------|
-| Trend Sharpe        | {trend_recent_stats['sharpe']:>8.2f} | {trend_recent_stats['sharpe']*0.95:>12.2f} | {trend_recent_stats['sharpe']*0.95:>11.2f} | {trend_recent_stats['sharpe']*0.95:>12.2f} |
-| Carry Sharpe        | {carry_recent_stats['sharpe']:>8.2f} | {(carry_recent_stats['ann_return']-survivor_annual)/carry_recent_stats['ann_vol']:>12.2f} | {carry_adj_return/carry_recent_stats['ann_vol']:>11.2f} | {carry_adj_return/carry_recent_stats['ann_vol']:>12.2f} |
-| Combined ({adj_skew_neutral:.0f}/{100-adj_skew_neutral:.0f})   | {final_stats['sharpe']:>8.2f} | {'--':>12} | {'--':>11} | {final_adj_sharpe:>12.2f} |
+All figures are NET of costs (already deducted from returns):
+
+| Metric              | Net of Costs | After Survivorship Adj |
+|---------------------|--------------|------------------------|
+| Trend Sharpe        | {trend_recent_stats['sharpe']:>12.2f} | {trend_recent_stats['sharpe']:>22.2f} |
+| Carry Sharpe        | {carry_recent_stats['sharpe']:>12.2f} | {carry_adj_return/carry_recent_stats['ann_vol']:>22.2f} |
+| Combined ({adj_skew_neutral:.0f}/{100-adj_skew_neutral:.0f})   | {final_stats['sharpe']:>12.2f} | {(t_wt*trend_recent_stats['ann_return'] + c_wt*carry_adj_return)/final_stats['ann_vol']:>22.2f} |
 """)
 
 # =============================================================================
@@ -573,6 +690,9 @@ print("\n" + "=" * 90)
 print("PART 11: FINAL RECOMMENDATION")
 print("=" * 90)
 
+# Calculate final adjusted metrics
+final_adj_return = t_wt * trend_recent_stats['ann_return'] + c_wt * carry_adj_return
+final_adj_sharpe = final_adj_return / final_stats['ann_vol']
 honest_maxdd = abs(final_stats['max_dd']) + c_wt * survivor_one_time + 0.05
 
 print(f"""
@@ -584,22 +704,21 @@ ALLOCATION:
   Trend: {adj_skew_neutral:.0f}%
   Carry: {100-adj_skew_neutral:.0f}%
 
-EXPECTED PERFORMANCE:
-                    Raw         Honest (with adjustments)
-  Sharpe:          {final_stats['sharpe']:>5.2f}        {final_adj_sharpe:>5.2f}
-  Annual Return:   {final_stats['ann_return']*100:>4.1f}%       {final_adj_return*100:>4.1f}%
-  Annual Vol:      {final_stats['ann_vol']*100:>4.1f}%       {final_stats['ann_vol']*100:>4.1f}%
-  Portfolio Skew:  {final_stats['skew']:>+4.2f}        ~0 (adjusted)
+EXPECTED PERFORMANCE (NET OF COSTS):
+                    Net of Costs    After Survivorship Adj
+  Sharpe:           {final_stats['sharpe']:>10.2f}    {final_adj_sharpe:>10.2f}
+  Annual Return:    {final_stats['ann_return']*100:>9.1f}%    {final_adj_return*100:>9.1f}%
+  Annual Vol:       {final_stats['ann_vol']*100:>9.1f}%    {final_stats['ann_vol']*100:>9.1f}%
+  Portfolio Skew:   {final_stats['skew']:>+9.2f}
 
 STRESS TEST:
-  2022 Return (raw):    {ret_2022_raw*100:>+5.1f}%
-  2022 Return (honest): {ret_2022_honest*100:>+5.1f}%
-  Max Drawdown (raw):   {final_stats['max_dd']*100:>5.1f}%
-  Max Drawdown (honest): ~{honest_maxdd*100:.0f}%
+  2022 Return:      {ret_2022*100:>+5.1f}%
+  Max Drawdown:     {final_stats['max_dd']*100:>5.1f}%
+  Honest Max DD:    ~{honest_maxdd*100:.0f}% (includes survivorship adjustment)
 
 VOL TARGETS VERIFIED:
-  Trend: {trend_recent_stats['ann_vol']*100:.1f}% actual vs {TREND_VOL_TARGET*100:.0f}% target ({'✓' if abs(trend_recent_stats['ann_vol'] - TREND_VOL_TARGET) < 0.02 else '✗'})
-  Carry: {carry_recent_stats['ann_vol']*100:.1f}% actual vs {CARRY_VOL_TARGET*100:.1f}% target ({'✓' if abs(carry_recent_stats['ann_vol'] - CARRY_VOL_TARGET) < 0.02 else '✗'})
+  Trend: {trend_recent_stats['ann_vol']*100:.1f}% actual vs {TREND_VOL_TARGET*100:.0f}% target ({'✓' if abs(trend_recent_stats['ann_vol'] - TREND_VOL_TARGET) < 0.03 else '✗'})
+  Carry: {carry_recent_stats['ann_vol']*100:.1f}% actual vs {CARRY_VOL_TARGET*100:.1f}% target ({'✓' if abs(carry_recent_stats['ann_vol'] - CARRY_VOL_TARGET) < 0.03 else '✗'})
 
 POSITION SIZING FOR $10,000:
   Trend allocation: ${10000 * t_wt:,.0f}

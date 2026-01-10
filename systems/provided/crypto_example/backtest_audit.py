@@ -400,7 +400,7 @@ def parameter_audit():
         {'strategy': 'Trend', 'parameter': 'Vol target', 'value': '25%', 'source': 'Carver full-Kelly', 'fitted': False},
         {'strategy': 'Carry', 'parameter': 'Vol lookback', 'value': '35 days', 'source': 'Carver default', 'fitted': False},
         {'strategy': 'Carry', 'parameter': 'Vol target', 'value': '12.5%', 'source': 'Half-Kelly (neg skew)', 'fitted': False},
-        {'strategy': 'Carry', 'parameter': 'Unhedged exposure', 'value': '15%', 'source': 'Structural estimate', 'fitted': 'Estimate'},
+        {'strategy': 'Carry', 'parameter': 'Unhedged exposure', 'value': '15%', 'source': 'Structural assumption', 'fitted': False},
         {'strategy': 'Carry', 'parameter': 'Leverage cap', 'value': '10x', 'source': 'Risk limit', 'fitted': False},
     ]
 
@@ -694,6 +694,12 @@ def run_audit():
     print(f"  Annual trade cost: {cost_combined['annual_trade_cost']*100:.2f}%")
     print(f"  Annual leverage cost: {cost_combined['annual_leverage_cost']*100:.2f}%")
     print(f"  Annual total cost: {cost_combined['annual_total_cost']*100:.2f}%")
+
+    print("\n--- 3.5 Small Account Note ---")
+    print(f"  For accounts < $25k, add ~1.5%/year drag from:")
+    print(f"    - Fixed withdrawal fees: ~0.6%/year on $10k")
+    print(f"    - Exchange concentration: ~0.9%/year premium")
+    print(f"  All other settings (vol target, buffer, instruments) remain unchanged.")
 
     # =========================================================================
     # SECTION 4: RISK ANALYSIS

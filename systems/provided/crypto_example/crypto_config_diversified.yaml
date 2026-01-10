@@ -128,30 +128,52 @@ volatility_calculation:
 buffer_method: forecast
 buffer_size: 0.10
 
-# Walk-forward estimation for forecast scalars and FDM
-# Scalars: Estimated to achieve avg|forecast| = 10
-# FDM: Estimated from observed forecast correlations
+# Forecast scalars and FDM - WALK-FORWARD ESTIMATION
+# Scalars and FDM are estimated walk-forward using expanding windows.
+# Pooling across instruments provides stable estimates while NaN handling
+# allows instruments to join at different times.
 use_forecast_scale_estimates: True
 use_forecast_div_mult_estimates: True
+
+# Forecast scalar estimation config
+forecast_scalar_estimate:
+   pool_instruments: True          # Pool across all instruments using each rule
+   window: 250000                   # Use all available data (expanding window)
+   min_periods: 250                 # ~1 year before first estimate
+   backfill: True                   # Backfill early period with first estimate
+
+# Forecast correlation estimation config (for FDM calculation)
+forecast_correlation_estimate:
+   pool_instruments: True          # Pool instruments with same rules
+   date_method: expanding          # Walk-forward (not rolling)
+   frequency: W                    # Weekly recalculation
+   using_exponent: True            # EWMA correlation
+   ew_lookback: 250                # 250-period lookback
+   min_periods: 20                 # Minimum 20 observations
+   floor_at_zero: True             # No negative correlations
+   forward_fill_data: True
+
+# FDM estimation config
+forecast_div_mult_estimate:
+   ewma_span: 125                  # Smooth FDM over ~6 months
+   dm_max: 2.5                     # Cap at 2.5
+
+# Reference - Carver's book values (Systematic Trading, Appendix B):
+# forecast_scalars:
+#   ewmac8_32: 5.3
+#   ewmac16_64: 3.75
+#   ewmac32_128: 2.65
+#   ewmac64_256: 1.87
+#   breakout10: 2.0
+#   breakout20: 1.6
+#   breakout40: 1.4
+#   breakout80: 1.2
+# forecast_div_multiplier: 1.32  # FDM = sqrt(8) / sqrt(1 + 7*0.55)
 
 # Fixed weights (no estimation needed for these)
 use_forecast_weight_estimates: False
 use_instrument_weight_estimates: False
 use_instrument_div_mult_estimates: False
-
-# Forecast scalar estimation config
-forecast_scalar_estimate:
-  pool_instruments: True
-  min_periods: 250
-  backfill: True
-
-# Forecast correlation estimation config (for FDM)
-forecast_correlation_estimate:
-  pool_instruments: True
-  frequency: "W"
-  date_method: "expanding"
-  ew_lookback: 250
-  min_periods: 20
 
 # Average absolute forecast
 average_absolute_forecast: 10.0

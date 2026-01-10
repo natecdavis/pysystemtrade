@@ -167,8 +167,10 @@ class csvSpotSimData(simData):
         Create an FX price series of 1.0 from start_date to today.
 
         Uses business day frequency to match expected pysystemtrade patterns.
+        Covers the full date range of ALL instruments to support walk-forward
+        instrument addition.
         """
-        # Get date range based on available price data
+        # Get date range based on available price data from ALL instruments
         instruments = self.get_instrument_list()
         if not instruments:
             # No instruments, return minimal series
@@ -176,14 +178,29 @@ class csvSpotSimData(simData):
             index = pd.bdate_range(start=start_date, end=end_date, freq="B")
             return fxPrices(pd.Series(1.0, index=index))
 
-        # Use first instrument's date range
-        prices = self._prices_data.get_spot_prices(instruments[0])
-        if len(prices) == 0:
+        # Find earliest and latest dates across ALL instruments
+        # This ensures FX data covers the full range for walk-forward instrument addition
+        earliest_date = None
+        latest_date = None
+        for instr in instruments:
+            try:
+                prices = self._prices_data.get_spot_prices(instr)
+                if len(prices) > 0:
+                    if earliest_date is None or prices.index.min() < earliest_date:
+                        earliest_date = prices.index.min()
+                    if latest_date is None or prices.index.max() > latest_date:
+                        latest_date = prices.index.max()
+            except Exception:
+                continue
+
+        if earliest_date is None:
             end_date = datetime.datetime.now()
             index = pd.bdate_range(start=start_date, end=end_date, freq="B")
         else:
-            # Match the date range of actual price data
-            index = prices.index[prices.index >= start_date]
+            # Use the earliest instrument date as start (or provided start_date if later)
+            actual_start = max(start_date, earliest_date) if start_date else earliest_date
+            actual_end = latest_date if latest_date else datetime.datetime.now()
+            index = pd.bdate_range(start=actual_start, end=actual_end, freq="B")
 
         fx_series = pd.Series(1.0, index=index)
         return fxPrices(fx_series)
