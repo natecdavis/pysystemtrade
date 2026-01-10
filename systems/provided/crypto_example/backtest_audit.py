@@ -701,6 +701,38 @@ def run_audit():
     print(f"    - Exchange concentration: ~0.9%/year premium")
     print(f"  All other settings (vol target, buffer, instruments) remain unchanged.")
 
+    print("\n--- 3.6 Carver's Speed Limit Check ---")
+    print(f"\n  Speed Limit Rule (from 'Leveraged Trading'):")
+    print(f"  'Costs should be max 1/3 of expected gross Sharpe Ratio'")
+    print(f"  Cost SR = Annual Costs / Vol Target")
+    print(f"  Max Cost SR = Expected Gross SR / 3")
+
+    # Calculate gross Sharpe ratios (add back costs)
+    trend_gross_sr = cost_trend['gross_sharpe']
+    carry_gross_sr = cost_carry['gross_sharpe']
+
+    # Calculate cost SR
+    trend_cost_sr = cost_trend['annual_total_cost'] / TREND_VOL_TARGET
+    carry_cost_sr = cost_carry['annual_total_cost'] / CARRY_VOL_TARGET
+
+    # Max cost SR (1/3 of gross)
+    trend_max_cost_sr = trend_gross_sr / 3
+    carry_max_cost_sr = carry_gross_sr / 3
+
+    trend_within_limit = trend_cost_sr <= trend_max_cost_sr
+    carry_within_limit = carry_cost_sr <= carry_max_cost_sr
+
+    print(f"\n  | Strategy | Ann. Costs | Vol Target | Gross SR | Cost SR | Max Cost SR | Status |")
+    print(f"  |----------|------------|------------|----------|---------|-------------|--------|")
+    print(f"  | Trend    | {cost_trend['annual_total_cost']*100:>9.2f}% | {TREND_VOL_TARGET*100:>9.0f}% | {trend_gross_sr:>8.2f} | {trend_cost_sr:>7.3f} | {trend_max_cost_sr:>11.3f} | {'OK' if trend_within_limit else 'OVER':>6} |")
+    print(f"  | Carry    | {cost_carry['annual_total_cost']*100:>9.2f}% | {CARRY_VOL_TARGET*100:>9.1f}% | {carry_gross_sr:>8.2f} | {carry_cost_sr:>7.3f} | {carry_max_cost_sr:>11.3f} | {'OK' if carry_within_limit else 'OVER':>6} |")
+
+    if not carry_within_limit:
+        excess = carry_cost_sr - carry_max_cost_sr
+        print(f"\n  Note: Carry exceeds speed limit by {excess:.3f} SR")
+        print(f"  From Carver's blog: 'Using all rules is consistently better, after costs,")
+        print(f"  than excluding expensive rules' - the optimizer already penalizes costly rules.")
+
     # =========================================================================
     # SECTION 4: RISK ANALYSIS
     # =========================================================================

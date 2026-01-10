@@ -7,6 +7,21 @@
 # 4. Recalibrated FDM for larger rule set
 
 # Capital and risk settings
+#
+# Volatility Target Guidance (from Carver's "Leveraged Trading"):
+# - Full-Kelly:    vol = expected SR (risky, max growth, large drawdowns)
+# - Half-Kelly:    vol = SR / 2 (recommended for most traders)
+# - Quarter-Kelly: vol = SR / 4 (for negative skew strategies)
+# - Starter System: 12% (recommended for beginners)
+# - Max for semi-automatic trading: 25%
+#
+# Current setting: 25% (aggressive, requires close monitoring)
+# For a carry strategy, use vol_target = trend_vol_target / 2
+#
+# Speed Limit Rule: Costs should be < 1/3 of expected gross Sharpe Ratio
+# Cost SR = Annual Costs / Vol Target
+# At 25% vol and 0.6% annual costs: Cost SR = 0.024 (well under limit)
+#
 percentage_vol_target: 25.0
 notional_trading_capital: 100000
 base_currency: USD

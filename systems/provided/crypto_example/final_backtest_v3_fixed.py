@@ -651,11 +651,187 @@ Note: All statistics below are NET of these costs.
 """)
 
 # =============================================================================
-# PART 10: FINAL NET-OF-COSTS ESTIMATES
+# PART 10: SPEED LIMIT CHECK (Carver's 1/3 Rule)
 # =============================================================================
 
 print("\n" + "=" * 90)
-print("PART 10: FINAL NET-OF-COSTS ESTIMATES")
+print("PART 10: SPEED LIMIT CHECK (Carver's 1/3 Rule)")
+print("=" * 90)
+
+def check_speed_limit(annual_costs, vol_target, expected_gross_sr, strategy_name):
+    """
+    Check if trading costs are within Carver's "speed limit" (1/3 of expected gross SR).
+
+    From Carver's "Leveraged Trading" and blog:
+    - Cost SR = Annual Costs / Vol Target
+    - Max Cost SR = Expected Gross SR / 3
+    - If Cost SR > Max Cost SR, strategy may not be worth trading
+
+    Note: Carver also found that "using all rules is consistently better, after costs,
+    than excluding expensive rules" because the optimizer already penalizes costly rules.
+    """
+    cost_sr = annual_costs / vol_target
+    max_cost_sr = expected_gross_sr / 3
+    within_limit = cost_sr <= max_cost_sr
+    excess = max(0, cost_sr - max_cost_sr)
+
+    return {
+        'strategy': strategy_name,
+        'annual_costs': annual_costs,
+        'vol_target': vol_target,
+        'expected_gross_sr': expected_gross_sr,
+        'cost_sr': cost_sr,
+        'max_cost_sr': max_cost_sr,
+        'within_limit': within_limit,
+        'excess': excess
+    }
+
+def longest_drawdown_duration(returns, name=""):
+    """
+    Calculate the longest drawdown duration in days.
+
+    A drawdown starts when cumulative returns fall below the previous peak
+    and ends when a new peak is reached.
+    """
+    returns = returns.dropna()
+    if len(returns) < 20:
+        return {'duration_days': 0, 'start': None, 'end': None, 'depth': 0}
+
+    cum = (1 + returns).cumprod()
+    running_max = cum.cummax()
+    drawdown = (cum - running_max) / running_max
+
+    # Find drawdown periods
+    in_drawdown = drawdown < 0
+
+    # Find start and end of each drawdown period
+    longest_duration = 0
+    longest_start = None
+    longest_end = None
+    longest_depth = 0
+
+    current_start = None
+    current_depth = 0
+
+    for i, (date, is_dd) in enumerate(in_drawdown.items()):
+        if is_dd and current_start is None:
+            current_start = date
+            current_depth = drawdown.iloc[i]
+        elif is_dd and current_start is not None:
+            current_depth = min(current_depth, drawdown.iloc[i])
+        elif not is_dd and current_start is not None:
+            # Drawdown ended
+            duration = (date - current_start).days
+            if duration > longest_duration:
+                longest_duration = duration
+                longest_start = current_start
+                longest_end = date
+                longest_depth = current_depth
+            current_start = None
+            current_depth = 0
+
+    # Check if still in drawdown at end
+    if current_start is not None:
+        duration = (returns.index[-1] - current_start).days
+        if duration > longest_duration:
+            longest_duration = duration
+            longest_start = current_start
+            longest_end = returns.index[-1]
+            longest_depth = current_depth
+
+    return {
+        'duration_days': longest_duration,
+        'start': longest_start,
+        'end': longest_end,
+        'depth': longest_depth
+    }
+
+# Estimate gross Sharpe ratios (before costs)
+# Trend: Add back trading costs to get gross
+trend_gross_return = trend_recent_stats['ann_return'] + TREND_ANNUAL_TRADE_COST
+trend_gross_sr = trend_gross_return / trend_recent_stats['ann_vol']
+
+# Carry: Add back all costs to get gross
+carry_gross_return = carry_recent_stats['ann_return'] + CARRY_TOTAL_ANNUAL_COST
+carry_gross_sr = carry_gross_return / carry_recent_stats['ann_vol']
+
+# Run speed limit checks
+trend_check = check_speed_limit(
+    TREND_ANNUAL_TRADE_COST, TREND_VOL_TARGET, trend_gross_sr, "Trend"
+)
+carry_check = check_speed_limit(
+    CARRY_TOTAL_ANNUAL_COST, CARRY_VOL_TARGET, carry_gross_sr, "Carry"
+)
+
+print(f"""
+Speed Limit Rule (from Carver's "Leveraged Trading"):
+  "Costs should be max 1/3 of expected gross Sharpe Ratio"
+  Cost SR = Annual Costs / Vol Target
+  Max Cost SR = Expected Gross SR / 3
+
+┌──────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┐
+│ Strategy │ Ann. Costs │ Vol Target │ Gross SR   │ Cost SR    │ Max Cost   │ Status │
+├──────────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┤
+│ Trend    │ {TREND_ANNUAL_TRADE_COST*100:>9.1f}% │ {TREND_VOL_TARGET*100:>9.0f}% │ {trend_gross_sr:>10.2f} │ {trend_check['cost_sr']:>10.3f} │ {trend_check['max_cost_sr']:>10.3f} │ {'✓ OK' if trend_check['within_limit'] else '✗ OVER':>6} │
+│ Carry    │ {CARRY_TOTAL_ANNUAL_COST*100:>9.1f}% │ {CARRY_VOL_TARGET*100:>9.1f}% │ {carry_gross_sr:>10.2f} │ {carry_check['cost_sr']:>10.3f} │ {carry_check['max_cost_sr']:>10.3f} │ {'✓ OK' if carry_check['within_limit'] else '✗ OVER':>6} │
+└──────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┘
+""")
+
+if not carry_check['within_limit']:
+    print(f"""
+  ⚠ CARRY EXCEEDS SPEED LIMIT by {carry_check['excess']:.3f} SR
+
+  Note from Carver's blog: "Using all rules is consistently better, after costs,
+  than excluding expensive rules" because the optimizer already penalizes costly
+  rules. The difference is only 1-2 SR basis points in costs but 5-12 basis
+  points in gross performance. Consider this when deciding whether to trade carry.
+""")
+
+# =============================================================================
+# PART 10b: LONGEST DRAWDOWN DURATION ANALYSIS
+# =============================================================================
+
+print("\n" + "-" * 90)
+print("LONGEST DRAWDOWN DURATION ANALYSIS")
+print("-" * 90)
+
+trend_dd = longest_drawdown_duration(trend_recent, "Trend")
+carry_dd = longest_drawdown_duration(carry_recent, "Carry")
+
+# Combined at skew-neutral allocation
+t_wt_temp = adj_skew_neutral / 100
+c_wt_temp = 1 - t_wt_temp
+combined_temp = t_wt_temp * trend_recent + c_wt_temp * carry_recent
+combined_dd = longest_drawdown_duration(combined_temp, "Combined")
+
+print(f"""
+Longest Drawdown Duration (for vol target decisions):
+
+┌──────────────────┬────────────────┬─────────────┬────────────────────────────────────┐
+│ Strategy         │ Duration (days)│ Max Depth   │ Period                             │
+├──────────────────┼────────────────┼─────────────┼────────────────────────────────────┤
+│ Trend ({TREND_VOL_TARGET*100:.0f}% vol)  │ {trend_dd['duration_days']:>14} │ {trend_dd['depth']*100:>10.1f}% │ {str(trend_dd['start'].date()) if trend_dd['start'] else 'N/A':>12} to {str(trend_dd['end'].date()) if trend_dd['end'] else 'N/A':>12} │
+│ Carry ({CARRY_VOL_TARGET*100:.0f}% vol) │ {carry_dd['duration_days']:>14} │ {carry_dd['depth']*100:>10.1f}% │ {str(carry_dd['start'].date()) if carry_dd['start'] else 'N/A':>12} to {str(carry_dd['end'].date()) if carry_dd['end'] else 'N/A':>12} │
+│ Combined ({adj_skew_neutral:.0f}/{100-adj_skew_neutral:.0f})   │ {combined_dd['duration_days']:>14} │ {combined_dd['depth']*100:>10.1f}% │ {str(combined_dd['start'].date()) if combined_dd['start'] else 'N/A':>12} to {str(combined_dd['end'].date()) if combined_dd['end'] else 'N/A':>12} │
+└──────────────────┴────────────────┴─────────────┴────────────────────────────────────┘
+
+Vol Target Guidance (from Carver):
+  - Full-Kelly:    vol = expected SR (risky, max growth)
+  - Half-Kelly:    vol = SR / 2 (recommended for most traders)
+  - Quarter-Kelly: vol = SR / 4 (for negative skew strategies)
+
+  Current targets: Trend {TREND_VOL_TARGET*100:.0f}%, Carry {CARRY_VOL_TARGET*100:.1f}% (Carry = Trend / 2)
+
+  Adjust vol targets based on your tolerance for drawdown duration.
+  Lower vol target = shorter drawdowns but lower returns.
+""")
+
+# =============================================================================
+# PART 11: FINAL NET-OF-COSTS ESTIMATES
+# =============================================================================
+
+print("\n" + "=" * 90)
+print("PART 11: FINAL NET-OF-COSTS ESTIMATES")
 print("=" * 90)
 
 # Calculate at adjusted skew-neutral point
@@ -683,11 +859,11 @@ All figures are NET of costs (already deducted from returns):
 """)
 
 # =============================================================================
-# PART 11: FINAL RECOMMENDATION
+# PART 12: FINAL RECOMMENDATION
 # =============================================================================
 
 print("\n" + "=" * 90)
-print("PART 11: FINAL RECOMMENDATION")
+print("PART 12: FINAL RECOMMENDATION")
 print("=" * 90)
 
 # Calculate final adjusted metrics
