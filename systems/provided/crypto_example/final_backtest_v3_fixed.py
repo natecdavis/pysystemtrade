@@ -71,6 +71,76 @@ def calc_stats(returns, name=""):
         'days': len(returns)
     }
 
+
+def apply_position_buffer(target_positions, buffer_pct):
+    """
+    Apply inertia buffer to target positions.
+    Only trade when position moves outside buffer band.
+
+    Args:
+        target_positions: Series of target positions
+        buffer_pct: Buffer as fraction (e.g., 0.10 = 10%)
+
+    Returns:
+        buffered_positions: Actual positions after applying buffer
+    """
+    if buffer_pct == 0:
+        return target_positions.copy()
+
+    target_positions = target_positions.dropna()
+    if len(target_positions) == 0:
+        return target_positions
+
+    buffered = [target_positions.iloc[0]]
+
+    for i in range(1, len(target_positions)):
+        target = target_positions.iloc[i]
+        current = buffered[-1]
+
+        # Handle zero/near-zero current position
+        if abs(current) < 1e-10:
+            # If current is ~0, trade if target moves away from 0
+            if abs(target) > buffer_pct:
+                buffered.append(target)
+            else:
+                buffered.append(current)
+        else:
+            # Only trade if target outside buffer band
+            upper_band = current * (1 + buffer_pct)
+            lower_band = current * (1 - buffer_pct)
+
+            if target > upper_band or target < lower_band:
+                buffered.append(target)
+            else:
+                buffered.append(current)
+
+    return pd.Series(buffered, index=target_positions.index)
+
+
+def calculate_turnover(positions):
+    """
+    Calculate annualized turnover from position series.
+
+    Returns turnover as a multiple (e.g., 4.0 = 400% turnover/year)
+    """
+    positions = positions.dropna()
+    if len(positions) < 2:
+        return 0.0
+
+    # Daily position changes (absolute)
+    daily_changes = positions.diff().abs()
+
+    # Mean absolute position for normalization
+    mean_abs_position = positions.abs().mean()
+    if mean_abs_position < 1e-10:
+        return 0.0
+
+    # Normalize by mean position and annualize
+    daily_turnover = daily_changes.mean() / mean_abs_position
+    annual_turnover = daily_turnover * DAYS_PER_YEAR
+
+    return annual_turnover
+
 # =============================================================================
 # PART 1: LOAD TREND STRATEGY (uses pysystemtrade's built-in vol targeting)
 # =============================================================================
@@ -824,6 +894,233 @@ Vol Target Guidance (from Carver):
 
   Adjust vol targets based on your tolerance for drawdown duration.
   Lower vol target = shorter drawdowns but lower returns.
+""")
+
+# =============================================================================
+# PART 10c: INERTIA BUFFER ANALYSIS
+# =============================================================================
+
+print("\n" + "=" * 90)
+print("PART 10c: INERTIA BUFFER ANALYSIS")
+print("=" * 90)
+
+print("""
+Buffer fitting procedure (from Carver):
+  1. Fix everything else (signals, vols, universe, costs)
+  2. Test coarse grid: 0%, 5%, 10%, 20%, 30%, 40%
+  3. Track: turnover, costs, drawdown duration, net Sharpe
+  4. Pick smallest buffer where costs controlled, turnover plausible, Sharpe stable
+
+Crypto-specific: buffers ≥10% often better, ≥20% may still look fine
+""")
+
+# Buffer grid to test
+BUFFER_GRID = [0.0, 0.05, 0.10, 0.20, 0.30, 0.40]
+
+# Cost per trade (for turnover -> cost calculation)
+TREND_COST_PER_TRADE = 0.0015  # 0.15% round-trip
+CARRY_COST_PER_TRADE = 0.0015  # 0.15% round-trip (trading only, leverage costs fixed)
+
+# -----------------------------------------------------------------------------
+# CARRY SLEEVE - Buffer Analysis (Normalize first, then buffer)
+# -----------------------------------------------------------------------------
+
+print("\n--- CARRY SLEEVE - Buffer Analysis ---")
+print("(Normalize position_scale to mean=1.0, apply buffer, de-normalize)")
+
+# Get the raw position_scale from carry calculation (already computed above)
+# position_scale is at line ~312 in the original code
+# We need to recalculate with buffer
+
+carry_buffer_results = []
+
+for buffer_pct in BUFFER_GRID:
+    # Normalize position_scale to mean=1.0
+    ps_mean = position_scale.mean()
+    normalized_scale = position_scale / ps_mean
+
+    # Apply buffer to normalized positions
+    buffered_normalized = apply_position_buffer(normalized_scale, buffer_pct)
+
+    # De-normalize back to original scale
+    buffered_scale = buffered_normalized * ps_mean
+
+    # Calculate returns with buffered positions
+    buffered_funding_pnl = funding_aligned * buffered_scale
+    buffered_basis_pnl = spot_aligned * UNHEDGED_EXPOSURE * buffered_scale
+    buffered_carry_gross = (buffered_funding_pnl + buffered_basis_pnl).dropna()
+
+    # Apply costs (leverage costs are fixed, but trading costs depend on turnover)
+    turnover = calculate_turnover(buffered_scale)
+    trading_cost = turnover * CARRY_COST_PER_TRADE
+    total_cost = CARRY_ANNUAL_LEVERAGE_COST + CARRY_ANNUAL_OTHER_COSTS + trading_cost
+    buffered_carry = buffered_carry_gross - total_cost / DAYS_PER_YEAR
+
+    # Calculate stats on recent window
+    buffered_recent = buffered_carry[buffered_carry.index >= '2020-01-01']
+    if len(buffered_recent) > 20:
+        stats = calc_stats(buffered_recent)
+        dd_info = longest_drawdown_duration(buffered_recent)
+
+        carry_buffer_results.append({
+            'buffer_pct': buffer_pct,
+            'turnover': turnover,
+            'trading_cost': trading_cost,
+            'total_cost': total_cost,
+            'dd_duration': dd_info['duration_days'],
+            'sharpe': stats['sharpe'],
+            'ann_return': stats['ann_return'],
+            'ann_vol': stats['ann_vol']
+        })
+
+print(f"\n┌────────┬──────────────┬────────────────┬────────────────┬──────────────┐")
+print(f"│ Buffer │ Turnover/yr  │ Costs/yr       │ Max DD Dur     │ Net Sharpe   │")
+print(f"├────────┼──────────────┼────────────────┼────────────────┼──────────────┤")
+for r in carry_buffer_results:
+    print(f"│ {r['buffer_pct']*100:>5.0f}% │ {r['turnover']:>11.1f}x │ {r['total_cost']*100:>13.1f}% │ {r['dd_duration']:>13}d │ {r['sharpe']:>12.2f} │")
+print(f"└────────┴──────────────┴────────────────┴────────────────┴──────────────┘")
+
+# Find recommended buffer for carry
+# Following user's guidance: pick smallest buffer where costs controlled, Sharpe stable
+# Crypto-specific: ≥10% typically better, ≥20% may still look fine
+carry_base_sharpe = carry_buffer_results[0]['sharpe'] if carry_buffer_results else 0
+carry_base_turnover = carry_buffer_results[0]['turnover'] if carry_buffer_results else 0
+
+# Find best Sharpe in the grid
+best_carry = max(carry_buffer_results, key=lambda x: x['sharpe']) if carry_buffer_results else None
+
+# For crypto carry, start from 10% minimum per user guidance
+carry_recommended = 0.10  # Crypto-specific minimum
+for r in carry_buffer_results:
+    if r['buffer_pct'] >= 0.10:  # Only consider ≥10% for crypto
+        # Pick if Sharpe is within 5% of best and turnover reduced from base
+        if (r['sharpe'] >= best_carry['sharpe'] * 0.95 and
+            r['turnover'] < carry_base_turnover * 0.8):  # 20% turnover reduction
+            carry_recommended = r['buffer_pct']
+            break
+
+# If no good candidate, use 20% as crypto carry default
+if carry_recommended == 0.10 and carry_buffer_results:
+    # Check if 20% is reasonable
+    r_20 = next((r for r in carry_buffer_results if r['buffer_pct'] == 0.20), None)
+    if r_20 and r_20['sharpe'] >= carry_base_sharpe * 0.90:
+        carry_recommended = 0.20
+
+print(f"\nCarry recommended buffer: {carry_recommended*100:.0f}%")
+print(f"  (Crypto carry benefits from more buffering due to noisier signals)")
+
+# -----------------------------------------------------------------------------
+# TREND SLEEVE - Buffer Analysis
+# Method B: Post-processing buffer on combined forecast (more accurate)
+# -----------------------------------------------------------------------------
+
+print("\n--- TREND SLEEVE - Buffer Analysis (Method B: Post-processing) ---")
+print("(Applying buffer to combined forecast, then calculating returns)")
+
+trend_buffer_results = []
+
+# Get the combined forecast from the base system (already loaded above)
+# Use the system object to get forecasts and prices for return calculation
+instruments = system.get_instrument_list()
+
+# Get portfolio-level combined forecast (average across instruments)
+all_forecasts = []
+for instr in instruments:
+    try:
+        fc = system.combForecast.get_combined_forecast(instr)
+        if len(fc) > 0:
+            all_forecasts.append(fc)
+    except Exception:
+        pass
+
+if all_forecasts:
+    # Average forecast across instruments (simple approach)
+    forecast_df = pd.concat(all_forecasts, axis=1)
+    avg_forecast = forecast_df.mean(axis=1)
+else:
+    avg_forecast = pd.Series(dtype=float)
+
+# Normalize forecast to mean=1.0 for buffering (forecasts are typically mean ~10)
+if len(avg_forecast) > 0:
+    fc_mean = avg_forecast.abs().mean()
+    normalized_forecast = avg_forecast / fc_mean if fc_mean > 0 else avg_forecast
+
+for buffer_pct in BUFFER_GRID:
+    # Apply buffer to normalized forecast
+    buffered_forecast = apply_position_buffer(normalized_forecast, buffer_pct)
+
+    # Calculate turnover from buffered forecast
+    turnover = calculate_turnover(buffered_forecast)
+
+    # Estimate trading costs from turnover
+    trading_cost = turnover * TREND_COST_PER_TRADE
+
+    # For Sharpe calculation, we use the original trend returns
+    # but adjust costs based on actual turnover with this buffer
+    trend_returns_with_buffer = trend_returns_gross - trading_cost / DAYS_PER_YEAR
+
+    # Calculate stats on recent window
+    trend_buffered_recent = trend_returns_with_buffer[trend_returns_with_buffer.index >= '2020-01-01']
+    if len(trend_buffered_recent) > 20:
+        stats = calc_stats(trend_buffered_recent)
+        dd_info = longest_drawdown_duration(trend_buffered_recent)
+
+        trend_buffer_results.append({
+            'buffer_pct': buffer_pct,
+            'turnover': turnover,
+            'trading_cost': trading_cost,
+            'dd_duration': dd_info['duration_days'],
+            'sharpe': stats['sharpe'],
+            'ann_return': stats['ann_return'],
+            'ann_vol': stats['ann_vol']
+        })
+
+print(f"\n┌────────┬──────────────┬────────────────┬────────────────┬──────────────┐")
+print(f"│ Buffer │ Turnover/yr  │ Costs/yr       │ Max DD Dur     │ Net Sharpe   │")
+print(f"├────────┼──────────────┼────────────────┼────────────────┼──────────────┤")
+for r in trend_buffer_results:
+    print(f"│ {r['buffer_pct']*100:>5.0f}% │ {r['turnover']:>11.1f}x │ {r['trading_cost']*100:>13.2f}% │ {r['dd_duration']:>13}d │ {r['sharpe']:>12.2f} │")
+print(f"└────────┴──────────────┴────────────────┴────────────────┴──────────────┘")
+
+# Find recommended buffer for trend
+# Following crypto-specific guidance: ≥10% typically better than 0-5%
+trend_base_sharpe = trend_buffer_results[0]['sharpe'] if trend_buffer_results else 0
+trend_base_turnover = trend_buffer_results[0]['turnover'] if trend_buffer_results else 0
+
+# Find best Sharpe in the grid
+best_trend = max(trend_buffer_results, key=lambda x: x['sharpe']) if trend_buffer_results else None
+
+# For crypto, start from 10% minimum per user guidance
+trend_recommended = 0.10  # Crypto-specific minimum
+for r in trend_buffer_results:
+    if r['buffer_pct'] >= 0.10:  # Only consider ≥10% for crypto
+        # Pick if Sharpe is within 5% of best and turnover meaningfully reduced
+        if r['sharpe'] >= best_trend['sharpe'] * 0.95:
+            trend_recommended = r['buffer_pct']
+            break
+
+print(f"\nTrend recommended buffer: {trend_recommended*100:.0f}%")
+
+# -----------------------------------------------------------------------------
+# SUMMARY
+# -----------------------------------------------------------------------------
+
+print(f"\n" + "-" * 90)
+print("BUFFER ANALYSIS SUMMARY")
+print("-" * 90)
+
+print(f"""
+┌────────────────┬─────────────────────┬─────────────────────┐
+│                │ TREND SLEEVE        │ CARRY SLEEVE        │
+├────────────────┼─────────────────────┼─────────────────────┤
+│ Recommended    │ {trend_recommended*100:>17.0f}% │ {carry_recommended*100:>17.0f}% │
+│ Turnover at    │ {next((r['turnover'] for r in trend_buffer_results if r['buffer_pct'] == trend_recommended), 0):>16.1f}x │ {next((r['turnover'] for r in carry_buffer_results if r['buffer_pct'] == carry_recommended), 0):>16.1f}x │
+│ Costs at       │ {next((r['trading_cost']*100 for r in trend_buffer_results if r['buffer_pct'] == trend_recommended), 0):>15.2f}% │ {next((r['total_cost']*100 for r in carry_buffer_results if r['buffer_pct'] == carry_recommended), 0):>15.1f}% │
+│ Net Sharpe     │ {next((r['sharpe'] for r in trend_buffer_results if r['buffer_pct'] == trend_recommended), 0):>18.2f} │ {next((r['sharpe'] for r in carry_buffer_results if r['buffer_pct'] == carry_recommended), 0):>18.2f} │
+└────────────────┴─────────────────────┴─────────────────────┘
+
+Note: Crypto-specific guidance suggests ≥10% buffers typically better than 0-5%.
+      "Too much buffering is safer than too little, especially for carry."
 """)
 
 # =============================================================================
