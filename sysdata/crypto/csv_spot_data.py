@@ -57,6 +57,10 @@ class csvSpotPricesData:
         """
         Returns list of instrument codes by scanning for CSV files.
 
+        Handles both naming conventions:
+        - {INSTRUMENT}.csv (legacy)
+        - {INSTRUMENT}_price.csv (stitched data)
+
         Returns:
             List of instrument codes (filenames without .csv extension)
         """
@@ -70,9 +74,16 @@ class csvSpotPricesData:
             return []
 
         files = os.listdir(resolved_path)
-        instruments = [
-            f[:-4] for f in files if f.endswith(".csv") and not f.startswith(".")
-        ]
+        instruments = set()
+        for f in files:
+            if f.startswith("."):
+                continue
+            if f.endswith("_price.csv"):
+                # Stitched data format: BTC_price.csv -> BTC
+                instruments.add(f[:-10])
+            elif f.endswith(".csv") and not f.endswith("_funding.csv"):
+                # Legacy format: BTC.csv -> BTC
+                instruments.add(f[:-4])
         return sorted(instruments)
 
     def get_spot_prices(self, instrument_code: str) -> pd.Series:
@@ -156,18 +167,53 @@ class csvSpotPricesData:
     def _filename_for_instrument(self, instrument_code: str) -> str:
         """
         Get the filename for an instrument.
+
+        Tries both naming conventions:
+        - {INSTRUMENT}_price.csv (stitched data, preferred)
+        - {INSTRUMENT}.csv (legacy)
         """
+        # Try stitched format first
+        stitched_path = os.path.join(self.datapath, f"{instrument_code}_price.csv")
+        if os.path.exists(stitched_path):
+            return stitched_path
+
+        # Try resolved stitched path
+        try:
+            resolved_stitched = resolve_path_and_filename_for_package(
+                self.datapath, f"{instrument_code}_price.csv"
+            )
+            if os.path.exists(resolved_stitched):
+                return resolved_stitched
+        except Exception:
+            pass
+
+        # Fall back to legacy format
         return os.path.join(self.datapath, f"{instrument_code}.csv")
 
     def has_data_for_instrument(self, instrument_code: str) -> bool:
         """
         Check if data exists for an instrument.
+
+        Checks both naming conventions.
         """
-        filename = self._filename_for_instrument(instrument_code)
+        # Check stitched format
+        try:
+            resolved = resolve_path_and_filename_for_package(
+                self.datapath, f"{instrument_code}_price.csv"
+            )
+            if os.path.exists(resolved):
+                return True
+        except Exception:
+            stitched_path = os.path.join(self.datapath, f"{instrument_code}_price.csv")
+            if os.path.exists(stitched_path):
+                return True
+
+        # Check legacy format
         try:
             resolved = resolve_path_and_filename_for_package(
                 self.datapath, f"{instrument_code}.csv"
             )
             return os.path.exists(resolved)
         except Exception:
-            return os.path.exists(filename)
+            legacy_path = os.path.join(self.datapath, f"{instrument_code}.csv")
+            return os.path.exists(legacy_path)
