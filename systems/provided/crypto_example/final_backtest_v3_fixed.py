@@ -1234,37 +1234,43 @@ print(f"  {carry_reason}")
 # -----------------------------------------------------------------------------
 
 print("\n--- TREND SLEEVE - Buffer Analysis (Carver's approach) ---")
-print("(Using forecast method: buffer = position_at_forecast_10 × buffer_size)")
+print("(Using pysystemtrade baseline turnover with estimated buffer reductions)")
 
 trend_buffer_results = []
 
-# Get the "position at forecast=10" from pysystemtrade System
-# This is the reference position in Carver's system: vol_scalar × instr_weight × IDM
-# NOT the actual position (which has capped forecasts baked in)
+# Get instruments and weights
 instruments = system.get_instrument_list()
+instr_weights = system.portfolio.get_instrument_weights()
 
-# Calculate position at forecast=10 for each instrument
-# Formula: position_at_10 = avg_pos_subsystem × instr_weight × IDM
-# Where avg_pos_subsystem is the position you'd have with forecast=10 (before portfolio scaling)
+# Step 1: Get ACTUAL baseline turnover from pysystemtrade (authoritative source)
+# This uses pysystemtrade's proper turnover calculation which normalizes correctly
+baseline_turnover = 0
+print(f"\n  Per-instrument turnover (from pysystemtrade):")
+for instr in instruments:
+    try:
+        instr_turnover = system.accounts.subsystem_turnover(instr)
+        weight = instr_weights[instr].iloc[-1]
+        weighted_turnover = instr_turnover * weight
+        baseline_turnover += weighted_turnover
+        print(f"    {instr}: {instr_turnover:.1f}x/yr × {weight:.1%} weight = {weighted_turnover:.1f}x contribution")
+    except Exception:
+        pass
+
+print(f"\n  Portfolio baseline turnover: {baseline_turnover:.1f}x/year")
+
+# Step 2: Get position at forecast=10 for buffer width calculation
+idm = system.portfolio.get_instrument_diversification_multiplier()
 all_positions_at_10 = []
 all_actual_positions = []
-instr_weights = system.portfolio.get_instrument_weights()
-idm = system.portfolio.get_instrument_diversification_multiplier()
 
 for instr in instruments:
     try:
-        # Get average position at subsystem level (position at forecast=10, before weight × IDM)
         avg_pos_subsystem = system.positionSize.get_average_position_at_subsystem_level(instr)
-
-        # Get actual position (for buffering simulation)
         actual_pos = system.portfolio.get_notional_position(instr)
 
         if len(avg_pos_subsystem) > 0:
-            # Get weight and IDM, align indices
             weight = instr_weights[instr].reindex(avg_pos_subsystem.index).ffill()
             idm_aligned = idm.reindex(avg_pos_subsystem.index).ffill()
-
-            # Position at forecast=10 (the "1 unit" reference position at portfolio level)
             pos_at_10 = avg_pos_subsystem * weight * idm_aligned
             all_positions_at_10.append(pos_at_10)
 
@@ -1273,34 +1279,29 @@ for instr in instruments:
     except Exception:
         pass
 
-# Calculate portfolio-level position at forecast=10
+# Get averaged positions for buffer simulation (to calculate RELATIVE reductions)
 if all_positions_at_10:
     position_at_10_df = pd.concat(all_positions_at_10, axis=1)
     avg_position_at_10 = position_at_10_df.mean(axis=1)
 else:
     avg_position_at_10 = pd.Series(dtype=float)
 
-# Get actual positions for buffer simulation
 if all_actual_positions:
     position_df = pd.concat(all_actual_positions, axis=1)
     avg_position = position_df.mean(axis=1)
 else:
     avg_position = pd.Series(dtype=float)
 
-# Use position at forecast=10 for buffer calculation (Carver's approach)
-# This is stable regardless of how many forecasts are capped
+# Step 3: Simulate buffers and calculate RELATIVE turnover reductions
+# (Absolute turnover from simulation is wrong, but relative reductions are useful)
 if len(avg_position_at_10) > 0 and len(avg_position) > 0:
     average_trend_position = avg_position_at_10.abs().mean()
-    actual_avg_position = avg_position.abs().mean()
-    print(f"  Position at forecast=10 (buffer base): {average_trend_position:.2f}")
-    print(f"  Actual avg position (for comparison): {actual_avg_position:.2f}")
-    print(f"  Ratio (actual/ref): {actual_avg_position/average_trend_position:.2f} (reflects avg forecast magnitude)")
+
+    # Get unbuffered simulation turnover (for calculating relative reductions)
+    unbuffered_sim_turnover = calculate_turnover(avg_position)
 
     for buffer_pct in BUFFER_GRID:
-        # Apply Carver-consistent buffer with forecast method
-        # - Bands centered around TARGET position
-        # - Trade to EDGE when outside band
-        # - Constant buffer width based on average position (Carver's approach)
+        # Simulate buffered positions
         buffered_position = apply_position_buffer(
             avg_position,
             buffer_size=buffer_pct,
@@ -1308,17 +1309,24 @@ if len(avg_position_at_10) > 0 and len(avg_position) > 0:
             trade_to_edge=True
         )
 
-        # Calculate turnover from buffered positions
-        turnover = calculate_turnover(buffered_position)
+        # Get simulated turnover (wrong absolute, but useful for relative reduction)
+        sim_turnover = calculate_turnover(buffered_position)
 
-        # Estimate trading costs from turnover
-        trading_cost = turnover * TREND_COST_PER_TRADE
+        # Calculate relative reduction factor
+        if unbuffered_sim_turnover > 0:
+            reduction_factor = sim_turnover / unbuffered_sim_turnover
+        else:
+            reduction_factor = 1.0
 
-        # For Sharpe calculation, we use the original trend returns
-        # but adjust costs based on actual turnover with this buffer
+        # Apply reduction factor to REAL baseline turnover
+        estimated_turnover = baseline_turnover * reduction_factor
+
+        # Calculate trading costs from estimated turnover
+        trading_cost = estimated_turnover * TREND_COST_PER_TRADE
+
+        # Calculate Sharpe with adjusted costs
         trend_returns_with_buffer = trend_returns_gross - trading_cost / DAYS_PER_YEAR
 
-        # Calculate stats on recent window
         trend_buffered_recent = trend_returns_with_buffer[trend_returns_with_buffer.index >= '2020-01-01']
         if len(trend_buffered_recent) > 20:
             stats = calc_stats(trend_buffered_recent)
@@ -1326,7 +1334,8 @@ if len(avg_position_at_10) > 0 and len(avg_position) > 0:
 
             trend_buffer_results.append({
                 'buffer_pct': buffer_pct,
-                'turnover': turnover,
+                'turnover': estimated_turnover,
+                'reduction_pct': (1 - reduction_factor) * 100,
                 'trading_cost': trading_cost,
                 'dd_duration': dd_info['duration_days'],
                 'sharpe': stats['sharpe'],
