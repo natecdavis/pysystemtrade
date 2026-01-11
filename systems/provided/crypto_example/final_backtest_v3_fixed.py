@@ -72,49 +72,146 @@ def calc_stats(returns, name=""):
     }
 
 
-def apply_position_buffer(target_positions, buffer_pct):
+def apply_position_buffer(
+    target_positions: pd.Series,
+    buffer_size: float,
+    average_position: float = None,
+    trade_to_edge: bool = True
+) -> pd.Series:
     """
-    Apply inertia buffer to target positions.
-    Only trade when position moves outside buffer band.
+    Apply inertia buffer using Carver's approach.
+
+    Buffer bands are centered around the TARGET position.
+    Only trade if CURRENT position is outside the buffer band.
+
+    This matches the implementation in systems/buffering.py and
+    systems/accounts/account_buffering_subsystem.py.
 
     Args:
-        target_positions: Series of target positions
-        buffer_pct: Buffer as fraction (e.g., 0.10 = 10%)
+        target_positions: Series of optimal/target positions
+        buffer_size: Buffer as fraction (e.g., 0.10 = 10%)
+        average_position: If provided, use forecast method (constant buffer).
+                         If None, use position method (buffer = target * buffer_size)
+        trade_to_edge: If True, trade to buffer edge. If False, trade to optimal.
 
     Returns:
         buffered_positions: Actual positions after applying buffer
     """
-    if buffer_pct == 0:
+    if buffer_size == 0:
         return target_positions.copy()
 
     target_positions = target_positions.dropna()
     if len(target_positions) == 0:
         return target_positions
 
-    buffered = [target_positions.iloc[0]]
+    # Initialize with first target
+    current_position = target_positions.iloc[0]
+    buffered = [current_position]
 
     for i in range(1, len(target_positions)):
-        target = target_positions.iloc[i]
-        current = buffered[-1]
+        optimal = target_positions.iloc[i]
 
-        # Handle zero/near-zero current position
-        if abs(current) < 1e-10:
-            # If current is ~0, trade if target moves away from 0
-            if abs(target) > buffer_pct:
-                buffered.append(target)
-            else:
-                buffered.append(current)
+        # Calculate buffer (forecast method if average_position provided)
+        if average_position is not None:
+            buffer = average_position * buffer_size
         else:
-            # Only trade if target outside buffer band
-            upper_band = current * (1 + buffer_pct)
-            lower_band = current * (1 - buffer_pct)
+            buffer = abs(optimal) * buffer_size
 
-            if target > upper_band or target < lower_band:
-                buffered.append(target)
-            else:
-                buffered.append(current)
+        # Buffer bands centered around TARGET (Carver's approach)
+        top_pos = optimal + buffer
+        bot_pos = optimal - buffer
+
+        # Check if CURRENT is outside band around TARGET
+        if current_position > top_pos:
+            current_position = top_pos if trade_to_edge else optimal
+        elif current_position < bot_pos:
+            current_position = bot_pos if trade_to_edge else optimal
+        # else: hold current position
+
+        buffered.append(current_position)
 
     return pd.Series(buffered, index=target_positions.index)
+
+
+def select_optimal_buffer(
+    buffer_results: list,
+    sharpe_tolerance: float = 0.05,
+    turnover_threshold: float = 0.15,
+    strategy_name: str = ""
+) -> tuple:
+    """
+    Select buffer using Carver-style regularization philosophy,
+    with bias toward larger buffers for crypto (no contract rounding).
+
+    Key principles:
+    - 10% is the BASELINE, not a candidate to discover
+    - Crypto has NO contract rounding, so buffer is ONLY inertia source
+    - When in doubt, prefer larger buffer (conservative for crypto)
+
+    Algorithm:
+    1. Exclude buffers < 10% (diagnostics only)
+    2. Use 10% as the baseline for turnover comparison
+    3. Among {10%, 20%, 30%, 40%}:
+       - Require >=15% turnover reduction vs 10% baseline
+       - Require Sharpe within 5% of best in acceptable range
+    4. Pick the FIRST buffer (smallest) that achieves threshold
+    5. If no larger buffer achieves threshold but 20% has similar Sharpe,
+       prefer 20% for additional inertia (crypto bias)
+
+    Args:
+        buffer_results: List of dicts with 'buffer_pct', 'sharpe', 'turnover' keys
+        sharpe_tolerance: Max allowed Sharpe degradation from best (e.g., 0.05 = 5%)
+        turnover_threshold: Required turnover reduction vs 10% baseline (e.g., 0.15 = 15%)
+        strategy_name: Name for logging
+
+    Returns:
+        (selected_buffer_pct, selection_reason)
+    """
+    if not buffer_results:
+        return (0.10, "No buffer results available, using 10% baseline")
+
+    # Only consider buffers >= 10% (exclude 0% and 5% as diagnostics)
+    candidates = [r for r in buffer_results if r['buffer_pct'] >= 0.10]
+
+    if not candidates:
+        return (0.10, "No candidates >= 10%, using default baseline")
+
+    # Use 10% as the baseline for comparison
+    baseline = next((r for r in candidates if r['buffer_pct'] == 0.10), candidates[0])
+    baseline_turnover = baseline['turnover']
+    baseline_sharpe = baseline['sharpe']
+
+    # Find best Sharpe among candidates (>= 10%)
+    best_sharpe = max(r['sharpe'] for r in candidates)
+    min_acceptable_sharpe = best_sharpe * (1 - sharpe_tolerance)
+
+    # Target turnover (15% reduction from 10% baseline)
+    target_turnover = baseline_turnover * (1 - turnover_threshold)
+
+    # Filter candidates: Sharpe within tolerance of best
+    acceptable = [r for r in candidates if r['sharpe'] >= min_acceptable_sharpe]
+    acceptable.sort(key=lambda x: x['buffer_pct'])
+
+    # Find smallest buffer > 10% achieving turnover reduction
+    for r in acceptable:
+        if r['turnover'] <= target_turnover and r['buffer_pct'] > 0.10:
+            reduction = (1 - r['turnover'] / baseline_turnover) * 100
+            sharpe_vs_baseline = (r['sharpe'] / baseline_sharpe - 1) * 100
+            reason = (f"{r['buffer_pct']*100:.0f}% buffer: {reduction:.0f}% turnover reduction vs 10% baseline, "
+                     f"Sharpe {sharpe_vs_baseline:+.1f}% vs 10%")
+            return (r['buffer_pct'], reason)
+
+    # CRYPTO BIAS: If no larger buffer achieves threshold but 20% has similar Sharpe,
+    # prefer 20% for additional inertia (since crypto has no contract rounding)
+    r_20 = next((r for r in acceptable if r['buffer_pct'] == 0.20), None)
+    if r_20 and r_20['sharpe'] >= baseline_sharpe * 0.98:  # Within 2% of 10% Sharpe
+        reduction = (1 - r_20['turnover'] / baseline_turnover) * 100
+        reason = (f"Crypto bias: 20% preferred for inertia ({reduction:.0f}% turnover reduction, "
+                 f"Sharpe within 2% of 10% baseline)")
+        return (0.20, reason)
+
+    # Fallback to 10% baseline
+    return (0.10, "10% baseline (no additional buffering justified)")
 
 
 def calculate_turnover(positions):
@@ -905,13 +1002,22 @@ print("PART 10c: INERTIA BUFFER ANALYSIS")
 print("=" * 90)
 
 print("""
-Buffer fitting procedure (from Carver):
-  1. Fix everything else (signals, vols, universe, costs)
-  2. Test coarse grid: 0%, 5%, 10%, 20%, 30%, 40%
-  3. Track: turnover, costs, drawdown duration, net Sharpe
-  4. Pick smallest buffer where costs controlled, turnover plausible, Sharpe stable
+Buffer fitting procedure (Carver-consistent):
+  1. Buffer bands centered around TARGET position (not current)
+  2. Only trade if CURRENT position is outside the buffer band
+  3. Trade to buffer EDGE (not optimal) to reduce turnover
+  4. Use forecast method: constant buffer based on average position
 
-Crypto-specific: buffers ≥10% often better, ≥20% may still look fine
+CRYPTO-SPECIFIC: No contract rounding = buffer is ONLY inertia source
+  - 10% is the BASELINE (not something to discover)
+  - 0% and 5% shown for diagnostics only
+  - Bias toward 20%+ since crypto has no natural rounding friction
+
+Selection criteria:
+  - Exclude buffers < 10%
+  - Require >=15% turnover reduction vs 10% baseline
+  - Sharpe within 5% of best in acceptable range
+  - When in doubt, prefer larger buffer (crypto bias)
 """)
 
 # Buffer grid to test
@@ -922,28 +1028,29 @@ TREND_COST_PER_TRADE = 0.0015  # 0.15% round-trip
 CARRY_COST_PER_TRADE = 0.0015  # 0.15% round-trip (trading only, leverage costs fixed)
 
 # -----------------------------------------------------------------------------
-# CARRY SLEEVE - Buffer Analysis (Normalize first, then buffer)
+# CARRY SLEEVE - Buffer Analysis (Carver's forecast method)
 # -----------------------------------------------------------------------------
 
-print("\n--- CARRY SLEEVE - Buffer Analysis ---")
-print("(Normalize position_scale to mean=1.0, apply buffer, de-normalize)")
+print("\n--- CARRY SLEEVE - Buffer Analysis (Carver's approach) ---")
+print("(Using forecast method: constant buffer based on average position)")
 
-# Get the raw position_scale from carry calculation (already computed above)
-# position_scale is at line ~312 in the original code
-# We need to recalculate with buffer
+# Calculate average position for forecast method (constant buffer width)
+average_carry_position = position_scale.abs().mean()
+print(f"  Average position scale: {average_carry_position:.2f}")
 
 carry_buffer_results = []
 
 for buffer_pct in BUFFER_GRID:
-    # Normalize position_scale to mean=1.0
-    ps_mean = position_scale.mean()
-    normalized_scale = position_scale / ps_mean
-
-    # Apply buffer to normalized positions
-    buffered_normalized = apply_position_buffer(normalized_scale, buffer_pct)
-
-    # De-normalize back to original scale
-    buffered_scale = buffered_normalized * ps_mean
+    # Apply Carver-consistent buffer with forecast method
+    # - Bands centered around TARGET
+    # - Trade to EDGE when outside band
+    # - Constant buffer width based on average position
+    buffered_scale = apply_position_buffer(
+        position_scale,
+        buffer_size=buffer_pct,
+        average_position=average_carry_position,
+        trade_to_edge=True
+    )
 
     # Calculate returns with buffered positions
     buffered_funding_pnl = funding_aligned * buffered_scale
@@ -973,54 +1080,42 @@ for buffer_pct in BUFFER_GRID:
             'ann_vol': stats['ann_vol']
         })
 
-print(f"\n┌────────┬──────────────┬────────────────┬────────────────┬──────────────┐")
-print(f"│ Buffer │ Turnover/yr  │ Costs/yr       │ Max DD Dur     │ Net Sharpe   │")
-print(f"├────────┼──────────────┼────────────────┼────────────────┼──────────────┤")
+print(f"\n┌─────────────┬──────────────┬────────────────┬────────────────┬──────────────┐")
+print(f"│ Buffer      │ Turnover/yr  │ Costs/yr       │ Max DD Dur     │ Net Sharpe   │")
+print(f"├─────────────┼──────────────┼────────────────┼────────────────┼──────────────┤")
 for r in carry_buffer_results:
-    print(f"│ {r['buffer_pct']*100:>5.0f}% │ {r['turnover']:>11.1f}x │ {r['total_cost']*100:>13.1f}% │ {r['dd_duration']:>13}d │ {r['sharpe']:>12.2f} │")
-print(f"└────────┴──────────────┴────────────────┴────────────────┴──────────────┘")
+    # Mark 0% and 5% as diagnostics
+    if r['buffer_pct'] < 0.10:
+        label = f"{r['buffer_pct']*100:>3.0f}%*"
+    elif r['buffer_pct'] == 0.10:
+        label = f"{r['buffer_pct']*100:>3.0f}% BASE"
+    else:
+        label = f"{r['buffer_pct']*100:>5.0f}%   "
+    print(f"│ {label:>9} │ {r['turnover']:>11.1f}x │ {r['total_cost']*100:>13.1f}% │ {r['dd_duration']:>13}d │ {r['sharpe']:>12.2f} │")
+print(f"└─────────────┴──────────────┴────────────────┴────────────────┴──────────────┘")
+print(f"  * = diagnostic only (not considered for selection)")
 
-# Find recommended buffer for carry
-# Following user's guidance: pick smallest buffer where costs controlled, Sharpe stable
-# Crypto-specific: ≥10% typically better, ≥20% may still look fine
-carry_base_sharpe = carry_buffer_results[0]['sharpe'] if carry_buffer_results else 0
-carry_base_turnover = carry_buffer_results[0]['turnover'] if carry_buffer_results else 0
-
-# Find best Sharpe in the grid
-best_carry = max(carry_buffer_results, key=lambda x: x['sharpe']) if carry_buffer_results else None
-
-# For crypto carry, start from 10% minimum per user guidance
-carry_recommended = 0.10  # Crypto-specific minimum
-for r in carry_buffer_results:
-    if r['buffer_pct'] >= 0.10:  # Only consider ≥10% for crypto
-        # Pick if Sharpe is within 5% of best and turnover reduced from base
-        if (r['sharpe'] >= best_carry['sharpe'] * 0.95 and
-            r['turnover'] < carry_base_turnover * 0.8):  # 20% turnover reduction
-            carry_recommended = r['buffer_pct']
-            break
-
-# If no good candidate, use 20% as crypto carry default
-if carry_recommended == 0.10 and carry_buffer_results:
-    # Check if 20% is reasonable
-    r_20 = next((r for r in carry_buffer_results if r['buffer_pct'] == 0.20), None)
-    if r_20 and r_20['sharpe'] >= carry_base_sharpe * 0.90:
-        carry_recommended = 0.20
+# Select optimal buffer using Carver-style regularization with crypto bias
+carry_recommended, carry_reason = select_optimal_buffer(
+    carry_buffer_results,
+    sharpe_tolerance=0.05,
+    turnover_threshold=0.15,
+    strategy_name="Carry"
+)
 
 print(f"\nCarry recommended buffer: {carry_recommended*100:.0f}%")
-print(f"  (Crypto carry benefits from more buffering due to noisier signals)")
+print(f"  {carry_reason}")
 
 # -----------------------------------------------------------------------------
-# TREND SLEEVE - Buffer Analysis
-# Method B: Post-processing buffer on combined forecast (more accurate)
+# TREND SLEEVE - Buffer Analysis (Carver's forecast method)
 # -----------------------------------------------------------------------------
 
-print("\n--- TREND SLEEVE - Buffer Analysis (Method B: Post-processing) ---")
-print("(Applying buffer to combined forecast, then calculating returns)")
+print("\n--- TREND SLEEVE - Buffer Analysis (Carver's approach) ---")
+print("(Using forecast method: constant buffer based on average forecast)")
 
 trend_buffer_results = []
 
 # Get the combined forecast from the base system (already loaded above)
-# Use the system object to get forecasts and prices for return calculation
 instruments = system.get_instrument_list()
 
 # Get portfolio-level combined forecast (average across instruments)
@@ -1034,93 +1129,119 @@ for instr in instruments:
         pass
 
 if all_forecasts:
-    # Average forecast across instruments (simple approach)
     forecast_df = pd.concat(all_forecasts, axis=1)
     avg_forecast = forecast_df.mean(axis=1)
 else:
     avg_forecast = pd.Series(dtype=float)
 
-# Normalize forecast to mean=1.0 for buffering (forecasts are typically mean ~10)
+# Calculate average forecast for forecast method (constant buffer width)
 if len(avg_forecast) > 0:
-    fc_mean = avg_forecast.abs().mean()
-    normalized_forecast = avg_forecast / fc_mean if fc_mean > 0 else avg_forecast
+    average_trend_forecast = avg_forecast.abs().mean()
+    print(f"  Average forecast magnitude: {average_trend_forecast:.2f}")
 
-for buffer_pct in BUFFER_GRID:
-    # Apply buffer to normalized forecast
-    buffered_forecast = apply_position_buffer(normalized_forecast, buffer_pct)
+    for buffer_pct in BUFFER_GRID:
+        # Apply Carver-consistent buffer with forecast method
+        # - Bands centered around TARGET
+        # - Trade to EDGE when outside band
+        # - Constant buffer width based on average forecast
+        buffered_forecast = apply_position_buffer(
+            avg_forecast,
+            buffer_size=buffer_pct,
+            average_position=average_trend_forecast,
+            trade_to_edge=True
+        )
 
-    # Calculate turnover from buffered forecast
-    turnover = calculate_turnover(buffered_forecast)
+        # Calculate turnover from buffered forecast
+        turnover = calculate_turnover(buffered_forecast)
 
-    # Estimate trading costs from turnover
-    trading_cost = turnover * TREND_COST_PER_TRADE
+        # Estimate trading costs from turnover
+        trading_cost = turnover * TREND_COST_PER_TRADE
 
-    # For Sharpe calculation, we use the original trend returns
-    # but adjust costs based on actual turnover with this buffer
-    trend_returns_with_buffer = trend_returns_gross - trading_cost / DAYS_PER_YEAR
+        # For Sharpe calculation, we use the original trend returns
+        # but adjust costs based on actual turnover with this buffer
+        trend_returns_with_buffer = trend_returns_gross - trading_cost / DAYS_PER_YEAR
 
-    # Calculate stats on recent window
-    trend_buffered_recent = trend_returns_with_buffer[trend_returns_with_buffer.index >= '2020-01-01']
-    if len(trend_buffered_recent) > 20:
-        stats = calc_stats(trend_buffered_recent)
-        dd_info = longest_drawdown_duration(trend_buffered_recent)
+        # Calculate stats on recent window
+        trend_buffered_recent = trend_returns_with_buffer[trend_returns_with_buffer.index >= '2020-01-01']
+        if len(trend_buffered_recent) > 20:
+            stats = calc_stats(trend_buffered_recent)
+            dd_info = longest_drawdown_duration(trend_buffered_recent)
 
-        trend_buffer_results.append({
-            'buffer_pct': buffer_pct,
-            'turnover': turnover,
-            'trading_cost': trading_cost,
-            'dd_duration': dd_info['duration_days'],
-            'sharpe': stats['sharpe'],
-            'ann_return': stats['ann_return'],
-            'ann_vol': stats['ann_vol']
-        })
+            trend_buffer_results.append({
+                'buffer_pct': buffer_pct,
+                'turnover': turnover,
+                'trading_cost': trading_cost,
+                'dd_duration': dd_info['duration_days'],
+                'sharpe': stats['sharpe'],
+                'ann_return': stats['ann_return'],
+                'ann_vol': stats['ann_vol']
+            })
 
-print(f"\n┌────────┬──────────────┬────────────────┬────────────────┬──────────────┐")
-print(f"│ Buffer │ Turnover/yr  │ Costs/yr       │ Max DD Dur     │ Net Sharpe   │")
-print(f"├────────┼──────────────┼────────────────┼────────────────┼──────────────┤")
+print(f"\n┌─────────────┬──────────────┬────────────────┬────────────────┬──────────────┐")
+print(f"│ Buffer      │ Turnover/yr  │ Costs/yr       │ Max DD Dur     │ Net Sharpe   │")
+print(f"├─────────────┼──────────────┼────────────────┼────────────────┼──────────────┤")
 for r in trend_buffer_results:
-    print(f"│ {r['buffer_pct']*100:>5.0f}% │ {r['turnover']:>11.1f}x │ {r['trading_cost']*100:>13.2f}% │ {r['dd_duration']:>13}d │ {r['sharpe']:>12.2f} │")
-print(f"└────────┴──────────────┴────────────────┴────────────────┴──────────────┘")
+    # Mark 0% and 5% as diagnostics
+    if r['buffer_pct'] < 0.10:
+        label = f"{r['buffer_pct']*100:>3.0f}%*"
+    elif r['buffer_pct'] == 0.10:
+        label = f"{r['buffer_pct']*100:>3.0f}% BASE"
+    else:
+        label = f"{r['buffer_pct']*100:>5.0f}%   "
+    print(f"│ {label:>9} │ {r['turnover']:>11.1f}x │ {r['trading_cost']*100:>13.2f}% │ {r['dd_duration']:>13}d │ {r['sharpe']:>12.2f} │")
+print(f"└─────────────┴──────────────┴────────────────┴────────────────┴──────────────┘")
+print(f"  * = diagnostic only (not considered for selection)")
 
-# Find recommended buffer for trend
-# Following crypto-specific guidance: ≥10% typically better than 0-5%
-trend_base_sharpe = trend_buffer_results[0]['sharpe'] if trend_buffer_results else 0
-trend_base_turnover = trend_buffer_results[0]['turnover'] if trend_buffer_results else 0
-
-# Find best Sharpe in the grid
-best_trend = max(trend_buffer_results, key=lambda x: x['sharpe']) if trend_buffer_results else None
-
-# For crypto, start from 10% minimum per user guidance
-trend_recommended = 0.10  # Crypto-specific minimum
-for r in trend_buffer_results:
-    if r['buffer_pct'] >= 0.10:  # Only consider ≥10% for crypto
-        # Pick if Sharpe is within 5% of best and turnover meaningfully reduced
-        if r['sharpe'] >= best_trend['sharpe'] * 0.95:
-            trend_recommended = r['buffer_pct']
-            break
+# Select optimal buffer using Carver-style regularization with crypto bias
+trend_recommended, trend_reason = select_optimal_buffer(
+    trend_buffer_results,
+    sharpe_tolerance=0.05,
+    turnover_threshold=0.15,
+    strategy_name="Trend"
+)
 
 print(f"\nTrend recommended buffer: {trend_recommended*100:.0f}%")
+print(f"  {trend_reason}")
 
 # -----------------------------------------------------------------------------
 # SUMMARY
 # -----------------------------------------------------------------------------
 
 print(f"\n" + "-" * 90)
-print("BUFFER ANALYSIS SUMMARY")
+print("BUFFER ANALYSIS SUMMARY (Carver-consistent)")
 print("-" * 90)
+
+# Get baseline and selected results for comparison
+trend_baseline = next((r for r in trend_buffer_results if r['buffer_pct'] == 0), None)
+trend_selected = next((r for r in trend_buffer_results if r['buffer_pct'] == trend_recommended), None)
+carry_baseline = next((r for r in carry_buffer_results if r['buffer_pct'] == 0), None)
+carry_selected = next((r for r in carry_buffer_results if r['buffer_pct'] == carry_recommended), None)
 
 print(f"""
 ┌────────────────┬─────────────────────┬─────────────────────┐
 │                │ TREND SLEEVE        │ CARRY SLEEVE        │
 ├────────────────┼─────────────────────┼─────────────────────┤
 │ Recommended    │ {trend_recommended*100:>17.0f}% │ {carry_recommended*100:>17.0f}% │
-│ Turnover at    │ {next((r['turnover'] for r in trend_buffer_results if r['buffer_pct'] == trend_recommended), 0):>16.1f}x │ {next((r['turnover'] for r in carry_buffer_results if r['buffer_pct'] == carry_recommended), 0):>16.1f}x │
-│ Costs at       │ {next((r['trading_cost']*100 for r in trend_buffer_results if r['buffer_pct'] == trend_recommended), 0):>15.2f}% │ {next((r['total_cost']*100 for r in carry_buffer_results if r['buffer_pct'] == carry_recommended), 0):>15.1f}% │
-│ Net Sharpe     │ {next((r['sharpe'] for r in trend_buffer_results if r['buffer_pct'] == trend_recommended), 0):>18.2f} │ {next((r['sharpe'] for r in carry_buffer_results if r['buffer_pct'] == carry_recommended), 0):>18.2f} │
+│ Turnover at    │ {trend_selected['turnover'] if trend_selected else 0:>16.1f}x │ {carry_selected['turnover'] if carry_selected else 0:>16.1f}x │
+│ Costs at       │ {trend_selected['trading_cost']*100 if trend_selected else 0:>15.2f}% │ {carry_selected['total_cost']*100 if carry_selected else 0:>15.1f}% │
+│ Net Sharpe     │ {trend_selected['sharpe'] if trend_selected else 0:>18.2f} │ {carry_selected['sharpe'] if carry_selected else 0:>18.2f} │
 └────────────────┴─────────────────────┴─────────────────────┘
 
-Note: Crypto-specific guidance suggests ≥10% buffers typically better than 0-5%.
-      "Too much buffering is safer than too little, especially for carry."
+CRYPTO-SPECIFIC RATIONALE:
+  Unlike futures (discrete contracts), crypto has NO natural rounding friction.
+  Buffer is the ONLY source of position inertia.
+  → 10% is the BASELINE (Carver's default), not something to discover
+  → Bias toward larger buffers (20%+) when Sharpe impact is minimal
+
+Selection Criteria:
+  - Exclude buffers < 10% (diagnostics only)
+  - 10% is baseline for comparison
+  - Require >=15% turnover reduction vs 10% to justify increase
+  - Sharpe within 5% of best in acceptable range
+  - Crypto bias: prefer 20% when Sharpe is within 2% of 10%
+
+Trend: {trend_reason}
+Carry: {carry_reason}
 """)
 
 # =============================================================================
