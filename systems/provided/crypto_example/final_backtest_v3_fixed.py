@@ -536,6 +536,48 @@ carry_post2020_raw = raw_carry[raw_carry.index >= '2020-01-01']
 raw_carry_vol = carry_post2020_raw.std() * np.sqrt(DAYS_PER_YEAR)
 print(f"  Raw (unleveraged) vol: {raw_carry_vol*100:.2f}%")
 
+# -----------------------------------------------------------------------------
+# DIAGNOSTIC: Carry position scale analysis
+# -----------------------------------------------------------------------------
+print(f"\n--- CARRY POSITION SCALE DIAGNOSTICS ---")
+print(f"  (Investigating why avg position may differ from 'forecast=10' equivalent)")
+
+# Filter to valid position scales
+valid_scale = position_scale.dropna()
+
+# Position scale statistics
+print(f"\n  Position scale statistics:")
+print(f"    Average: {valid_scale.mean():.2f}")
+print(f"    Median:  {valid_scale.median():.2f}")
+print(f"    Std dev: {valid_scale.std():.2f}")
+print(f"    Min/Max: {valid_scale.min():.2f} / {valid_scale.max():.2f}")
+
+# Distribution by percentile
+print(f"\n  Distribution by percentile:")
+for pct in [10, 25, 50, 75, 90]:
+    val = valid_scale.quantile(pct/100)
+    print(f"    {pct}th percentile: {val:.2f}")
+
+# Time evolution - rolling average
+rolling_avg_scale = valid_scale.rolling(90, min_periods=30).mean()
+print(f"\n  Rolling 90d avg position scale by year:")
+for year in range(2017, 2026):
+    year_data = rolling_avg_scale[rolling_avg_scale.index.year == year]
+    if len(year_data) > 0:
+        print(f"    {year}: {year_data.mean():.2f}")
+
+# Expected scale calculation
+# For carry: scale = target_vol / effective_vol
+# If effective_vol = target_vol, scale = 1.0
+avg_effective_vol_recent = effective_vol.iloc[-500:].mean()
+expected_scale = CARRY_VOL_TARGET / avg_effective_vol_recent
+print(f"\n  Expected vs Actual:")
+print(f"    Avg effective vol (recent): {avg_effective_vol_recent*100:.1f}%")
+print(f"    Target vol: {CARRY_VOL_TARGET*100:.1f}%")
+print(f"    Expected scale (target/effective): {expected_scale:.2f}")
+print(f"    Actual avg scale: {valid_scale.mean():.2f}")
+print(f"    Ratio (actual/expected): {valid_scale.mean()/expected_scale:.2f}")
+
 # =============================================================================
 # PART 3: ALIGN AND DEFINE WINDOWS
 # =============================================================================
@@ -1020,6 +1062,87 @@ Selection criteria:
   - When in doubt, prefer larger buffer (crypto bias)
 """)
 
+# -----------------------------------------------------------------------------
+# DIAGNOSTIC: Forecast scaling analysis (Trend sleeve)
+# -----------------------------------------------------------------------------
+print("\n--- FORECAST SCALING DIAGNOSTICS (Trend) ---")
+print("  (Investigating why avg|forecast| may differ from target of 10)")
+
+# Get instruments from system
+instruments = system.get_instrument_list()
+
+# Carver's reference scalars from his book
+carver_scalars = {
+    'ewmac8_32': 5.3, 'ewmac16_64': 3.75, 'ewmac32_128': 2.65, 'ewmac64_256': 1.87,
+    'breakout10': 2.0, 'breakout20': 1.6, 'breakout40': 1.4, 'breakout80': 1.2
+}
+
+# Analyze individual rule forecasts for first instrument (BTC as reference)
+ref_instr = 'BTC'
+print(f"\n  Per-rule analysis for {ref_instr}:")
+print(f"  {'Rule':<15} {'avg|scaled|':>12} {'avg|capped|':>12} {'cap_rate':>10} {'est_scalar':>12} {'carver':>8}")
+print(f"  {'-'*15} {'-'*12} {'-'*12} {'-'*10} {'-'*12} {'-'*8}")
+
+for rule in system.rules.trading_rules():
+    try:
+        # Get scaled forecast (before capping)
+        scaled = system.forecastScaleCap.get_scaled_forecast(ref_instr, rule)
+        # Get capped forecast
+        capped = system.forecastScaleCap.get_capped_forecast(ref_instr, rule)
+        # Get estimated scalar
+        scalar = system.forecastScaleCap.get_forecast_scalar(ref_instr, rule)
+
+        avg_scaled = scaled.abs().mean()
+        avg_capped = capped.abs().mean()
+        cap_rate = (scaled.abs() > 20).mean() * 100
+        recent_scalar = scalar.iloc[-1]
+        carver_val = carver_scalars.get(rule, 0)
+
+        print(f"  {rule:<15} {avg_scaled:>12.2f} {avg_capped:>12.2f} {cap_rate:>9.1f}% {recent_scalar:>12.2f} {carver_val:>8.2f}")
+    except Exception as e:
+        pass
+
+# Combined forecast analysis for multiple instruments
+print(f"\n  Combined forecast (avg across rules) per instrument:")
+for instr in instruments[:6]:  # First 6 instruments
+    try:
+        combined = system.combForecast.get_combined_forecast(instr)
+        avg_combined = combined.abs().mean()
+        recent_combined = combined.iloc[-250:].abs().mean()  # Recent 1 year
+        print(f"    {instr}: all_time={avg_combined:.2f}, recent={recent_combined:.2f}")
+    except Exception:
+        pass
+
+# Overall portfolio average forecast
+all_forecasts = []
+for instr in instruments:
+    try:
+        fc = system.combForecast.get_combined_forecast(instr)
+        if len(fc) > 0:
+            all_forecasts.append(fc)
+    except Exception:
+        pass
+
+if all_forecasts:
+    forecast_df = pd.concat(all_forecasts, axis=1)
+    avg_forecast = forecast_df.mean(axis=1)
+    overall_avg = avg_forecast.abs().mean()
+    recent_avg = avg_forecast.iloc[-500:].abs().mean()
+
+    print(f"\n  Portfolio-level summary:")
+    print(f"    Target avg|forecast|: 10.00")
+    print(f"    Actual avg|forecast| (all time): {overall_avg:.2f}")
+    print(f"    Actual avg|forecast| (recent 500d): {recent_avg:.2f}")
+    print(f"    Shortfall: {(1 - overall_avg/10)*100:.1f}%")
+
+    # Time evolution
+    rolling_avg_fc = avg_forecast.abs().rolling(250).mean()
+    print(f"\n  Rolling 250d avg|forecast| by year:")
+    for year in range(2015, 2026):
+        year_data = rolling_avg_fc[rolling_avg_fc.index.year == year]
+        if len(year_data) > 0:
+            print(f"      {year}: {year_data.mean():.2f}")
+
 # Buffer grid to test
 BUFFER_GRID = [0.0, 0.05, 0.10, 0.20, 0.30, 0.40]
 
@@ -1111,36 +1234,67 @@ print(f"  {carry_reason}")
 # -----------------------------------------------------------------------------
 
 print("\n--- TREND SLEEVE - Buffer Analysis (Carver's approach) ---")
-print("(Using forecast method: constant buffer based on average position)")
+print("(Using forecast method: buffer = position_at_forecast_10 × buffer_size)")
 
 trend_buffer_results = []
 
-# Get the actual positions from the pysystemtrade System
-# This is consistent with Carver's formula: buffer = average_position * buffer_size
-# where average_position = vol_scalar * instr_weight * idm (position at forecast=10)
+# Get the "position at forecast=10" from pysystemtrade System
+# This is the reference position in Carver's system: vol_scalar × instr_weight × IDM
+# NOT the actual position (which has capped forecasts baked in)
 instruments = system.get_instrument_list()
 
-# Get portfolio-level positions (average across instruments)
-all_positions = []
+# Calculate position at forecast=10 for each instrument
+# Formula: position_at_10 = avg_pos_subsystem × instr_weight × IDM
+# Where avg_pos_subsystem is the position you'd have with forecast=10 (before portfolio scaling)
+all_positions_at_10 = []
+all_actual_positions = []
+instr_weights = system.portfolio.get_instrument_weights()
+idm = system.portfolio.get_instrument_diversification_multiplier()
+
 for instr in instruments:
     try:
-        pos = system.portfolio.get_notional_position(instr)
-        if len(pos) > 0:
-            all_positions.append(pos)
+        # Get average position at subsystem level (position at forecast=10, before weight × IDM)
+        avg_pos_subsystem = system.positionSize.get_average_position_at_subsystem_level(instr)
+
+        # Get actual position (for buffering simulation)
+        actual_pos = system.portfolio.get_notional_position(instr)
+
+        if len(avg_pos_subsystem) > 0:
+            # Get weight and IDM, align indices
+            weight = instr_weights[instr].reindex(avg_pos_subsystem.index).ffill()
+            idm_aligned = idm.reindex(avg_pos_subsystem.index).ffill()
+
+            # Position at forecast=10 (the "1 unit" reference position at portfolio level)
+            pos_at_10 = avg_pos_subsystem * weight * idm_aligned
+            all_positions_at_10.append(pos_at_10)
+
+        if len(actual_pos) > 0:
+            all_actual_positions.append(actual_pos)
     except Exception:
         pass
 
-if all_positions:
-    position_df = pd.concat(all_positions, axis=1)
+# Calculate portfolio-level position at forecast=10
+if all_positions_at_10:
+    position_at_10_df = pd.concat(all_positions_at_10, axis=1)
+    avg_position_at_10 = position_at_10_df.mean(axis=1)
+else:
+    avg_position_at_10 = pd.Series(dtype=float)
+
+# Get actual positions for buffer simulation
+if all_actual_positions:
+    position_df = pd.concat(all_actual_positions, axis=1)
     avg_position = position_df.mean(axis=1)
 else:
     avg_position = pd.Series(dtype=float)
 
-# Calculate average position for forecast method (constant buffer width)
-# This is the "position at forecast=10" that Carver uses as the base
-if len(avg_position) > 0:
-    average_trend_position = avg_position.abs().mean()
-    print(f"  Average position magnitude: {average_trend_position:.2f}")
+# Use position at forecast=10 for buffer calculation (Carver's approach)
+# This is stable regardless of how many forecasts are capped
+if len(avg_position_at_10) > 0 and len(avg_position) > 0:
+    average_trend_position = avg_position_at_10.abs().mean()
+    actual_avg_position = avg_position.abs().mean()
+    print(f"  Position at forecast=10 (buffer base): {average_trend_position:.2f}")
+    print(f"  Actual avg position (for comparison): {actual_avg_position:.2f}")
+    print(f"  Ratio (actual/ref): {actual_avg_position/average_trend_position:.2f} (reflects avg forecast magnitude)")
 
     for buffer_pct in BUFFER_GRID:
         # Apply Carver-consistent buffer with forecast method
