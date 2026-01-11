@@ -1111,48 +1111,51 @@ print(f"  {carry_reason}")
 # -----------------------------------------------------------------------------
 
 print("\n--- TREND SLEEVE - Buffer Analysis (Carver's approach) ---")
-print("(Using forecast method: constant buffer based on average forecast)")
+print("(Using forecast method: constant buffer based on average position)")
 
 trend_buffer_results = []
 
-# Get the combined forecast from the base system (already loaded above)
+# Get the actual positions from the pysystemtrade System
+# This is consistent with Carver's formula: buffer = average_position * buffer_size
+# where average_position = vol_scalar * instr_weight * idm (position at forecast=10)
 instruments = system.get_instrument_list()
 
-# Get portfolio-level combined forecast (average across instruments)
-all_forecasts = []
+# Get portfolio-level positions (average across instruments)
+all_positions = []
 for instr in instruments:
     try:
-        fc = system.combForecast.get_combined_forecast(instr)
-        if len(fc) > 0:
-            all_forecasts.append(fc)
+        pos = system.portfolio.get_notional_position(instr)
+        if len(pos) > 0:
+            all_positions.append(pos)
     except Exception:
         pass
 
-if all_forecasts:
-    forecast_df = pd.concat(all_forecasts, axis=1)
-    avg_forecast = forecast_df.mean(axis=1)
+if all_positions:
+    position_df = pd.concat(all_positions, axis=1)
+    avg_position = position_df.mean(axis=1)
 else:
-    avg_forecast = pd.Series(dtype=float)
+    avg_position = pd.Series(dtype=float)
 
-# Calculate average forecast for forecast method (constant buffer width)
-if len(avg_forecast) > 0:
-    average_trend_forecast = avg_forecast.abs().mean()
-    print(f"  Average forecast magnitude: {average_trend_forecast:.2f}")
+# Calculate average position for forecast method (constant buffer width)
+# This is the "position at forecast=10" that Carver uses as the base
+if len(avg_position) > 0:
+    average_trend_position = avg_position.abs().mean()
+    print(f"  Average position magnitude: {average_trend_position:.2f}")
 
     for buffer_pct in BUFFER_GRID:
         # Apply Carver-consistent buffer with forecast method
-        # - Bands centered around TARGET
+        # - Bands centered around TARGET position
         # - Trade to EDGE when outside band
-        # - Constant buffer width based on average forecast
-        buffered_forecast = apply_position_buffer(
-            avg_forecast,
+        # - Constant buffer width based on average position (Carver's approach)
+        buffered_position = apply_position_buffer(
+            avg_position,
             buffer_size=buffer_pct,
-            average_position=average_trend_forecast,
+            average_position=average_trend_position,
             trade_to_edge=True
         )
 
-        # Calculate turnover from buffered forecast
-        turnover = calculate_turnover(buffered_forecast)
+        # Calculate turnover from buffered positions
+        turnover = calculate_turnover(buffered_position)
 
         # Estimate trading costs from turnover
         trading_cost = turnover * TREND_COST_PER_TRADE
