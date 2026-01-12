@@ -280,6 +280,40 @@ class csvSpotSimData(simData):
         instruments = self.get_instrument_list()
         return self._instrument_data.get_asset_classes_for_instruments(instruments)
 
+    def asset_class_for_instrument(self, instrument_code: str) -> str:
+        """
+        Get the asset class for an instrument.
+
+        For spot crypto, all instruments are in the 'Crypto' asset class.
+        This method enables RawData.normalised_price_for_asset_class() to work,
+        which is needed for cross-sectional momentum (XSMOM) rules.
+
+        Args:
+            instrument_code: Instrument code
+
+        Returns:
+            Asset class name ('Crypto' for all spot crypto instruments)
+        """
+        return "Crypto"
+
+    def all_instruments_in_asset_class(self, asset_class: str) -> List[str]:
+        """
+        Get all instruments belonging to an asset class.
+
+        For spot crypto, returns all instruments if asset_class is 'Crypto'.
+        This method enables RawData.normalised_price_for_asset_class() to work,
+        which is needed for cross-sectional momentum (XSMOM) rules.
+
+        Args:
+            asset_class: Asset class name
+
+        Returns:
+            List of instrument codes in the asset class
+        """
+        if asset_class == "Crypto":
+            return self.get_instrument_list()
+        return []
+
     def get_spread_cost(self, instrument_code: str) -> float:
         """
         Get spread cost for an instrument.
