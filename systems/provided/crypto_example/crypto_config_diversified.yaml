@@ -5,6 +5,16 @@
 # 2. More instruments (12 vs 7) for instrument diversification
 # 3. Both standard and faster EWMAC lookbacks
 # 4. Recalibrated FDM for larger rule set
+# 5. Added TSMOM (time-series momentum) and Accel rules
+#
+# Trading rules: 13 total
+# - EWMAC: 4 variations (8/32, 16/64, 32/128, 64/256)
+# - Breakout: 4 variations (10, 20, 40, 80)
+# - TSMOM: 3 variations (63, 126, 252 day lookbacks)
+# - Accel: 2 variations (16, 32)
+#
+# Note: RelMomentum (XSMOM) requires futures data infrastructure not available
+# in csvSpotSimData. Custom XSMOM implementation needed for spot crypto.
 
 # Capital and risk settings
 #
@@ -74,6 +84,45 @@ trading_rules:
       - "rawdata.get_daily_prices"
     other_args:
       lookback: 80
+  # TSMOM - Time-Series Momentum (Moskowitz et al.)
+  # Vol-normalized cumulative returns with skip period
+  tsmom63:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 63   # ~3 months
+      skip: 5
+  tsmom126:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 126  # ~6 months
+      skip: 5
+  tsmom252:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 252  # ~12 months
+      skip: 5
+  # Accel - Momentum of momentum (Carver)
+  # Change in EWMAC signal over time
+  accel16:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "rawdata.get_daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args:
+      Lfast: 16
+  accel32:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "rawdata.get_daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args:
+      Lfast: 32
 
 # Forecast scalars - WALK-FORWARD ESTIMATION
 # Using pysystemtrade's built-in walk-forward estimation to avoid lookahead bias.
@@ -85,24 +134,29 @@ trading_rules:
 # With walk-forward estimation, scalars are calculated at each point using
 # only historical data available up to that date.
 
-# Forecast weights - equal weighted across 8 rules
-# 50% EWMAC, 50% Breakout
+# Forecast weights - equal weighted across 13 rules
+# EWMAC: 30.8%, Breakout: 30.8%, TSMOM: 23.1%, Accel: 15.4%
 forecast_weights:
-  ewmac8_32: 0.125
-  ewmac16_64: 0.125
-  ewmac32_128: 0.125
-  ewmac64_256: 0.125
-  breakout10: 0.125
-  breakout20: 0.125
-  breakout40: 0.125
-  breakout80: 0.125
+  ewmac8_32: 0.0769
+  ewmac16_64: 0.0769
+  ewmac32_128: 0.0769
+  ewmac64_256: 0.0769
+  breakout10: 0.0769
+  breakout20: 0.0769
+  breakout40: 0.0769
+  breakout80: 0.0769
+  tsmom63: 0.0769
+  tsmom126: 0.0769
+  tsmom252: 0.0769
+  accel16: 0.0769
+  accel32: 0.0769
 
 # Forecast diversification multiplier - WALK-FORWARD ESTIMATION
 # FDM is calculated walk-forward based on observed correlations.
 # Fixed value removed to avoid lookahead bias.
 #
 # Formula: FDM = sqrt(n) / sqrt(1 + (n-1)*avg_correlation)
-# With 8 rules and ~0.55 avg corr: sqrt(8) / sqrt(1 + 7*0.55) ≈ 1.35
+# With 13 rules and ~0.50 avg corr: sqrt(13) / sqrt(1 + 12*0.50) ≈ 1.37
 
 # Forecast capping
 forecast_cap: 20.0
