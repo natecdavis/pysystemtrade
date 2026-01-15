@@ -217,3 +217,73 @@ class csvSpotPricesData:
         except Exception:
             legacy_path = os.path.join(self.datapath, f"{instrument_code}.csv")
             return os.path.exists(legacy_path)
+
+    def get_spot_volume(self, instrument_code: str) -> pd.Series:
+        """
+        Get volume data for an instrument.
+
+        Args:
+            instrument_code: The instrument code (e.g., 'BTC', 'ETH')
+
+        Returns:
+            pd.Series with datetime index and volume values
+        """
+        filename = self._filename_for_instrument(instrument_code)
+
+        try:
+            df = self._read_csv_file(filename)
+        except FileNotFoundError:
+            self.log.warning(f"Price file not found: {filename}")
+            return pd.Series(dtype=float)
+        except Exception as e:
+            self.log.warning(f"Error reading {filename}: {e}")
+            return pd.Series(dtype=float)
+
+        # Find volume column
+        volume_col = self._find_column(df, ["volume", "vol"])
+        if volume_col is None:
+            self.log.warning(
+                f"No volume column found in {filename}. "
+                f"Available columns: {list(df.columns)}"
+            )
+            return pd.Series(dtype=float)
+
+        volume = df[volume_col].astype(float)
+        volume.name = instrument_code
+
+        # Remove duplicates, keeping last value for each timestamp
+        volume = volume[~volume.index.duplicated(keep="last")]
+
+        # Sort by index
+        volume = volume.sort_index()
+
+        return volume
+
+    def get_ohlcv(self, instrument_code: str) -> pd.DataFrame:
+        """
+        Get full OHLCV data for an instrument.
+
+        Args:
+            instrument_code: The instrument code (e.g., 'BTC', 'ETH')
+
+        Returns:
+            pd.DataFrame with datetime index and open, high, low, close, volume columns
+        """
+        filename = self._filename_for_instrument(instrument_code)
+
+        try:
+            df = self._read_csv_file(filename)
+        except FileNotFoundError:
+            self.log.warning(f"Price file not found: {filename}")
+            return pd.DataFrame()
+        except Exception as e:
+            self.log.warning(f"Error reading {filename}: {e}")
+            return pd.DataFrame()
+
+        # Remove duplicates, keeping last value for each timestamp
+        df = df[~df.index.duplicated(keep="last")]
+
+        # Sort by index
+        df = df.sort_index()
+
+        return df

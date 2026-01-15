@@ -4,6 +4,8 @@ Main simulation data adapter for spot crypto.
 This module provides the csvSpotSimData class which inherits from simData
 and provides all the necessary methods for backtesting crypto trading strategies.
 
+Supports optional dynamic universe with walk-forward cost estimation.
+
 Example usage:
     from sysdata.crypto import csvSpotSimData
 
@@ -12,10 +14,16 @@ Example usage:
     # Use with a System
     from systems.basesystem import System
     system = System(stage_list, data=data, config=config)
+
+    # With dynamic universe
+    data = csvSpotSimData(
+        data_path='/path/to/crypto/csvs',
+        use_dynamic_universe=True,
+    )
 """
 
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import pandas as pd
 
@@ -39,16 +47,31 @@ class csvSpotSimData(simData):
     Inherits from simData and implements all required methods for
     backtesting crypto trading strategies with pysystemtrade.
 
+    Supports optional dynamic universe with walk-forward cost estimation.
+
     Args:
         data_path: Path to directory containing CSV price files
         instrument_config: Optional dict of instrument configurations
         instrument_config_file: Optional path to YAML instrument config file
+        use_dynamic_universe: Enable walk-forward universe filtering
+        dynamic_universe_config: Config dict for dynamic universe
         log: Logger instance
 
     Example:
         data = csvSpotSimData(data_path='/data/crypto')
         prices = data.daily_prices('BTC')
         instruments = data.get_instrument_list()
+
+        # With dynamic universe
+        data = csvSpotSimData(
+            data_path='/data/crypto',
+            use_dynamic_universe=True,
+            dynamic_universe_config={
+                'max_sr_cost_per_trade': 0.01,
+                'max_sr_cost_annual': 0.13,
+                'stack_turnover': 15,
+            }
+        )
     """
 
     def __init__(
@@ -56,6 +79,8 @@ class csvSpotSimData(simData):
         data_path: str,
         instrument_config: dict = arg_not_supplied,
         instrument_config_file: str = arg_not_supplied,
+        use_dynamic_universe: bool = False,
+        dynamic_universe_config: dict = arg_not_supplied,
         log=get_logger("csvSpotSimData"),
     ):
         super().__init__(log=log)
@@ -71,6 +96,13 @@ class csvSpotSimData(simData):
         )
 
         self._data_path = data_path
+        self._use_dynamic_universe = use_dynamic_universe
+
+        # Initialize walk-forward cost estimator if using dynamic universe
+        self._cost_estimator = None
+        self._universe_manager = None
+        if use_dynamic_universe:
+            self._init_dynamic_universe(dynamic_universe_config)
 
     def __repr__(self):
         return f"csvSpotSimData with {len(self.get_instrument_list())} instruments from {self._data_path}"
@@ -348,11 +380,140 @@ class csvSpotSimData(simData):
         date_range = prices.index[-1] - prices.index[0]
         return date_range.days
 
+    # =========================================================================
+    # DYNAMIC UNIVERSE METHODS
+    # =========================================================================
+
+    def _init_dynamic_universe(self, config: dict):
+        """Initialize walk-forward cost estimator and universe manager."""
+        from sysdata.crypto.walk_forward_costs import WalkForwardCostEstimator
+        from sysdata.crypto.dynamic_universe import DynamicUniverseManager
+
+        if config is arg_not_supplied:
+            config = {}
+
+        # Create cost estimator
+        self._cost_estimator = WalkForwardCostEstimator(
+            prices_data=self._prices_data,
+            adv_window=config.get('adv_window', 30),
+            fee_bps=config.get('fee_bps', 5),
+            log=self.log,
+        )
+
+        # Create universe manager
+        self._universe_manager = DynamicUniverseManager(
+            cost_estimator=self._cost_estimator,
+            max_sr_cost_per_trade=config.get('max_sr_cost_per_trade', 0.01),
+            max_sr_cost_annual=config.get('max_sr_cost_annual', 0.13),
+            stack_turnover=config.get('stack_turnover', 15.0),
+            forecast_weights=config.get('forecast_weights'),
+            log=self.log,
+        )
+
+    def get_spot_volume(self, instrument_code: str) -> pd.Series:
+        """
+        Get volume data for an instrument.
+
+        Args:
+            instrument_code: Instrument code
+
+        Returns:
+            pd.Series with datetime index and volume values
+        """
+        return self._prices_data.get_spot_volume(instrument_code)
+
+    def get_eligible_instruments_at_date(
+        self,
+        date: pd.Timestamp,
+    ) -> List[str]:
+        """
+        Get list of instruments eligible for trading at a specific date.
+
+        Only available when use_dynamic_universe=True.
+
+        Args:
+            date: Date to check
+
+        Returns:
+            List of eligible instrument codes
+        """
+        if not self._use_dynamic_universe:
+            return self.get_instrument_list()
+
+        all_instruments = self.get_instrument_list()
+        price_data = {
+            instr: self._prices_data.get_spot_prices(instr)
+            for instr in all_instruments
+        }
+
+        return self._universe_manager.get_eligible_instruments(
+            date=date,
+            all_instruments=all_instruments,
+            price_data=price_data,
+        )
+
+    def get_universe_eligibility_series(
+        self,
+        instrument_code: str,
+    ) -> pd.Series:
+        """
+        Get time series of universe eligibility for an instrument.
+
+        Only available when use_dynamic_universe=True.
+
+        Args:
+            instrument_code: Instrument code
+
+        Returns:
+            pd.Series of boolean values indicating eligibility at each date
+        """
+        if not self._use_dynamic_universe:
+            prices = self._prices_data.get_spot_prices(instrument_code)
+            return pd.Series(True, index=prices.index)
+
+        prices = self._prices_data.get_spot_prices(instrument_code)
+        return self._universe_manager.get_eligibility_series(
+            instrument_code, prices
+        )
+
+    def get_walk_forward_spread(
+        self,
+        instrument_code: str,
+    ) -> pd.Series:
+        """
+        Get walk-forward spread estimates for an instrument.
+
+        Only available when use_dynamic_universe=True.
+
+        Args:
+            instrument_code: Instrument code
+
+        Returns:
+            pd.Series of spread estimates (in basis points) at each date
+        """
+        if not self._use_dynamic_universe or self._cost_estimator is None:
+            # Return flat spread from instrument config
+            spread = self._instrument_data.get_spread_cost(instrument_code)
+            prices = self._prices_data.get_spot_prices(instrument_code)
+            return pd.Series(spread * 10000, index=prices.index)  # Convert to bps
+
+        return self._cost_estimator.get_spread_series(instrument_code)
+
+    def get_cost_estimator(self):
+        """Get the walk-forward cost estimator (if using dynamic universe)."""
+        return self._cost_estimator
+
+    def get_universe_manager(self):
+        """Get the dynamic universe manager (if using dynamic universe)."""
+        return self._universe_manager
+
 
 def crypto_sim_data(
     data_path: str,
     instrument_config: dict = arg_not_supplied,
     instrument_config_file: str = arg_not_supplied,
+    use_dynamic_universe: bool = False,
+    dynamic_universe_config: dict = arg_not_supplied,
 ) -> csvSpotSimData:
     """
     Factory function to create a csvSpotSimData instance.
@@ -361,6 +522,8 @@ def crypto_sim_data(
         data_path: Path to directory containing CSV price files
         instrument_config: Optional dict of instrument configurations
         instrument_config_file: Optional path to YAML instrument config file
+        use_dynamic_universe: Enable walk-forward universe filtering
+        dynamic_universe_config: Config dict for dynamic universe
 
     Returns:
         csvSpotSimData instance
@@ -369,4 +532,6 @@ def crypto_sim_data(
         data_path=data_path,
         instrument_config=instrument_config,
         instrument_config_file=instrument_config_file,
+        use_dynamic_universe=use_dynamic_universe,
+        dynamic_universe_config=dynamic_universe_config,
     )

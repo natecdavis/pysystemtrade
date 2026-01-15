@@ -177,8 +177,24 @@ forecast_weights:
 # Forecast capping
 forecast_cap: 20.0
 
-# Instruments - all with 3+ years of history, equal weighted
-# 12 instruments provides better diversification
+# Instruments - currently hardcoded, equal weighted
+# These 12 were selected via Carver's cost/diversification analysis.
+#
+# DYNAMIC UNIVERSE (alternative approach):
+# For walk-forward instrument selection based on cost filters, use:
+#   from sysdata.crypto.spot_sim_data import csvSpotSimData
+#   data = csvSpotSimData(
+#       data_path='data/crypto',
+#       use_dynamic_universe=True,
+#       dynamic_universe_config={
+#           'max_sr_cost_per_trade': 0.01,  # 1% of SR per trade
+#           'max_sr_cost_annual': 0.13,     # 13% of annual SR
+#           'stack_turnover': 15,           # ~15 round-trips/year
+#       }
+#   )
+# Then use data.get_eligible_instruments_at_date(date) for the universe.
+# See systems/provided/crypto_example/analyze_universe.py for diagnostics.
+#
 instrument_weights:
   BTC: 0.083
   ETH: 0.083
