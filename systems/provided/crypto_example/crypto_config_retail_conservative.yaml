@@ -1,0 +1,211 @@
+# Retail crypto configuration (CONSERVATIVE risk profile)
+#
+# Optimized for risk-averse retail traders prioritizing capital preservation.
+#
+# Key Differences from Moderate Profile:
+# - Lower volatility target (10% vs 15%) → Smaller drawdowns
+# - Lower max leverage (2x vs 3x) → Extra safety margin
+# - Higher min notional ($50 vs $25) → Skip smaller, less liquid positions
+#
+# Expected Performance:
+# - Realized Vol: 8-10% → Very conservative
+# - Avg Position at $10k: $500 → Larger, more stable positions
+# - Gross Leverage: 1.5-2x → Well within retail limits
+# - Sharpe: 0.9-1.1 → Solid risk-adjusted returns
+# - CAGR: 9-11% → Lower but safer absolute returns
+# - MaxDD: ~15% → Shallow drawdowns
+#
+# Recommended For:
+# - New traders learning systematic trading
+# - Small accounts ($10k-25k)
+# - Low risk tolerance
+# - Cannot tolerate >20% drawdowns
+#
+# Trading Rules: 13 total (same as moderate, no cross-sectional momentum)
+# - EWMAC: 4 variations → 30.8% total weight
+# - Breakout: 4 variations → 34.0% total weight
+# - TSMOM: 3 variations → 21.0% total weight
+# - Accel: 2 variations → 14.0% total weight
+
+# Capital and risk settings
+percentage_vol_target: 10.0                 # Conservative volatility target
+notional_trading_capital: 100000
+base_currency: USD
+
+# Retail-specific constraints (conservative)
+min_notional_position: 50.0                 # Skip positions < $50 (higher threshold)
+max_leverage: 2.0                           # Conservative leverage limit
+long_only_instruments: True                 # Force long-only (realistic for spot trading)
+
+# Trading rules - Same as moderate profile
+trading_rules:
+  # EWMAC (30.8% total weight)
+  ewmac8_32:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 8
+      Lslow: 32
+  ewmac16_64:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 16
+      Lslow: 64
+  ewmac32_128:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 32
+      Lslow: 128
+  ewmac64_256:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 64
+      Lslow: 256
+
+  # Breakout (34.0% total weight)
+  breakout10:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 10
+  breakout20:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 20
+  breakout40:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 40
+  breakout80:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 80
+
+  # TSMOM (21.0% total weight)
+  tsmom63:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 63
+      skip: 5
+  tsmom126:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 126
+      skip: 5
+  tsmom252:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 252
+      skip: 5
+
+  # Accel (14.0% total weight)
+  accel16:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "rawdata.get_daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args:
+      Lfast: 16
+  accel32:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "rawdata.get_daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args:
+      Lfast: 32
+
+# Forecast weights - Same as moderate
+forecast_weights:
+  ewmac8_32: 0.077
+  ewmac16_64: 0.077
+  ewmac32_128: 0.077
+  ewmac64_256: 0.077
+  breakout10: 0.085
+  breakout20: 0.085
+  breakout40: 0.085
+  breakout80: 0.085
+  tsmom63: 0.070
+  tsmom126: 0.070
+  tsmom252: 0.070
+  accel16: 0.070
+  accel32: 0.070
+
+# Forecast scalars - WALK-FORWARD ESTIMATION
+use_forecast_scale_estimates: True
+
+forecast_scalar_estimate:
+   pool_instruments: True
+   window: 250000
+   min_periods: 250
+   backfill: True
+
+# Forecast diversification multiplier
+use_forecast_div_mult_estimates: True
+
+forecast_correlation_estimate:
+   pool_instruments: True
+   date_method: expanding
+   frequency: W
+   using_exponent: True
+   ew_lookback: 250
+   min_periods: 20
+   floor_at_zero: True
+   forward_fill_data: True
+
+forecast_div_mult_estimate:
+   ewma_span: 125
+   dm_max: 2.5
+
+forecast_cap: 20.0
+
+# Dynamic universe configuration (pass to system factory)
+# Use crypto_system_with_dynamic_universe() with:
+#   dynamic_universe_config={
+#       'max_instruments': 30,
+#       'selection_method': 'adv',
+#       'max_sr_cost_per_trade': 0.01,
+#       'max_sr_cost_annual': 0.13,
+#       'stack_turnover': 15.0,
+#       'fee_bps': 10,
+#   }
+
+# Instrument diversification multiplier
+use_instrument_div_mult_estimates: True
+
+instrument_div_mult_estimate:
+  ewma_span: 125
+  dm_max: 2.5
+
+# Volatility calculation
+volatility_calculation:
+  func: sysquant.estimators.vol.robust_vol_calc
+  days: 35
+  min_periods: 10
+  vol_abs_min: 0.0000001
+  vol_floor: True
+  floor_min_periods: 100
+  floor_days: 500
+  floor_min_quant: 0.05
+
+# Position buffering
+buffer_method: forecast
+buffer_size: 0.10
+
+# Fixed weights
+use_forecast_weight_estimates: False
+use_instrument_weight_estimates: False
+
+# Average absolute forecast
+average_absolute_forecast: 10.0
