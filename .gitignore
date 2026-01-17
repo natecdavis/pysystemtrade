@@ -28,3 +28,9 @@ venv/
 
 # libreoffice
 .~lock.*
+
+# Generated crypto backtest outputs
+systems/provided/crypto_example/output/*.csv
+systems/provided/crypto_example/output/*.md
+systems/provided/crypto_example/output/*.log
+systems/provided/crypto_example/backtest_cache/*_returns.csv

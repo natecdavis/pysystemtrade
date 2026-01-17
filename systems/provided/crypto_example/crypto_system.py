@@ -38,7 +38,7 @@ from systems.accounts.accounts_stage import Account
 
 
 # Default config path
-DEFAULT_CONFIG_PATH = "systems.provided.crypto_example.crypto_config.yaml"
+DEFAULT_CONFIG_PATH = "systems.provided.crypto_example.crypto_config_diversified.yaml"
 
 
 def crypto_system(
@@ -161,6 +161,104 @@ def crypto_system_with_estimate(
         stage_list=[
             Account(),
             Portfolios(),
+            PositionSizing(),
+            ForecastCombine(),
+            ForecastScaleCap(),
+            Rules(),
+            RawData(),
+        ],
+        data=data,
+        config=config,
+    )
+
+    return system
+
+
+def crypto_system_with_dynamic_universe(
+    data_path: str,
+    config: Optional[Config] = None,
+    dynamic_universe_config: dict = arg_not_supplied,
+    instrument_config: dict = arg_not_supplied,
+    instrument_config_file: str = arg_not_supplied,
+) -> System:
+    """
+    Create crypto system with walk-forward dynamic instrument universe.
+
+    Instruments enter when cost filters pass (SR thresholds), exit when
+    aggregate forecast hits zero. Uses equal weighting (1/N) among active
+    instruments at each date.
+
+    Entry Logic:
+        - Cost filter passes (SR per trade ≤ 0.01, annual ≤ 0.13)
+        - Has minimum history required for rules
+
+    Exit Logic:
+        - Aggregate forecast crosses zero (signal exhausted)
+        - Does NOT force exit when cost filter fails
+
+    Hold Logic:
+        - Keep position even if cost filter subsequently fails
+        - Exit only on signal (forecast ≈ 0)
+
+    Args:
+        data_path: Path to crypto CSV files
+        config: Optional Config (defaults to crypto_config_diversified.yaml)
+        dynamic_universe_config: Cost filter settings (defaults to Carver's thresholds)
+        instrument_config: Optional instrument-specific settings
+        instrument_config_file: Optional path to instrument config YAML
+
+    Returns:
+        System object with dynamic universe enabled
+
+    Example:
+        system = crypto_system_with_dynamic_universe(data_path='data/crypto')
+        account = system.accounts.portfolio()
+
+        # View universe size over time
+        weights = system.portfolio.get_instrument_weights()
+        universe_size = (weights > 0).sum(axis=1)
+        print(universe_size.describe())
+
+        # Compare to static universe
+        system_static = crypto_system(data_path='data/crypto')
+        print(f"Static universe: 12 instruments")
+        print(f"Dynamic universe avg: {universe_size.mean():.0f} instruments")
+    """
+    # Load config (use diversified config as base)
+    if config is None:
+        config = Config(
+            "systems.provided.crypto_example.crypto_config_diversified.yaml"
+        )
+
+    # Default cost filter settings (Carver's thresholds)
+    if dynamic_universe_config is arg_not_supplied:
+        dynamic_universe_config = {
+            "max_sr_cost_per_trade": 0.01,  # 1% of annual SR per trade
+            "max_sr_cost_annual": 0.13,  # 13% of annual SR
+            "stack_turnover": 15.0,  # Expected round-trips/year
+            "adv_window": 30,  # ADV calculation window (days)
+            "fee_bps": 5,  # One-way fee in basis points
+        }
+
+    # Create data with dynamic universe enabled
+    data = csvSpotSimData(
+        data_path=data_path,
+        use_dynamic_universe=True,
+        dynamic_universe_config=dynamic_universe_config,
+        instrument_config=instrument_config,
+        instrument_config_file=instrument_config_file,
+    )
+
+    # Import dynamic portfolio stage
+    from systems.provided.crypto_example.core.dynamic_portfolio import (
+        CryptoDynamicPortfolio,
+    )
+
+    # Create system with dynamic portfolio
+    system = System(
+        stage_list=[
+            Account(),
+            CryptoDynamicPortfolio(),  # Dynamic weights instead of fixed
             PositionSizing(),
             ForecastCombine(),
             ForecastScaleCap(),

@@ -210,9 +210,16 @@ instrument_weights:
   SOL: 0.083
 
 # Instrument diversification multiplier
-# 12 instruments with ~0.64 avg correlation
+# 12 instruments with ~0.64 avg correlation (static universe baseline)
 # IDM = sqrt(12) / sqrt(1 + 11*0.64) = 3.46 / 2.83 = 1.22
+# NOTE: This fixed value is only used if use_instrument_div_mult_estimates=False
 instrument_div_multiplier: 1.22
+
+# IDM estimation config (for dynamic universe)
+# Estimates IDM from actual correlations: IDM = 1/sqrt(w'Σw)
+instrument_div_mult_estimate:
+  ewma_span: 125      # Smooth IDM changes over ~6 months
+  dm_max: 2.5         # Cap maximum IDM
 
 # Volatility calculation
 volatility_calculation:
@@ -274,7 +281,9 @@ forecast_div_mult_estimate:
 # Fixed weights (no estimation needed for these)
 use_forecast_weight_estimates: False
 use_instrument_weight_estimates: False
-use_instrument_div_mult_estimates: False
+
+# Enable IDM estimation for dynamic universe (estimates from correlation matrix)
+use_instrument_div_mult_estimates: True
 
 # Average absolute forecast
 average_absolute_forecast: 10.0
