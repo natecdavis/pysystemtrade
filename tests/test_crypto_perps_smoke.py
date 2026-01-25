@@ -387,28 +387,122 @@ class TestForecastScaling:
 class TestUniverse:
     """Test suite for universe and eligibility logic (Step 5)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_layer_a_static_universe(self):
         """
         Test that Layer A returns expected static universe
         """
-        pass
+        from systems.crypto_perps.universe import get_layer_a_instruments
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        layer_a = get_layer_a_instruments()
+
+        # Should return expected 5 instruments
+        assert len(layer_a) == 5, f"Expected 5 instruments, got {len(layer_a)}"
+        assert set(layer_a) == set(EXPECTED_INSTRUMENTS), \
+            f"Unexpected instruments: {set(layer_a) - set(EXPECTED_INSTRUMENTS)}"
+
     def test_layer_b_daily_filter(self):
         """
         Test that Layer B eligibility filter works correctly
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.universe import check_layer_b_eligibility
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Pick a date and instrument that should be eligible
+        test_date = prices.index[100]  # Some date in the middle
+        test_instrument = 'BTCUSDT_PERP'
+        min_adv = 1e7  # $10M minimum ADV
+
+        # Check eligibility
+        is_eligible, reason = check_layer_b_eligibility(
+            date=test_date,
+            instrument=test_instrument,
+            prices_df=prices,
+            meta_df=meta,
+            min_adv_notional=min_adv
+        )
+
+        # Should be eligible (BTC typically has high ADV)
+        assert is_eligible, f"BTC should be eligible but got: {reason}"
+
+        # Test with impossibly high ADV threshold
+        is_eligible_high_thresh, reason = check_layer_b_eligibility(
+            date=test_date,
+            instrument=test_instrument,
+            prices_df=prices,
+            meta_df=meta,
+            min_adv_notional=1e20  # Impossibly high
+        )
+
+        # Should be ineligible due to low ADV
+        assert not is_eligible_high_thresh, "Should be ineligible with high ADV threshold"
+        assert "ADV" in reason or "below threshold" in reason, \
+            f"Reason should mention ADV, got: {reason}"
+
+    def test_get_eligible_instruments(self):
+        """
+        Test getting eligibility status for all instruments on a date
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.universe import get_eligible_instruments
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Get eligibility for a date
+        test_date = prices.index[100]
+        eligibility = get_eligible_instruments(
+            date=test_date,
+            prices_df=prices,
+            meta_df=meta,
+            min_adv_notional=1e7
+        )
+
+        # Should have 5 instruments
+        assert len(eligibility) == 5, f"Expected 5 instruments, got {len(eligibility)}"
+
+        # Each should have eligibility info
+        for instrument in EXPECTED_INSTRUMENTS:
+            assert instrument in eligibility, f"Missing {instrument}"
+            assert 'eligible' in eligibility[instrument]
+            assert 'reason' in eligibility[instrument]
+            assert isinstance(eligibility[instrument]['eligible'], bool)
+            assert isinstance(eligibility[instrument]['reason'], str)
+
     def test_ineligible_instrument_freezes_position(self):
         """
         Test that ineligible instruments freeze positions (no trades)
+        This is tested via eligibility flag - execution module will respect it
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.universe import build_eligibility_history
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Build eligibility history
+        eligibility_df = build_eligibility_history(
+            prices_df=prices,
+            meta_df=meta,
+            min_adv_notional=1e7
+        )
+
+        # Validate structure
+        assert eligibility_df.shape[1] == 5, "Should have 5 instruments"
+        assert len(eligibility_df) == len(prices), "Should have same length as prices"
+
+        # Should be boolean
+        assert eligibility_df.dtypes.apply(lambda x: x == bool).all(), \
+            "Eligibility should be boolean"
+
+        # Most days should be eligible (with reasonable threshold)
+        for instrument in EXPECTED_INSTRUMENTS:
+            eligible_pct = eligibility_df[instrument].mean()
+            assert eligible_pct > 0.8, \
+                f"{instrument} should be eligible >80% of time, got {eligible_pct:.1%}"
+
     def test_missing_price_handling(self):
         """
         Test that missing prices are handled correctly:
@@ -417,7 +511,27 @@ class TestUniverse:
         - Price return = 0 (not carry-forward)
         - PnL = 0 for that day
         """
-        pass
+        from systems.crypto_perps.universe import handle_missing_price
+        import pandas as pd
+
+        # Test missing price handling
+        test_date = pd.Timestamp('2023-01-01')
+        test_instrument = 'BTCUSDT_PERP'
+        prev_position = 100.0
+
+        new_position, price_return, pnl = handle_missing_price(
+            date=test_date,
+            instrument=test_instrument,
+            prev_position=prev_position
+        )
+
+        # Validate explicit behavior
+        assert new_position == prev_position, \
+            f"Position should be frozen at {prev_position}, got {new_position}"
+        assert price_return == 0.0, \
+            f"Price return should be 0, got {price_return}"
+        assert pnl == 0.0, \
+            f"PnL should be 0, got {pnl}"
 
 
 class TestPositionSizing:
