@@ -99,12 +99,70 @@ class TestDataAdapter:
 class TestEWMACRule:
     """Test suite for EWMAC rule implementation (Step 2)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_ewmac_produces_valid_forecasts(self):
         """
         Test that EWMAC rule produces valid forecasts
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.ewmac import ewmac_forecasts
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Calculate EWMAC forecasts for standard pairs
+        ewmac_pairs = [(8, 32), (16, 64)]
+        forecasts = ewmac_forecasts(prices, ewmac_pairs)
+
+        # Validate structure
+        assert len(forecasts) == 5, "Should have forecasts for 5 instruments"
+        for instrument in EXPECTED_INSTRUMENTS:
+            assert instrument in forecasts, f"Missing forecasts for {instrument}"
+            assert len(forecasts[instrument]) == 2, \
+                f"Should have 2 EWMAC rules for {instrument}"
+            assert 'ewmac_8_32' in forecasts[instrument]
+            assert 'ewmac_16_64' in forecasts[instrument]
+
+        # Validate forecast values
+        for instrument in EXPECTED_INSTRUMENTS:
+            for rule_name, forecast in forecasts[instrument].items():
+                # Check it's a Series
+                assert isinstance(forecast, pd.Series), \
+                    f"{instrument}/{rule_name} should be a Series"
+
+                # Check no inf values
+                assert not np.isinf(forecast).any(), \
+                    f"{instrument}/{rule_name} contains inf values"
+
+                # Check we have some non-NaN values
+                assert forecast.notna().sum() > 0, \
+                    f"{instrument}/{rule_name} has no non-NaN values"
+
+                # Check values are numeric
+                assert pd.api.types.is_numeric_dtype(forecast), \
+                    f"{instrument}/{rule_name} should be numeric"
+
+    def test_ewmac_single_instrument(self):
+        """
+        Test EWMAC calculation for single instrument
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.ewmac import ewmac_forecast_single_instrument
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Get a single instrument
+        instrument = 'BTCUSDT_PERP'
+        price_series = prices[instrument]
+
+        # Calculate forecast
+        forecast = ewmac_forecast_single_instrument(price_series, Lfast=8, Lslow=32)
+
+        # Validate
+        assert isinstance(forecast, pd.Series)
+        assert len(forecast) == len(price_series)
+        assert not np.isinf(forecast).any()
+        assert forecast.notna().sum() > 0
 
 
 class TestFundingCarryRule:
