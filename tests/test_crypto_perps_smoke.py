@@ -1071,12 +1071,62 @@ class TestAccounting:
 class TestSystemOrchestrator:
     """Test suite for system orchestrator (Step 10)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_end_to_end_run(self):
         """
         Test that full system runs end-to-end without errors
         """
-        pass
+        import tempfile
+        import os
+        from systems.crypto_perps.system import load_config, run_backtest
+
+        # Create temporary output directory
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Run backtest using test data
+            config_path = Path(__file__).parent.parent / 'config' / 'crypto_perps.yaml'
+            config = load_config(str(config_path))
+
+            # Run backtest
+            run_backtest(
+                config=config,
+                data_path=str(TEST_DATA_PATH),
+                output_dir=tmpdir
+            )
+
+            # Verify outputs exist
+            equity_file = Path(tmpdir) / 'equity_curve.csv'
+            positions_file = Path(tmpdir) / 'positions.csv'
+            pnl_file = Path(tmpdir) / 'pnl_breakdown.csv'
+
+            assert equity_file.exists(), "Equity curve file should exist"
+            assert positions_file.exists(), "Positions file should exist"
+            assert pnl_file.exists(), "PnL breakdown file should exist"
+
+            # Load and validate equity curve
+            equity_curve = pd.read_csv(equity_file, index_col=0, parse_dates=True)
+            assert len(equity_curve) > 0, "Equity curve should have data"
+            assert 'equity' in equity_curve.columns, "Equity curve should have 'equity' column"
+
+            # Equity should start at initial capital
+            initial_capital = config['system']['capital']
+            assert np.isclose(equity_curve['equity'].iloc[0], initial_capital), \
+                f"Starting equity should be ${initial_capital}"
+
+            # Equity should be all non-NaN
+            assert not equity_curve['equity'].isna().any(), \
+                "Equity curve should not have NaN values"
+
+            # Load and validate positions
+            positions = pd.read_csv(positions_file, index_col=0, parse_dates=True)
+            assert len(positions) > 0, "Positions should have data"
+            assert len(positions.columns) == 5, "Should have 5 instruments"
+
+            # Load and validate PnL breakdown
+            pnl_breakdown = pd.read_csv(pnl_file, index_col=0, parse_dates=True)
+            assert len(pnl_breakdown) > 0, "PnL breakdown should have data"
+            required_cols = ['total_pnl', 'price_pnl', 'funding_pnl', 'costs', 'equity']
+            for col in required_cols:
+                assert col in pnl_breakdown.columns, \
+                    f"PnL breakdown should have '{col}' column"
 
 
 class TestComprehensiveValidation:
