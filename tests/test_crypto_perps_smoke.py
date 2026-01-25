@@ -1,0 +1,295 @@
+"""
+Smoke tests for Crypto Perpetual Futures Trading System - Phase 1
+
+These tests validate all Definition-of-Done criteria for Phase 1 MVP.
+"""
+
+import pytest
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+
+# Test fixtures and constants
+TEST_DATA_PATH = Path(__file__).parent.parent / 'data' / 'example_crypto_perps.parquet'
+
+EXPECTED_INSTRUMENTS = [
+    'BTCUSDT_PERP',
+    'ETHUSDT_PERP',
+    'BNBUSDT_PERP',
+    'SOLUSDT_PERP',
+    'XRPUSDT_PERP'
+]
+
+
+class TestDataAdapter:
+    """Test suite for data adapter (Step 1)"""
+
+    def test_data_adapter_loads_and_validates(self):
+        """
+        Test that data adapter loads data correctly and performs validation
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Assert date index is monotonic
+        assert prices.index.is_monotonic_increasing, "Date index must be monotonic increasing"
+
+        # Assert no duplicate dates
+        assert not prices.index.duplicated().any(), "Date index must not have duplicates"
+
+        # Assert expected 5 instruments
+        instruments = list(prices.columns)
+        assert len(instruments) == 5, f"Expected 5 instruments, got {len(instruments)}"
+        assert set(instruments) == set(EXPECTED_INSTRUMENTS), \
+            f"Unexpected instruments: {set(instruments) - set(EXPECTED_INSTRUMENTS)}"
+
+        # Assert no NaN in prices
+        assert not prices.isna().any().any(), "Prices must not contain NaN values"
+
+        # Assert metadata structure
+        assert isinstance(meta.index, pd.MultiIndex), "Metadata must have MultiIndex"
+        assert meta.index.names == ['date', 'instrument'], \
+            f"Metadata index names must be ['date', 'instrument'], got {meta.index.names}"
+
+        # Assert required metadata columns
+        required_meta_cols = ['funding_rate', 'adv_notional', 'spread_frac', 'taker_fee_frac']
+        assert all(col in meta.columns for col in required_meta_cols), \
+            f"Missing metadata columns: {set(required_meta_cols) - set(meta.columns)}"
+
+    def test_funding_rate_alignment(self):
+        """
+        Test that funding rates are correctly aligned with price data
+        funding_rate[t] applies from close(t-1) to close(t)
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # For each instrument, verify funding rate dates match price dates
+        for instrument in prices.columns:
+            price_dates = set(prices.index)
+            funding_dates = set(
+                meta.loc[(slice(None), instrument), 'funding_rate'].index.get_level_values(0)
+            )
+
+            assert price_dates == funding_dates, \
+                f"Funding rate dates mismatch for {instrument}"
+
+    def test_data_date_range(self):
+        """
+        Test that data covers expected date range
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Should have at least 365 days of data
+        assert len(prices) >= 365, f"Expected at least 365 days, got {len(prices)}"
+
+        # Dates should be daily frequency (approximately)
+        date_diffs = prices.index.to_series().diff().dt.days
+        # Most diffs should be 1 day (allowing some flexibility for edge cases)
+        assert (date_diffs.dropna() == 1).mean() > 0.99, \
+            "Date index should be daily frequency"
+
+
+class TestEWMACRule:
+    """Test suite for EWMAC rule implementation (Step 2)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_ewmac_produces_valid_forecasts(self):
+        """
+        Test that EWMAC rule produces valid forecasts
+        """
+        pass
+
+
+class TestFundingCarryRule:
+    """Test suite for funding carry rule (Step 3)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_funding_carry_signal(self):
+        """
+        Test that funding carry rule produces valid signals
+        """
+        pass
+
+
+class TestForecastScaling:
+    """Test suite for forecast scaling and combination (Step 4)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_forecast_scaling(self):
+        """
+        Test that forecasts are scaled to mean abs ≈ 10 and capped at ±20
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_forecast_combination(self):
+        """
+        Test that forecasts are combined correctly with caps
+        """
+        pass
+
+
+class TestUniverse:
+    """Test suite for universe and eligibility logic (Step 5)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_layer_a_static_universe(self):
+        """
+        Test that Layer A returns expected static universe
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_layer_b_daily_filter(self):
+        """
+        Test that Layer B eligibility filter works correctly
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_ineligible_instrument_freezes_position(self):
+        """
+        Test that ineligible instruments freeze positions (no trades)
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_missing_price_handling(self):
+        """
+        Test that missing prices are handled correctly:
+        - Instrument becomes ineligible
+        - Position frozen (no trades)
+        - Price return = 0 (not carry-forward)
+        - PnL = 0 for that day
+        """
+        pass
+
+
+class TestPositionSizing:
+    """Test suite for position sizing (Step 6)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_vol_targeted_sizing(self):
+        """
+        Test volatility-targeted position sizing
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_min_steady_position_rule_on_weights(self):
+        """
+        Test that minimum steady position rule is enforced on weights
+        """
+        pass
+
+
+class TestConstraints:
+    """Test suite for portfolio constraints (Step 7)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_gross_leverage_cap(self):
+        """
+        Test that gross leverage cap is enforced
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_idm_cap(self):
+        """
+        Test that IDM cap is enforced
+        """
+        pass
+
+
+class TestExecution:
+    """Test suite for execution and cost model (Step 8)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_trading_buffer(self):
+        """
+        Test that trading buffers prevent unnecessary trades
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_frozen_position_no_trades(self):
+        """
+        Test that frozen positions (ineligible instruments) do not trade
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_cost_calculation(self):
+        """
+        Test that costs are calculated correctly (RTC and SRcost)
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_cost_subtraction_from_pnl(self):
+        """
+        Test that RTC costs are subtracted from PnL
+        """
+        pass
+
+
+class TestAccounting:
+    """Test suite for accounting (Step 9)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_accounting_identity(self):
+        """
+        Test accounting identity: total_pnl = price_pnl + funding_pnl - costs
+        Tolerance: 1e-6
+        """
+        pass
+
+
+class TestSystemOrchestrator:
+    """Test suite for system orchestrator (Step 10)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_end_to_end_run(self):
+        """
+        Test that full system runs end-to-end without errors
+        """
+        pass
+
+
+class TestComprehensiveValidation:
+    """Comprehensive validation tests (Step 11)"""
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_forecast_scaling_limits(self):
+        """
+        Validate forecast scaling: mean abs ∈ [8, 12], never exceeds ±20
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_leverage_cap_always_enforced(self):
+        """
+        Validate gross leverage <= 1.5 at all times
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_idm_cap_always_enforced(self):
+        """
+        Validate IDM <= 2.5 at all times
+        """
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_accounting_identity_all_days(self):
+        """
+        Validate accounting identity holds for all days (tolerance 1e-6)
+        """
+        pass
