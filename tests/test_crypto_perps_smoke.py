@@ -268,19 +268,120 @@ class TestFundingCarryRule:
 class TestForecastScaling:
     """Test suite for forecast scaling and combination (Step 4)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_forecast_scaling(self):
         """
         Test that forecasts are scaled to mean abs ≈ 10 and capped at ±20
         """
-        pass
+        from systems.crypto_perps.forecasts import scale_and_cap_forecast
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Create a raw forecast with known characteristics
+        dates = pd.date_range('2020-01-01', periods=1000, freq='D')
+        # Raw forecast with mean abs around 1.0
+        np.random.seed(42)
+        raw_forecast = pd.Series(np.random.randn(1000), index=dates)
+
+        # Scale and cap
+        scaled = scale_and_cap_forecast(raw_forecast)
+
+        # Validate scaling: mean abs should be close to 10
+        # Allow some tolerance since we're using rolling window
+        mean_abs = scaled.abs().mean()
+        assert 8 <= mean_abs <= 12, \
+            f"Mean abs forecast should be ~10, got {mean_abs}"
+
+        # Validate capping: max abs should be <= 20
+        max_abs = scaled.abs().max()
+        assert max_abs <= 20.0, \
+            f"Max abs forecast should be <= 20, got {max_abs}"
+
+    def test_forecast_cap(self):
+        """
+        Test that forecast capping works correctly
+        """
+        from systems.crypto_perps.forecasts import apply_forecast_cap
+
+        # Create forecast with values exceeding cap
+        dates = pd.date_range('2023-01-01', periods=10)
+        forecast = pd.Series([-30, -25, -20, -10, 0, 10, 20, 25, 30, 15], index=dates)
+
+        # Apply cap
+        capped = apply_forecast_cap(forecast, cap=20.0)
+
+        # Validate
+        assert capped.max() == 20.0, "Max should be capped at 20"
+        assert capped.min() == -20.0, "Min should be capped at -20"
+        assert (capped == [-20, -20, -20, -10, 0, 10, 20, 20, 20, 15]).all(), \
+            "Capping not applied correctly"
+
     def test_forecast_combination(self):
         """
         Test that forecasts are combined correctly with caps
         """
-        pass
+        from systems.crypto_perps.forecasts import combine_forecasts, apply_forecast_cap
+
+        # Create two forecasts
+        dates = pd.date_range('2023-01-01', periods=100)
+        forecast1 = pd.Series(np.full(100, 10.0), index=dates)
+        forecast2 = pd.Series(np.full(100, -10.0), index=dates)
+
+        forecasts = {
+            'rule1': forecast1,
+            'rule2': forecast2
+        }
+
+        # Combine with equal weights (default)
+        combined = combine_forecasts(forecasts)
+
+        # With equal weights, should average to 0
+        assert np.allclose(combined, 0.0), \
+            "Equal-weighted combination of +10 and -10 should be 0"
+
+        # Combine with custom weights
+        weights = {'rule1': 0.75, 'rule2': 0.25}
+        combined_weighted = combine_forecasts(forecasts, weights=weights)
+
+        # Should be 0.75*10 + 0.25*(-10) = 7.5 - 2.5 = 5.0
+        assert np.allclose(combined_weighted, 5.0), \
+            f"Weighted combination should be 5.0, got {combined_weighted.mean()}"
+
+    def test_scale_and_combine_forecasts(self):
+        """
+        Test full forecast processing pipeline
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.ewmac import ewmac_forecasts
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecasts
+        from systems.crypto_perps.forecasts import process_all_forecasts
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Generate raw forecasts
+        ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
+        carry = funding_carry_forecasts(meta, fast_halflife=3, slow_halflife=30)
+
+        # Process all forecasts
+        combined = process_all_forecasts(ewmac, carry)
+
+        # Validate
+        assert len(combined) == 5, "Should have combined forecasts for 5 instruments"
+
+        for instrument, forecast in combined.items():
+            # Check it's a Series
+            assert isinstance(forecast, pd.Series), \
+                f"{instrument} combined forecast should be a Series"
+
+            # Check no inf values
+            assert not np.isinf(forecast).any(), \
+                f"{instrument} combined forecast contains inf"
+
+            # Check we have non-NaN values
+            assert forecast.notna().sum() > 0, \
+                f"{instrument} combined forecast has no non-NaN values"
+
+            # Check cap is enforced
+            assert forecast.abs().max() <= 20.0, \
+                f"{instrument} combined forecast exceeds cap: {forecast.abs().max()}"
 
 
 class TestUniverse:
