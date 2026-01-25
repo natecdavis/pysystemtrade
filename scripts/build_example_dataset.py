@@ -104,13 +104,18 @@ def inspect_alignment(
     print("=" * 80)
 
 
-def load_binance_klines(instrument: str, data_dir: Path) -> pd.DataFrame:
+def load_binance_klines(
+    instrument: str,
+    data_dir: Path,
+    fail_on_missing_close: bool = False
+) -> pd.DataFrame:
     """
     Load all kline files for instrument using glob discovery
 
     Args:
         instrument: Internal instrument ID (e.g., 'BTCUSDT_PERP')
         data_dir: Root data directory (e.g., Path('data/raw'))
+        fail_on_missing_close: If True, raise error if any rows with NaN close are dropped
 
     Returns:
         DataFrame with columns: date, close, volume, quote_volume
@@ -118,6 +123,7 @@ def load_binance_klines(instrument: str, data_dir: Path) -> pd.DataFrame:
     Notes:
         - Works with daily or monthly archives (glob pattern matches both)
         - date is derived from close_time (end-of-day timestamp)
+        - NaN close rows are dropped with logging
     """
     # Map internal ID to Binance symbol
     binance_symbol = BINANCE_SYMBOL_MAP[instrument]
@@ -129,11 +135,8 @@ def load_binance_klines(instrument: str, data_dir: Path) -> pd.DataFrame:
         with zipfile.ZipFile(zip_file) as z:
             csv_name = zip_file.stem + '.csv'  # Binance convention
             with z.open(csv_name) as f:
-                df = pd.read_csv(f, header=None, names=[
-                    'open_time', 'open', 'high', 'low', 'close', 'volume',
-                    'close_time', 'quote_volume', 'trades',
-                    'taker_buy_base_vol', 'taker_buy_quote_vol', 'ignore'
-                ])
+                # Binance Data Vision files have headers; use header=0 to read them
+                df = pd.read_csv(f, header=0)
                 all_data.append(df)
 
     if not all_data:
@@ -149,6 +152,32 @@ def load_binance_klines(instrument: str, data_dir: Path) -> pd.DataFrame:
 
     # Select relevant columns
     klines = klines[['date', 'close', 'volume', 'quote_volume']].copy()
+
+    # Ensure date column is datetime (prevent set-intersection mismatches later)
+    klines['date'] = pd.to_datetime(klines['date'], utc=True).dt.tz_convert(None)
+
+    # Coerce to numeric (handle any non-numeric values in source CSV)
+    klines['close'] = pd.to_numeric(klines['close'], errors='coerce')
+    klines['volume'] = pd.to_numeric(klines['volume'], errors='coerce')
+    klines['quote_volume'] = pd.to_numeric(klines['quote_volume'], errors='coerce')
+
+    # Handle NaN close prices: drop rows and log
+    nan_close_mask = klines['close'].isna()
+    if nan_close_mask.any():
+        nan_count = nan_close_mask.sum()
+        nan_dates = klines[nan_close_mask]['date'].tolist()
+        logger.warning(
+            f"{instrument}: Dropping {nan_count} rows with NaN/missing close prices. "
+            f"Sample dates: {nan_dates[:5]}"
+        )
+
+        if fail_on_missing_close:
+            raise ValueError(
+                f"{instrument}: {nan_count} rows have NaN close prices (--fail-on-missing-close enabled). "
+                f"Sample dates: {nan_dates[:10]}"
+            )
+
+        klines = klines[~nan_close_mask].copy()
 
     # Validate monotonic dates, no duplicates
     if not klines['date'].is_monotonic_increasing:
@@ -195,9 +224,17 @@ def consolidate_funding_to_daily(funding_events: pd.DataFrame) -> pd.DataFrame:
     daily = funding_events.groupby('event_date')['fundingRate'].sum().reset_index()
     daily = daily.rename(columns={'event_date': 'date', 'fundingRate': 'funding_rate'})
 
+    # Ensure output 'date' column is naive datetime64[ns] (matches klines dtype)
+    daily['date'] = pd.to_datetime(daily['date']).dt.tz_localize(None)
+
     # Apply shift based on inspect_alignment() verification
+    # EXPECTED: NO SHIFT (verify with inspect_alignment() before production use)
     # DEFAULT: NO SHIFT (uncomment if verification shows shift is needed)
     # daily['date'] = daily['date'] + pd.Timedelta(days=1)
+
+    # Validate one row per date
+    if daily['date'].duplicated().any():
+        raise ValueError("Daily funding consolidation produced duplicate dates")
 
     return daily.sort_values('date').reset_index(drop=True)
 
@@ -225,7 +262,14 @@ def load_binance_funding_rates(instrument: str, data_dir: Path) -> pd.DataFrame:
         with zipfile.ZipFile(zip_file) as z:
             csv_name = zip_file.stem + '.csv'  # Binance convention
             with z.open(csv_name) as f:
-                df = pd.read_csv(f, header=None, names=['calcTime', 'fundingRate', 'markPrice'])
+                # Binance Data Vision files have headers; use header=0 to read them
+                # Actual columns: calc_time, funding_interval_hours, last_funding_rate
+                # Rename to match downstream code expectations
+                df = pd.read_csv(f, header=0)
+                df = df.rename(columns={
+                    'calc_time': 'calcTime',
+                    'last_funding_rate': 'fundingRate'
+                })
                 all_data.append(df)
 
     if not all_data:
@@ -233,8 +277,18 @@ def load_binance_funding_rates(instrument: str, data_dir: Path) -> pd.DataFrame:
 
     funding_events = pd.concat(all_data, ignore_index=True)
 
-    # Parse timestamps
-    funding_events['calcTime'] = pd.to_datetime(funding_events['calcTime'], unit='ms', utc=True)
+    # Parse timestamps (ensure naive datetime for consistency)
+    funding_events['calcTime'] = pd.to_datetime(funding_events['calcTime'], unit='ms', utc=True).dt.tz_convert(None)
+
+    # Coerce fundingRate to numeric
+    funding_events['fundingRate'] = pd.to_numeric(funding_events['fundingRate'], errors='coerce')
+
+    # Drop rows with NaN funding rate (data quality issue)
+    nan_funding_mask = funding_events['fundingRate'].isna()
+    if nan_funding_mask.any():
+        nan_count = nan_funding_mask.sum()
+        logger.warning(f"{instrument}: Dropping {nan_count} funding events with NaN rates")
+        funding_events = funding_events[~nan_funding_mask].copy()
 
     # Consolidate using helper function
     daily_funding = consolidate_funding_to_daily(funding_events)
@@ -268,6 +322,9 @@ def build_real_crypto_dataset(
     data_dir: Path,
     start_date: str,
     end_date: str,
+    instruments: list = None,
+    fail_on_missing_close: bool = False,
+    min_coverage: float = 0.95,
     verify_checksums: bool = False
 ) -> pd.DataFrame:
     """
@@ -277,13 +334,23 @@ def build_real_crypto_dataset(
         data_dir: Path to data/raw directory
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
+        instruments: List of instrument IDs (default: all 5 Layer A instruments)
+        fail_on_missing_close: If True, raise error if any rows with NaN close are dropped
+        min_coverage: Minimum coverage ratio for common_dates intersection (default: 0.95)
         verify_checksums: If True, verify SHA256 checksums for ZIP files
 
     Returns:
         DataFrame with schema: date, instrument, close, funding_rate, adv_notional, spread_frac, taker_fee_frac
+
+    Policy:
+        - Single-instrument builds (e.g. BTC-only) are expected to be complete
+          and may use --fail-on-missing-close to enforce exact day counts.
+        - Multi-instrument builds prioritize rectangular panel consistency
+          and may drop dates via common_dates intersection.
     """
     # Internal instrument IDs (match existing system config)
-    instruments = ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'BNBUSDT_PERP', 'SOLUSDT_PERP', 'XRPUSDT_PERP']
+    if instruments is None:
+        instruments = ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'BNBUSDT_PERP', 'SOLUSDT_PERP', 'XRPUSDT_PERP']
 
     # Load metadata (spread and fee estimates)
     metadata_file = data_dir / 'metadata' / 'binance_market_info.json'
@@ -299,10 +366,21 @@ def build_real_crypto_dataset(
 
         # Load klines
         try:
-            klines = load_binance_klines(inst, data_dir)
+            klines = load_binance_klines(inst, data_dir, fail_on_missing_close)
         except FileNotFoundError as e:
             logger.error(f"Skipping {inst}: {e}")
             continue
+
+        # Convert date strings to timestamps for type-safe comparison (ensure naive)
+        start = pd.Timestamp(start_date).tz_localize(None)
+        end = pd.Timestamp(end_date).tz_localize(None)
+
+        # Filter klines to date range IMMEDIATELY (before merges)
+        klines_filtered = klines[(klines['date'] >= start) & (klines['date'] <= end)].copy()
+
+        # Sort by date to ensure monotonic order (CSV row order may vary)
+        klines_filtered = klines_filtered.sort_values('date')
+        original_row_count = len(klines_filtered)
 
         # Load funding rates (with correct alignment)
         try:
@@ -311,46 +389,180 @@ def build_real_crypto_dataset(
             logger.error(f"Skipping {inst}: {e}")
             continue
 
-        # Calculate ADV
-        adv = calculate_adv(klines, window=30)
+        # Calculate ADV on pre-aligned per-instrument data
+        # After common_dates restriction, ADV values are treated as valid
+        # even if early warmup days were excluded by intersection
+        adv = calculate_adv(klines_filtered, window=30)
 
-        # Merge klines with ADV
-        inst_df = klines.merge(adv, on='date', how='left')
+        # Validate join keys are unique (prevents row explosion)
+        if funding['date'].duplicated().any():
+            raise ValueError(f"{inst}: duplicate dates in funding")
+        if adv['date'].duplicated().any():
+            raise ValueError(f"{inst}: duplicate dates in adv")
 
-        # Merge with funding rates (left join to preserve all price dates)
+        # Merge: klines defines the date set, funding is left-joined
+        inst_df = klines_filtered.merge(adv, on='date', how='left')
         inst_df = inst_df.merge(funding, on='date', how='left')
+
+        # CRITICAL: Validate no row explosion from merges
+        if len(inst_df) != original_row_count:
+            raise ValueError(
+                f"{inst}: Row count changed during merge (expected {original_row_count}, got {len(inst_df)})"
+            )
+
+        # Sort after merges (merges can reorder rows)
+        inst_df = inst_df.sort_values('date').reset_index(drop=True)
 
         # Add metadata
         inst_df['instrument'] = inst  # Use internal ID (BTCUSDT_PERP)
         inst_df['spread_frac'] = market_info[binance_symbol]['spread_frac']
         inst_df['taker_fee_frac'] = market_info[binance_symbol]['taker_fee_frac']
 
-        # Handle missing funding (set to 0 with warning)
-        missing_mask = inst_df['funding_rate'].isna()
-        missing_count = missing_mask.sum()
-        if missing_count > 0:
+        # Handle missing funding: log count BEFORE fill, then fill with 0.0
+        missing_funding_mask = inst_df['funding_rate'].isna()
+        missing_funding_count = missing_funding_mask.sum()
+
+        # Sanity check: if ALL funding is missing, likely join key mismatch
+        if missing_funding_count == len(inst_df):
+            raise ValueError(
+                f"{inst}: funding_rate missing for ALL dates (likely date key mismatch). "
+                f"Check that funding['date'] dtype matches klines['date']."
+            )
+
+        if missing_funding_count > 0:
             logger.warning(
-                f"{inst}: {missing_count} days with missing funding (set to 0) - "
-                f"introduces deterministic bias"
+                f"{inst}: {missing_funding_count}/{len(inst_df)} days missing funding rates (filling with 0.0)"
             )
         inst_df['funding_rate'] = inst_df['funding_rate'].fillna(0.0)
 
-        # Filter date range
-        inst_df = inst_df[(inst_df['date'] >= start_date) & (inst_df['date'] <= end_date)]
+        # Validate no NaN after fill
+        if inst_df['funding_rate'].isna().any():
+            raise ValueError(f"{inst}: NaN in funding_rate after fill")
 
-        # Check data coverage
-        coverage_pct = inst_df['close'].notna().sum() / len(inst_df) if len(inst_df) > 0 else 0
-        if coverage_pct < 0.90:
-            logger.warning(
-                f"{inst}: Only {coverage_pct:.1%} price coverage. Consider excluding."
+        # Validate this instrument's data before adding to all_data
+        if inst_df['close'].isna().any():
+            raise ValueError(
+                f"{inst}: NaN in close after processing (should have been dropped in load_binance_klines)"
             )
+        if inst_df['date'].duplicated().any():
+            raise ValueError(f"{inst}: Duplicate dates after merges")
+        if not inst_df['date'].is_monotonic_increasing:
+            raise ValueError(f"{inst}: Dates not monotonic after merges")
 
         all_data.append(inst_df)
 
     if not all_data:
         raise ValueError("No data loaded for any instrument. Check data/raw/ directory.")
 
-    df = pd.concat(all_data, ignore_index=True)
+    # Step 1: Compute common date intersection
+    logger.info("Computing common date intersection across all instruments...")
+
+    # Defensive check: ensure at least one instrument produced data
+    if not all_data:
+        raise ValueError("No instruments produced data; check --instruments and input files.")
+
+    date_sets = {}
+    for inst_df in all_data:
+        instrument = inst_df['instrument'].iloc[0]
+        date_sets[instrument] = set(inst_df['date'])
+
+    # Intersection of all date sets
+    common_dates_set = set.intersection(*date_sets.values())
+
+    # Fail if intersection is empty (mismatched ranges or no overlap)
+    if not common_dates_set:
+        date_ranges = {inst: (sorted(dates)[0], sorted(dates)[-1]) for inst, dates in date_sets.items()}
+        raise ValueError(
+            f"common_dates intersection is empty (no overlapping dates). "
+            f"Date ranges per instrument: {date_ranges}"
+        )
+
+    # Sort common_dates once for deterministic behavior
+    common_dates = sorted(common_dates_set)
+
+    # Calculate coverage
+    # expected_days is calendar-day coverage over the requested range.
+    # Crypto trades 7 days/week; expected_days is calendar days, not trading days.
+    # For instruments with later launch dates (e.g. SOL), min_coverage may need
+    # to be relaxed (e.g. 0.80), or start_date adjusted accordingly.
+    start = pd.Timestamp(start_date).tz_localize(None)
+    end = pd.Timestamp(end_date).tz_localize(None)
+    expected_days = (end - start).days + 1
+    coverage_ratio = len(common_dates) / expected_days
+
+    logger.info(
+        f"Common dates: {len(common_dates)}/{expected_days} days ({coverage_ratio:.1%} coverage)"
+    )
+
+    # Validate coverage meets minimum threshold
+    if coverage_ratio < min_coverage:
+        raise ValueError(
+            f"Insufficient coverage: {len(common_dates)}/{expected_days} days ({coverage_ratio:.1%}) "
+            f"< min_coverage={min_coverage:.1%}. Check for partial downloads or data gaps."
+        )
+
+    for instrument, dates in date_sets.items():
+        excluded_count = len(dates) - len(common_dates)
+        if excluded_count > 0:
+            excluded_dates = sorted(dates - common_dates)
+            logger.warning(
+                f"{instrument}: {excluded_count} dates excluded from common set. "
+                f"Sample: {excluded_dates[:3]}"
+            )
+
+    # Step 2: Restrict each instrument to common_dates
+    aligned_data = []
+    for inst_df in all_data:
+        instrument = inst_df['instrument'].iloc[0]
+        inst_aligned = inst_df[inst_df['date'].isin(common_dates)].copy()
+
+        # Ensure monotonic ordering independent of earlier operations
+        inst_aligned = inst_aligned.sort_values('date')
+
+        # Validate exact match
+        if len(inst_aligned) != len(common_dates):
+            raise ValueError(
+                f"{instrument}: After alignment, expected {len(common_dates)} rows, got {len(inst_aligned)}"
+            )
+
+        aligned_data.append(inst_aligned)
+
+    # Step 3: Concatenate aligned data
+    df = pd.concat(aligned_data, ignore_index=True)
+
+    # CRITICAL: Validate rectangular panel (no NaN after pivot)
+    logger.info("Validating rectangular panel...")
+
+    # Check no NaN in close (should be impossible after alignment + NaN drops)
+    if df['close'].isna().any():
+        nan_summary = df[df['close'].isna()].groupby('instrument').size()
+        raise ValueError(f"NaN in close prices (should not happen):\n{nan_summary}")
+
+    # Validate per-instrument: same date count
+    instruments_list = df['instrument'].unique()
+    date_counts = df.groupby('instrument')['date'].nunique()
+    if not (date_counts == len(common_dates)).all():
+        raise ValueError(f"Instruments have different date counts:\n{date_counts}")
+
+    # Validate per-instrument: monotonic unique dates
+    for instrument in instruments_list:
+        inst_df = df[df['instrument'] == instrument]
+        if inst_df['date'].duplicated().any():
+            raise ValueError(f"{instrument}: Duplicate dates in final parquet")
+        if not inst_df['date'].is_monotonic_increasing:
+            raise ValueError(f"{instrument}: Dates not monotonic in final parquet")
+
+    logger.info(f"✓ Rectangular panel validated: {len(instruments_list)} instruments × {len(common_dates)} dates")
+
+    # Final pivot check: replicate exact adapter validation
+    logger.info("Final pivot check (replicating adapter validation)...")
+    prices_df = df.pivot(index='date', columns='instrument', values='close')
+    if prices_df.isna().any().any():
+        nan_summary = prices_df.isna().sum()
+        nan_instruments = nan_summary[nan_summary > 0]
+        raise ValueError(
+            f"NaN produced by pivot (rectangular panel violated):\n{nan_instruments}"
+        )
 
     # Select and order columns to match schema
     df = df[['date', 'instrument', 'close', 'funding_rate', 'adv_notional', 'spread_frac', 'taker_fee_frac']]
@@ -484,6 +696,26 @@ def main():
         default='data/raw',
         help='Root directory for raw data files'
     )
+    parser.add_argument(
+        '--instruments',
+        nargs='+',
+        default=None,
+        help='Instrument list (default: all 5 Layer A instruments if not specified)'
+    )
+    parser.add_argument(
+        '--fail-on-missing-close',
+        action='store_true',
+        help='Raise error if any rows with NaN close are dropped (default: log warning only)'
+    )
+    parser.add_argument(
+        '--min-coverage',
+        type=float,
+        default=0.95,
+        help='Minimum coverage ratio for common_dates intersection (default: 0.95). '
+             'Fails if len(common_dates) < expected_days * min_coverage. '
+             'NOTE: Applies to the INTERSECTION across all instruments. '
+             'For multi-instrument scaling, may need to relax to 0.80 if instruments have different launch dates.'
+    )
 
     # Optional checksum verification
     parser.add_argument(
@@ -552,6 +784,9 @@ def main():
             data_dir=Path(args.data_dir),
             start_date=args.start_date,
             end_date=args.end_date,
+            instruments=args.instruments,
+            fail_on_missing_close=args.fail_on_missing_close,
+            min_coverage=args.min_coverage,
             verify_checksums=args.verify_checksums
         )
 
