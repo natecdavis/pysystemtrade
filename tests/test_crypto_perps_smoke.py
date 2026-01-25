@@ -937,13 +937,135 @@ class TestExecution:
 class TestAccounting:
     """Test suite for accounting (Step 9)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_accounting_identity(self):
         """
         Test accounting identity: total_pnl = price_pnl + funding_pnl - costs
         Tolerance: 1e-6
         """
-        pass
+        from systems.crypto_perps.accounting import calculate_daily_pnl
+
+        # Setup test data for one day
+        date = pd.Timestamp('2023-01-02')
+
+        # Positions (in notional dollars)
+        positions_prev = {
+            'BTCUSDT_PERP': 500.0,   # Long $500 BTC
+            'ETHUSDT_PERP': -300.0,  # Short $300 ETH
+        }
+        positions_curr = {
+            'BTCUSDT_PERP': 600.0,
+            'ETHUSDT_PERP': -200.0,
+        }
+
+        # Prices
+        prices_prev = {
+            'BTCUSDT_PERP': 20000.0,
+            'ETHUSDT_PERP': 1500.0,
+        }
+        prices_curr = {
+            'BTCUSDT_PERP': 20500.0,  # +2.5% price increase
+            'ETHUSDT_PERP': 1480.0,   # -1.33% price decrease
+        }
+
+        # Funding rates (small values, typical for crypto)
+        funding_rates = {
+            'BTCUSDT_PERP': 0.0001,  # 0.01% per day
+            'ETHUSDT_PERP': -0.0002, # -0.02% per day
+        }
+
+        # Costs (from trading)
+        costs = {
+            'BTCUSDT_PERP': 0.35,  # $0.35 cost
+            'ETHUSDT_PERP': 0.21,  # $0.21 cost
+        }
+
+        # Calculate PnL
+        price_pnl, funding_pnl, total_pnl, total_pnl_sum = calculate_daily_pnl(
+            date=date,
+            positions_prev=positions_prev,
+            positions_curr=positions_curr,
+            prices_prev=prices_prev,
+            prices_curr=prices_curr,
+            funding_rates=funding_rates,
+            costs=costs
+        )
+
+        # Validate accounting identity for each instrument
+        for inst in positions_prev.keys():
+            calculated_total = price_pnl[inst] + funding_pnl[inst] - costs[inst]
+            reported_total = total_pnl[inst]
+
+            assert np.isclose(calculated_total, reported_total, atol=1e-6), \
+                f"{inst}: identity violation. " \
+                f"price({price_pnl[inst]}) + funding({funding_pnl[inst]}) - cost({costs[inst]}) " \
+                f"= {calculated_total}, but reported {reported_total}"
+
+        # Validate sum
+        expected_sum = sum(total_pnl.values())
+        assert np.isclose(total_pnl_sum, expected_sum, atol=1e-6), \
+            f"Total PnL sum mismatch: {total_pnl_sum} vs {expected_sum}"
+
+    def test_price_pnl_calculation(self):
+        """
+        Test price PnL calculation
+        """
+        from systems.crypto_perps.accounting import calculate_price_pnl
+
+        # Long position with price increase
+        position = 500.0  # $500 notional
+        price_prev = 20000.0
+        price_curr = 20500.0  # +2.5%
+
+        # units = 500 / 20000 = 0.025 BTC
+        # price_pnl = 0.025 * (20500 - 20000) = 0.025 * 500 = 12.5
+        price_pnl = calculate_price_pnl(position, price_prev, price_curr)
+        expected = 12.5
+
+        assert np.isclose(price_pnl, expected, atol=0.01), \
+            f"Expected price PnL ${expected:.2f}, got ${price_pnl:.2f}"
+
+        # Short position with price decrease (profit)
+        position_short = -300.0  # Short $300
+        price_prev_short = 1500.0
+        price_curr_short = 1480.0  # -1.33%
+
+        # units = -300 / 1500 = -0.2 ETH
+        # price_pnl = -0.2 * (1480 - 1500) = -0.2 * (-20) = 4.0
+        price_pnl_short = calculate_price_pnl(position_short, price_prev_short, price_curr_short)
+        expected_short = 4.0
+
+        assert np.isclose(price_pnl_short, expected_short, atol=0.01), \
+            f"Expected price PnL ${expected_short:.2f}, got ${price_pnl_short:.2f}"
+
+    def test_funding_pnl_calculation(self):
+        """
+        Test funding PnL calculation
+        """
+        from systems.crypto_perps.accounting import calculate_funding_pnl
+
+        # Long position with positive funding (pay funding)
+        position = 500.0  # $500 notional long
+        price_prev = 20000.0
+        funding_rate = 0.0001  # 0.01% per day
+
+        # funding_pnl = 500 * 0.0001 = 0.05
+        funding_pnl = calculate_funding_pnl(position, price_prev, funding_rate)
+        expected = 0.05
+
+        assert np.isclose(funding_pnl, expected, atol=0.001), \
+            f"Expected funding PnL ${expected:.4f}, got ${funding_pnl:.4f}"
+
+        # Short position with positive funding (receive funding)
+        position_short = -300.0  # Short $300
+        price_prev_short = 1500.0
+        funding_rate_pos = 0.0002  # 0.02% per day
+
+        # funding_pnl = -300 * 0.0002 = -0.06 (receive funding, gain)
+        funding_pnl_short = calculate_funding_pnl(position_short, price_prev_short, funding_rate_pos)
+        expected_short = -0.06
+
+        assert np.isclose(funding_pnl_short, expected_short, atol=0.001), \
+            f"Expected funding PnL ${expected_short:.4f}, got ${funding_pnl_short:.4f}"
 
 
 class TestSystemOrchestrator:
