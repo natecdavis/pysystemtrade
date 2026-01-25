@@ -95,6 +95,84 @@ class TestDataAdapter:
         assert (date_diffs.dropna() == 1).mean() > 0.99, \
             "Date index should be daily frequency"
 
+    def test_symbol_mapping(self):
+        """
+        Test internal ID -> Binance symbol mapping
+        """
+        from scripts.build_example_dataset import BINANCE_SYMBOL_MAP
+
+        # Verify all expected instruments are mapped
+        assert BINANCE_SYMBOL_MAP['BTCUSDT_PERP'] == 'BTCUSDT'
+        assert BINANCE_SYMBOL_MAP['ETHUSDT_PERP'] == 'ETHUSDT'
+        assert BINANCE_SYMBOL_MAP['BNBUSDT_PERP'] == 'BNBUSDT'
+        assert BINANCE_SYMBOL_MAP['SOLUSDT_PERP'] == 'SOLUSDT'
+        assert BINANCE_SYMBOL_MAP['XRPUSDT_PERP'] == 'XRPUSDT'
+
+        # Verify all 5 instruments mapped
+        assert len(BINANCE_SYMBOL_MAP) == 5
+
+    def test_funding_rate_consolidation_alignment(self):
+        """
+        Verify funding event timestamps are correctly consolidated and aligned
+        to daily funding_rate[date] per the verified invariant.
+
+        NOTE: The expected values below MUST match the verified invariant
+        from inspect_alignment() output.
+        """
+        from scripts.build_example_dataset import consolidate_funding_to_daily
+
+        # Synthetic funding event data (8-hourly)
+        events = pd.DataFrame({
+            'calcTime': pd.to_datetime([
+                '2023-01-01 00:00:00',
+                '2023-01-01 08:00:00',
+                '2023-01-01 16:00:00',
+                '2023-01-02 00:00:00',
+                '2023-01-02 08:00:00',
+                '2023-01-02 16:00:00',
+            ], utc=True),
+            'fundingRate': [0.0001, 0.0002, 0.00015, 0.00008, 0.00012, 0.00010]
+        })
+
+        # Apply consolidation logic
+        daily_funding = consolidate_funding_to_daily(events)
+
+        # Expected: DEFAULT (no shift) - funding_rate[D] = sum of events from calendar day D
+        # If inspect_alignment() shows otherwise, update these values
+        expected = pd.DataFrame({
+            'date': pd.to_datetime(['2023-01-01', '2023-01-02']),
+            'funding_rate': [0.00045, 0.00030]  # sums: 0.00045 = 0.0001+0.0002+0.00015
+        })
+
+        pd.testing.assert_frame_equal(daily_funding, expected, atol=1e-8)
+
+    def test_adv_calculation(self):
+        """
+        Test ADV rolling calculation
+        """
+        from scripts.build_example_dataset import calculate_adv
+
+        # Sample volume data
+        klines = pd.DataFrame({
+            'date': pd.date_range('2023-01-01', periods=10, freq='D'),
+            'quote_volume': [100, 110, 105, 120, 115, 125, 130, 128, 135, 140]
+        })
+
+        # Calculate 3-day ADV
+        adv = calculate_adv(klines, window=3)
+
+        # Verify structure
+        assert 'date' in adv.columns
+        assert 'adv_notional' in adv.columns
+        assert len(adv) == len(klines)
+
+        # Verify first value (min_periods=1 means first value is just the first quote_volume)
+        assert adv.iloc[0]['adv_notional'] == 100.0
+
+        # Verify rolling calculation (3rd value should be mean of first 3)
+        expected_adv_day3 = (100 + 110 + 105) / 3
+        assert abs(adv.iloc[2]['adv_notional'] - expected_adv_day3) < 1e-6
+
 
 class TestEWMACRule:
     """Test suite for EWMAC rule implementation (Step 2)"""

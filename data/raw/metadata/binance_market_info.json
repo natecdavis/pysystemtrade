@@ -1,0 +1,22 @@
+{
+  "BTCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ETHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BNBUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "SOLUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "XRPUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  }
+}

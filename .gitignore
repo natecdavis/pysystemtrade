@@ -28,3 +28,13 @@ venv/
 
 # libreoffice
 .~lock.*
+
+# raw data files (not checked into repo)
+# Ignore bulk data files but keep structure and documentation
+data/raw/**/*.zip
+data/raw/**/*.CHECKSUM
+data/raw/**/*.csv
+
+# But track documentation and metadata
+!data/raw/**/README.md
+!data/raw/metadata/*.json
