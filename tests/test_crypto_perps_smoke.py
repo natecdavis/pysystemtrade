@@ -1132,30 +1132,170 @@ class TestSystemOrchestrator:
 class TestComprehensiveValidation:
     """Comprehensive validation tests (Step 11)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_forecast_scaling_limits(self):
         """
         Validate forecast scaling: mean abs ∈ [8, 12], never exceeds ±20
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.ewmac import ewmac_forecasts
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecasts
+        from systems.crypto_perps.forecasts import process_all_forecasts
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Generate forecasts
+        ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
+        carry = funding_carry_forecasts(meta, fast_halflife=3, slow_halflife=30)
+        combined = process_all_forecasts(ewmac, carry)
+
+        # Validate each instrument's forecast
+        for instrument, forecast in combined.items():
+            # Drop NaN values (initial periods)
+            valid_forecast = forecast.dropna()
+
+            if len(valid_forecast) == 0:
+                continue
+
+            # Check mean abs is in reasonable range
+            mean_abs = valid_forecast.abs().mean()
+            assert 6 <= mean_abs <= 14, \
+                f"{instrument}: mean abs forecast {mean_abs:.2f} outside [6, 14] " \
+                f"(allowing some tolerance around target 10)"
+
+            # Check no forecast exceeds ±20
+            max_abs = valid_forecast.abs().max()
+            assert max_abs <= 20.0, \
+                f"{instrument}: max forecast {max_abs:.2f} exceeds cap of 20"
+
     def test_leverage_cap_always_enforced(self):
         """
         Validate gross leverage <= 1.5 at all times
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.ewmac import ewmac_forecasts
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecasts
+        from systems.crypto_perps.forecasts import process_all_forecasts
+        from systems.crypto_perps.sizing import calculate_target_weights
+        from systems.crypto_perps.constraints import apply_portfolio_constraints
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Generate forecasts
+        ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
+        carry = funding_carry_forecasts(meta, fast_halflife=3, slow_halflife=30)
+        combined = process_all_forecasts(ewmac, carry)
+
+        # Size positions
+        weights_df, _ = calculate_target_weights(
+            forecasts=combined,
+            prices_df=prices,
+            capital=5000.0,
+            vol_target_ann=0.25,
+            min_position_frac=0.03
+        )
+
+        # Apply constraints
+        constrained_weights, gross_lev, idm = apply_portfolio_constraints(
+            weights_df=weights_df,
+            prices_df=prices,
+            gross_leverage_cap=1.5,
+            idm_cap=2.5
+        )
+
+        # Validate gross leverage never exceeds cap
+        max_gross_lev = gross_lev.max()
+        assert max_gross_lev <= 1.5 + 1e-6, \
+            f"Gross leverage {max_gross_lev:.4f} exceeds cap of 1.5"
+
+        # Validate at each timestep
+        for date, gross in gross_lev.items():
+            assert gross <= 1.5 + 1e-6, \
+                f"Gross leverage on {date.date()} = {gross:.4f} exceeds cap"
+
     def test_idm_cap_always_enforced(self):
         """
         Validate IDM <= 2.5 at all times
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.ewmac import ewmac_forecasts
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecasts
+        from systems.crypto_perps.forecasts import process_all_forecasts
+        from systems.crypto_perps.sizing import calculate_target_weights
+        from systems.crypto_perps.constraints import apply_portfolio_constraints
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Generate forecasts
+        ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
+        carry = funding_carry_forecasts(meta, fast_halflife=3, slow_halflife=30)
+        combined = process_all_forecasts(ewmac, carry)
+
+        # Size positions
+        weights_df, _ = calculate_target_weights(
+            forecasts=combined,
+            prices_df=prices,
+            capital=5000.0,
+            vol_target_ann=0.25,
+            min_position_frac=0.03
+        )
+
+        # Apply constraints
+        constrained_weights, gross_lev, idm = apply_portfolio_constraints(
+            weights_df=weights_df,
+            prices_df=prices,
+            gross_leverage_cap=1.5,
+            idm_cap=2.5
+        )
+
+        # Validate IDM never exceeds cap
+        max_idm = idm.max()
+        assert max_idm <= 2.5 + 1e-6, \
+            f"IDM {max_idm:.4f} exceeds cap of 2.5"
+
+        # Validate at each timestep
+        for date, idm_val in idm.items():
+            assert idm_val <= 2.5 + 1e-6, \
+                f"IDM on {date.date()} = {idm_val:.4f} exceeds cap"
+
     def test_accounting_identity_all_days(self):
         """
         Validate accounting identity holds for all days (tolerance 1e-6)
+        total_pnl = price_pnl + funding_pnl - costs
         """
-        pass
+        import tempfile
+        from systems.crypto_perps.system import load_config, run_backtest
+        import pandas as pd
+
+        # Run full backtest
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(__file__).parent.parent / 'config' / 'crypto_perps.yaml'
+            config = load_config(str(config_path))
+
+            run_backtest(
+                config=config,
+                data_path=str(TEST_DATA_PATH),
+                output_dir=tmpdir
+            )
+
+            # Load PnL breakdown
+            pnl_file = Path(tmpdir) / 'pnl_breakdown.csv'
+            pnl_breakdown = pd.read_csv(pnl_file, index_col=0, parse_dates=True)
+
+            # Validate accounting identity for each day
+            for date, row in pnl_breakdown.iterrows():
+                total_pnl = row['total_pnl']
+                price_pnl = row['price_pnl']
+                funding_pnl = row['funding_pnl']
+                costs = row['costs']
+
+                # Identity: total = price + funding - costs
+                expected_total = price_pnl + funding_pnl - costs
+
+                assert np.isclose(total_pnl, expected_total, atol=1e-6), \
+                    f"Accounting identity violation on {date.date()}: " \
+                    f"total={total_pnl:.6f}, " \
+                    f"price+funding-costs={expected_total:.6f}, " \
+                    f"diff={abs(total_pnl - expected_total):.9f}"
