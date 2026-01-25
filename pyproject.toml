@@ -60,6 +60,10 @@ log_cli_level = 10
 log_format = "%(asctime)s %(levelname)s %(name)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
 doctest_optionflags = ["ELLIPSIS", "NUMBER", "NORMALIZE_WHITESPACE"]
+markers = [
+    "integration: Integration tests (slow, skip by default)",
+    "slow: Slow tests (skip by default)",
+]
 testpaths = [
     # "syscore",
     # "syscore/interactive/display",

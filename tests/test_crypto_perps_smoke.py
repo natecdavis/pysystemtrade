@@ -2961,3 +2961,73 @@ class TestDiagnosticsIntegration:
             diagnostics_file = output_dir / 'diagnostics.parquet'
             assert not diagnostics_file.exists(), \
                 "Diagnostics file should NOT be written when disabled"
+
+
+class TestMetadata:
+    """Test suite for metadata logging"""
+
+    def test_metadata_structure(self):
+        """
+        Test that metadata.json is written with correct structure
+        """
+        from systems.crypto_perps.system import run_backtest, load_config
+        from pathlib import Path
+        import tempfile
+        import json
+
+        # Load base config
+        config_path = Path(__file__).parent.parent / 'config' / 'crypto_perps.yaml'
+        config = load_config(str(config_path))
+
+        # Run backtest in temp directory
+        data_path = Path(__file__).parent.parent / 'data' / 'example_crypto_perps.parquet'
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+
+            # Run backtest
+            run_backtest(config, str(data_path), str(output_dir))
+
+            # Verify metadata.json exists
+            metadata_file = output_dir / 'metadata.json'
+            assert metadata_file.exists(), "metadata.json should be written"
+
+            # Read and verify structure
+            with open(metadata_file) as f:
+                metadata = json.load(f)
+
+            # Verify top-level fields
+            assert 'timestamp' in metadata
+            assert 'python_version' in metadata
+            assert 'git_commit' in metadata
+            assert 'git_status' in metadata
+            assert 'dataset_path' in metadata
+            assert 'dataset_fingerprint' in metadata
+            assert 'config_snapshot' in metadata
+            assert 'headline_metrics' in metadata
+
+            # Verify timestamp format (ISO 8601 with Z)
+            assert metadata['timestamp'].endswith('Z')
+
+            # Verify git commit is hex or 'unknown'
+            git_commit = metadata['git_commit']
+            assert git_commit == 'unknown' or (len(git_commit) == 40 and all(c in '0123456789abcdef' for c in git_commit))
+
+            # Verify git status
+            assert metadata['git_status'] in ['clean', 'dirty', 'unknown']
+
+            # Verify dataset fingerprint is MD5 (32 hex chars)
+            assert len(metadata['dataset_fingerprint']) == 32
+            assert all(c in '0123456789abcdef' for c in metadata['dataset_fingerprint'])
+
+            # Verify headline metrics structure
+            metrics = metadata['headline_metrics']
+            assert 'sharpe' in metrics
+            assert 'ann_return' in metrics
+            assert 'ann_vol' in metrics
+            assert 'max_drawdown' in metrics
+            assert 'gross_exposure' in metrics
+            assert 'turnover' in metrics
+
+            # Verify config snapshot matches input
+            assert metadata['config_snapshot']['system']['capital'] == config['system']['capital']

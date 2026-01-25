@@ -37,6 +37,8 @@ from systems.crypto_perps.constraints import apply_portfolio_constraints
 from systems.crypto_perps.execution import execute_trades
 from systems.crypto_perps.accounting import calculate_cumulative_pnl
 from systems.crypto_perps.diagnostics import DiagnosticsCollector
+from systems.crypto_perps.metrics import calculate_metrics
+from systems.crypto_perps.metadata import write_run_metadata
 
 # Configure logging
 logging.basicConfig(
@@ -336,6 +338,38 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
         diagnostics_file = output_path / 'diagnostics.parquet'
         collector.write_parquet(diagnostics_file)
         logger.info(f"  Saved diagnostics: {diagnostics_file}")
+
+    # Calculate final metrics and write metadata
+    logger.info("\nCalculating metrics and writing metadata...")
+
+    # Calculate overall constraint scalar
+    overall_scalars = pd.Series(index=weights_df.index, dtype=float)
+    for date in weights_df.index:
+        gross_lev = gross_lev_series.loc[date]
+        idm = idm_series.loc[date]
+        scalar = 1.0
+        if gross_lev > gross_lev_cap:
+            scalar = gross_lev_cap / gross_lev
+        if idm > idm_cap:
+            scalar = min(scalar, idm_cap / idm)
+        overall_scalars.loc[date] = scalar
+
+    final_metrics = calculate_metrics(
+        equity_curve=equity_curve,
+        weights_df=constrained_weights_df,
+        trades_df=trades_df,
+        capital=capital,
+        state_df=None,  # Phase 1: no state machine
+        constraint_scalars=overall_scalars
+    )
+
+    write_run_metadata(
+        outdir=output_path,
+        config=config,
+        data_path=Path(data_path),
+        metrics=final_metrics
+    )
+    logger.info(f"  Saved metadata: {output_path / 'metadata.json'}")
 
     logger.info("\n" + "=" * 80)
     logger.info("Backtest complete!")
