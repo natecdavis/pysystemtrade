@@ -648,19 +648,142 @@ class TestPositionSizing:
 class TestConstraints:
     """Test suite for portfolio constraints (Step 7)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_gross_leverage_cap(self):
         """
         Test that gross leverage cap is enforced
         """
-        pass
+        from systems.crypto_perps.constraints import apply_gross_leverage_cap
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Create weights with gross leverage > cap
+        weights = {
+            'BTCUSDT_PERP': 0.8,
+            'ETHUSDT_PERP': 0.6,
+            'BNBUSDT_PERP': -0.4,
+            'SOLUSDT_PERP': 0.3,
+            'XRPUSDT_PERP': 0.2
+        }
+
+        # Gross leverage = 0.8 + 0.6 + 0.4 + 0.3 + 0.2 = 2.3
+        gross_before = sum(abs(w) for w in weights.values())
+        assert np.isclose(gross_before, 2.3), f"Expected gross=2.3, got {gross_before}"
+
+        # Apply cap
+        cap = 1.5
+        adjusted = apply_gross_leverage_cap(weights, cap)
+
+        # Validate cap is enforced
+        gross_after = sum(abs(w) for w in adjusted.values())
+        assert gross_after <= cap, f"Gross leverage {gross_after} exceeds cap {cap}"
+        assert np.isclose(gross_after, cap), \
+            f"Gross leverage should be exactly {cap}, got {gross_after}"
+
+        # Validate proportional scaling
+        # scaling factor = 1.5 / 2.3 = 0.6522
+        expected_scaling = cap / gross_before
+        for inst in weights.keys():
+            expected_weight = weights[inst] * expected_scaling
+            assert np.isclose(adjusted[inst], expected_weight), \
+                f"{inst}: expected {expected_weight}, got {adjusted[inst]}"
+
+    def test_idm_calculation(self):
+        """
+        Test IDM calculation
+        """
+        from systems.crypto_perps.constraints import calculate_idm
+        import pandas as pd
+
+        # Create simple correlation matrix (perfect correlation)
+        instruments = ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'BNBUSDT_PERP']
+        corr_perfect = pd.DataFrame(
+            np.ones((3, 3)),
+            index=instruments,
+            columns=instruments
+        )
+
+        # Equal weights
+        weights = {inst: 1.0/3 for inst in instruments}
+
+        # IDM with perfect correlation should be 1.0
+        idm_perfect = calculate_idm(weights, corr_perfect)
+        assert np.isclose(idm_perfect, 1.0, atol=0.01), \
+            f"IDM with perfect correlation should be ~1.0, got {idm_perfect}"
+
+        # Create zero correlation matrix (perfect diversification)
+        corr_zero = pd.DataFrame(
+            np.eye(3),
+            index=instruments,
+            columns=instruments
+        )
+
+        # IDM with zero correlation should be sqrt(N) = sqrt(3) ≈ 1.73
+        idm_zero = calculate_idm(weights, corr_zero)
+        expected_idm = np.sqrt(3)
+        assert np.isclose(idm_zero, expected_idm, atol=0.01), \
+            f"IDM with zero correlation should be ~{expected_idm}, got {idm_zero}"
+
     def test_idm_cap(self):
         """
         Test that IDM cap is enforced
         """
-        pass
+        from systems.crypto_perps.constraints import apply_idm_cap, calculate_idm
+        import pandas as pd
+
+        # Create zero correlation matrix (high diversification)
+        instruments = ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'BNBUSDT_PERP']
+        corr_matrix = pd.DataFrame(
+            np.eye(3),
+            index=instruments,
+            columns=instruments
+        )
+
+        # Equal weights should give IDM = sqrt(3) ≈ 1.73
+        weights = {inst: 1.0/3 for inst in instruments}
+        idm_before = calculate_idm(weights, corr_matrix)
+
+        # Apply cap lower than current IDM
+        cap = 1.5
+        adjusted = apply_idm_cap(weights, corr_matrix, cap)
+
+        # Validate cap is enforced
+        idm_after = calculate_idm(adjusted, corr_matrix)
+        assert idm_after <= cap + 0.01, \
+            f"IDM {idm_after} exceeds cap {cap}"
+
+    def test_ewma_correlation(self):
+        """
+        Test EWMA correlation calculation
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.constraints import calculate_ewma_correlation
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Calculate returns
+        returns = prices.pct_change().dropna()
+
+        # Calculate EWMA correlation
+        corr_matrix = calculate_ewma_correlation(returns, span=60, min_periods=20)
+
+        # Validate
+        assert isinstance(corr_matrix, pd.DataFrame)
+        assert corr_matrix.shape == (5, 5), "Should be 5x5 matrix"
+
+        # Diagonal should be 1.0
+        for inst in corr_matrix.columns:
+            assert np.isclose(corr_matrix.loc[inst, inst], 1.0), \
+                f"Diagonal for {inst} should be 1.0"
+
+        # Matrix should be symmetric
+        for i, inst1 in enumerate(corr_matrix.columns):
+            for j, inst2 in enumerate(corr_matrix.columns):
+                assert np.isclose(corr_matrix.loc[inst1, inst2],
+                                  corr_matrix.loc[inst2, inst1]), \
+                    f"Correlation not symmetric: {inst1}-{inst2}"
+
+        # Values should be in [-1, 1]
+        assert (corr_matrix.values >= -1.0).all() and (corr_matrix.values <= 1.0).all(), \
+            "Correlation values should be in [-1, 1]"
 
 
 class TestExecution:
