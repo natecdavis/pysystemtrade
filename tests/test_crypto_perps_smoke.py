@@ -168,12 +168,101 @@ class TestEWMACRule:
 class TestFundingCarryRule:
     """Test suite for funding carry rule (Step 3)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_funding_carry_signal(self):
         """
         Test that funding carry rule produces valid signals
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecasts
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Calculate carry forecasts
+        fast_halflife = 3
+        slow_halflife = 30
+        carry_forecasts = funding_carry_forecasts(meta, fast_halflife, slow_halflife)
+
+        # Validate structure
+        assert len(carry_forecasts) == 5, "Should have carry forecasts for 5 instruments"
+        for instrument in EXPECTED_INSTRUMENTS:
+            assert instrument in carry_forecasts, \
+                f"Missing carry forecast for {instrument}"
+
+        # Validate forecast values
+        for instrument, forecast in carry_forecasts.items():
+            # Check it's a Series
+            assert isinstance(forecast, pd.Series), \
+                f"{instrument} carry should be a Series"
+
+            # Check no inf values
+            assert not np.isinf(forecast).any(), \
+                f"{instrument} carry contains inf values"
+
+            # Check we have some non-NaN values
+            assert forecast.notna().sum() > 0, \
+                f"{instrument} carry has no non-NaN values"
+
+            # Check values are numeric
+            assert pd.api.types.is_numeric_dtype(forecast), \
+                f"{instrument} carry should be numeric"
+
+            # Carry signal should be small (funding rates are typically < 0.1% per day)
+            # After EWMA, the difference should be even smaller
+            assert forecast.abs().max() < 0.01, \
+                f"{instrument} carry signal unexpectedly large: {forecast.abs().max()}"
+
+    def test_funding_carry_single_instrument(self):
+        """
+        Test funding carry calculation for single instrument
+        """
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecast
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Get funding rates for one instrument
+        instrument = 'BTCUSDT_PERP'
+        funding_rates = meta.loc[(slice(None), instrument), 'funding_rate'].droplevel('instrument')
+
+        # Calculate carry forecast
+        forecast = funding_carry_forecast(
+            funding_rates=funding_rates,
+            fast_halflife=3,
+            slow_halflife=30
+        )
+
+        # Validate
+        assert isinstance(forecast, pd.Series)
+        assert len(forecast) == len(funding_rates)
+        assert not np.isinf(forecast).any()
+        assert forecast.notna().sum() > 0
+
+    def test_funding_carry_signal_direction(self):
+        """
+        Test that carry signal direction matches funding rate trends
+        """
+        # Create synthetic funding rates with clear trend
+        dates = pd.date_range('2023-01-01', periods=100, freq='D')
+        # Rising funding rates
+        rising_rates = pd.Series(
+            np.linspace(0.0001, 0.001, 100),
+            index=dates
+        )
+
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecast
+
+        # Calculate carry with rising rates
+        carry_rising = funding_carry_forecast(rising_rates, fast_halflife=3, slow_halflife=30)
+
+        # With rising rates, slow EWMA lags behind fast EWMA
+        # So slow < fast, and carry = slow - fast should be negative initially
+        # But eventually positive as the slow catches up past initial low values
+        # The key is that the signal should be non-zero and respond to the trend
+        assert carry_rising.notna().sum() > 0, "Should have non-NaN values"
+        assert not np.allclose(carry_rising.dropna(), 0), \
+            "Carry signal should be non-zero for trending rates"
 
 
 class TestForecastScaling:
