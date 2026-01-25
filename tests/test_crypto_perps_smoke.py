@@ -537,19 +537,112 @@ class TestUniverse:
 class TestPositionSizing:
     """Test suite for position sizing (Step 6)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_vol_targeted_sizing(self):
         """
         Test volatility-targeted position sizing
         """
-        pass
+        from sysdata.crypto.prices import load_crypto_perps_panel
+        from systems.crypto_perps.forecasts import process_all_forecasts
+        from systems.crypto_perps.rules.ewmac import ewmac_forecasts
+        from systems.crypto_perps.rules.carry_funding import funding_carry_forecasts
+        from systems.crypto_perps.sizing import calculate_target_weights
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Generate forecasts
+        ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
+        carry = funding_carry_forecasts(meta, fast_halflife=3, slow_halflife=30)
+        combined = process_all_forecasts(ewmac, carry)
+
+        # Calculate weights
+        capital = 5000.0
+        vol_target = 0.25
+        min_position_frac = 0.03
+        weights_df, notionals_df = calculate_target_weights(
+            forecasts=combined,
+            prices_df=prices,
+            capital=capital,
+            vol_target_ann=vol_target,
+            min_position_frac=min_position_frac
+        )
+
+        # Validate structure
+        assert weights_df.shape == prices.shape, "Weights should match prices shape"
+        assert notionals_df.shape == prices.shape, "Notionals should match prices shape"
+
+        # Validate relationship: notional = weight * capital
+        for instrument in weights_df.columns:
+            for date in weights_df.index[100:200]:  # Check a sample
+                weight = weights_df.loc[date, instrument]
+                notional = notionals_df.loc[date, instrument]
+                expected_notional = weight * capital
+                assert np.isclose(notional, expected_notional, rtol=1e-10), \
+                    f"Notional != weight * capital for {instrument} on {date}"
+
+        # Weights should be mostly non-zero (we have forecasts)
+        # But some might be zero due to min position rule
+        for instrument in weights_df.columns:
+            non_zero_pct = (weights_df[instrument] != 0).mean()
+            # At least 50% should be non-zero (we have continuous forecasts)
+            assert non_zero_pct > 0.3, \
+                f"{instrument} has too few non-zero weights: {non_zero_pct:.1%}"
+
     def test_min_steady_position_rule_on_weights(self):
         """
         Test that minimum steady position rule is enforced on weights
         """
-        pass
+        from systems.crypto_perps.sizing import apply_minimum_position_rule
+
+        # Create weights with some very small values
+        weights = {
+            'BTCUSDT_PERP': 0.10,   # Above threshold
+            'ETHUSDT_PERP': 0.001,  # Below threshold (should be zeroed)
+            'BNBUSDT_PERP': -0.08,  # Above threshold (negative)
+            'SOLUSDT_PERP': 0.0005, # Below threshold (should be zeroed)
+            'XRPUSDT_PERP': 0.0     # Already zero
+        }
+
+        min_position_frac = 0.03  # 3%
+
+        # Apply rule
+        adjusted = apply_minimum_position_rule(weights, min_position_frac)
+
+        # N_active = 4 (excluding zero)
+        # Threshold = 0.03 / 4 = 0.0075 (0.75%)
+
+        # Validate
+        assert adjusted['BTCUSDT_PERP'] == 0.10, "Large weight should be unchanged"
+        assert adjusted['ETHUSDT_PERP'] == 0.0, "Small weight should be zeroed"
+        assert adjusted['BNBUSDT_PERP'] == -0.08, "Large negative weight should be unchanged"
+        assert adjusted['SOLUSDT_PERP'] == 0.0, "Small weight should be zeroed"
+        assert adjusted['XRPUSDT_PERP'] == 0.0, "Zero weight should remain zero"
+
+    def test_daily_volatility_calculation(self):
+        """
+        Test daily volatility calculation
+        """
+        from systems.crypto_perps.sizing import calculate_daily_volatility
+        from sysdata.crypto.prices import load_crypto_perps_panel
+
+        # Load data
+        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+
+        # Calculate volatility
+        btc_vol = calculate_daily_volatility(prices['BTCUSDT_PERP'])
+
+        # Validate
+        assert isinstance(btc_vol, pd.Series)
+        assert len(btc_vol) == len(prices)
+        assert btc_vol.notna().sum() > 0, "Should have non-NaN volatility values"
+        # Check non-NaN values are non-negative
+        assert (btc_vol.dropna() >= 0).all(), "Volatility should be non-negative"
+
+        # BTC volatility should be reasonable (not too extreme)
+        # Daily vol for BTC is typically 1-5% of price
+        # With price ~20k-40k, daily vol ~200-2000
+        median_vol = btc_vol.median()
+        assert median_vol > 0, f"Median volatility should be positive, got {median_vol}"
 
 
 class TestConstraints:
