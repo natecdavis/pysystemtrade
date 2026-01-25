@@ -220,10 +220,15 @@ def execute_trades(
     eligibility_df: pd.DataFrame,
     daily_vols_df: pd.DataFrame,
     capital: float,
-    buffer_frac: float
+    buffer_frac: float,
+    state_df: pd.DataFrame = None  # NEW: Phase 2
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Execute trades with buffers and cost calculation
+
+    Phase 2 Addition:
+    - If state_df provided and state == BANNED_FLATTEN:
+      Force trade to target regardless of buffer (immediate flatten)
 
     Args:
         target_weights_df: DataFrame with date index and instrument columns (target weights)
@@ -234,6 +239,7 @@ def execute_trades(
         daily_vols_df: DataFrame with date index and instrument columns (daily vols)
         capital: Total capital
         buffer_frac: Buffer fraction (e.g., 0.1)
+        state_df: Optional DataFrame with instrument states (Phase 2)
 
     Returns:
         Tuple of (trades_df, rtc_costs_df, srcosts_df):
@@ -244,6 +250,7 @@ def execute_trades(
     Notes:
         - Iterates through each date
         - Applies buffers and eligibility checks
+        - Phase 2: BANNED_FLATTEN bypass forces immediate trade to target
         - Calculates costs for executed trades
     """
     dates = target_weights_df.index
@@ -277,7 +284,33 @@ def execute_trades(
                     'taker_fee_frac': 0.0004
                 }
 
-        # Apply trading buffers
+        # Phase 2: Check for BANNED_FLATTEN bypass (before buffer logic)
+        # If instrument is BANNED_FLATTEN, force trade to target regardless of buffer
+        if state_df is not None:
+            from systems.crypto_perps.universe import InstrumentState
+
+            # Get states for this date
+            states = state_df.loc[date].to_dict()
+
+            # Override trades for BANNED_FLATTEN instruments
+            for inst in instruments:
+                state = states.get(inst, InstrumentState.ACTIVE.value)
+                if state == InstrumentState.BANNED_FLATTEN.value:
+                    # Force trade to target (bypass buffer)
+                    target_val = target.get(inst, 0.0)
+                    current_val = current.get(inst, 0.0)
+                    desired_trade = target_val - current_val
+
+                    # Only record trade if meaningful (avoid spurious trades when already flat)
+                    if abs(desired_trade) > 1e-10:
+                        target[inst] = target_val  # Ensure target is set for cost calc
+                        # Mark as eligible for trading (override ineligibility)
+                        eligible[inst] = True
+                    else:
+                        # Already flat, no trade needed
+                        target[inst] = current_val  # No delta
+
+        # Apply trading buffers (for non-BANNED instruments)
         trades = apply_trading_buffer(
             target_weights=target,
             current_weights=current,
@@ -288,7 +321,26 @@ def execute_trades(
             eligible=eligible
         )
 
-        # Calculate costs
+        # Phase 2: Override trades for BANNED_FLATTEN (explicit bypass)
+        # This ensures immediate execution even if buffer would prevent it
+        if state_df is not None:
+            from systems.crypto_perps.universe import InstrumentState
+
+            states = state_df.loc[date].to_dict()
+            for inst in instruments:
+                state = states.get(inst, InstrumentState.ACTIVE.value)
+                if state == InstrumentState.BANNED_FLATTEN.value:
+                    target_val = target.get(inst, 0.0)
+                    current_val = current.get(inst, 0.0)
+                    desired_trade = target_val - current_val
+
+                    # Force trade regardless of buffer
+                    if abs(desired_trade) > 1e-10:
+                        trades[inst] = desired_trade
+                    else:
+                        trades[inst] = 0.0
+
+        # Calculate costs for all trades (including bypass trades)
         rtc_costs, srcosts = calculate_trade_costs(
             trades=trades,
             prices=prices,

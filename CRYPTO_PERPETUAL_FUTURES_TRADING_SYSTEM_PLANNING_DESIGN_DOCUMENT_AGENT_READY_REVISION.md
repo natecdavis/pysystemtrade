@@ -211,7 +211,7 @@ Costs applied at trade time only.
 ```yaml
 system:
   vol_target_ann: 0.25
-  gross_leverage_cap: 1.5
+  gross_leverage_cap: 2.0
   idm_cap: 2.5
   min_position_frac: 0.03
 

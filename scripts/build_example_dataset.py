@@ -104,6 +104,81 @@ def inspect_alignment(
     print("=" * 80)
 
 
+def normalize_kline_columns(df: pd.DataFrame, file_path: Path) -> pd.DataFrame:
+    """
+    Normalize Binance kline column names to canonical format
+
+    Handles variations: close_time vs CloseTime vs closeTime
+
+    Raises:
+        ValueError: If required columns cannot be mapped
+    """
+    # Column mapping (lowercase for case-insensitive matching)
+    col_map_lower = {col.lower(): col for col in df.columns}
+
+    # Required columns and their variations
+    required = {
+        'close_time': ['close_time', 'closetime', 'close time'],
+        'close': ['close', 'close price'],
+        'volume': ['volume', 'base volume', 'base_volume'],
+        'quote_volume': ['quote_volume', 'quotevolume', 'quote volume', 'quoteassetvolume', 'quote_asset_volume'],
+    }
+
+    # Map columns
+    mapped = {}
+    for canonical, variations in required.items():
+        found = None
+        for var in variations:
+            if var.lower() in col_map_lower:
+                found = col_map_lower[var.lower()]
+                break
+
+        if found is None:
+            raise ValueError(
+                f"Cannot find required column '{canonical}' in {file_path}. "
+                f"Available columns: {list(df.columns)}. "
+                f"Binance may have changed CSV schema."
+            )
+        mapped[found] = canonical
+
+    return df.rename(columns=mapped)
+
+
+def normalize_funding_columns(df: pd.DataFrame, file_path: Path) -> pd.DataFrame:
+    """
+    Normalize Binance funding rate column names to canonical format
+
+    Handles variations: calc_time vs calcTime vs fundingTime
+
+    Raises:
+        ValueError: If required columns cannot be mapped
+    """
+    col_map_lower = {col.lower(): col for col in df.columns}
+
+    required = {
+        'calcTime': ['calc_time', 'calctime', 'funding_time', 'fundingtime'],
+        'fundingRate': ['last_funding_rate', 'fundingrate', 'funding_rate', 'rate'],
+    }
+
+    mapped = {}
+    for canonical, variations in required.items():
+        found = None
+        for var in variations:
+            if var.lower() in col_map_lower:
+                found = col_map_lower[var.lower()]
+                break
+
+        if found is None:
+            raise ValueError(
+                f"Cannot find required column '{canonical}' in {file_path}. "
+                f"Available columns: {list(df.columns)}. "
+                f"Binance may have changed CSV schema."
+            )
+        mapped[found] = canonical
+
+    return df.rename(columns=mapped)
+
+
 def load_binance_klines(
     instrument: str,
     data_dir: Path,
@@ -134,9 +209,37 @@ def load_binance_klines(
     for zip_file in sorted(klines_dir.glob(f'{binance_symbol}-1d-*.zip')):
         with zipfile.ZipFile(zip_file) as z:
             csv_name = zip_file.stem + '.csv'  # Binance convention
-            with z.open(csv_name) as f:
-                # Binance Data Vision files have headers; use header=0 to read them
-                df = pd.read_csv(f, header=0)
+            with z.open(csv_name) as f_raw:
+                # Read once into BytesIO (ZipExtFile doesn't support seek)
+                from io import BytesIO
+                data = f_raw.read()
+
+                try:
+                    # Try header=0 first (current Binance format)
+                    df = pd.read_csv(BytesIO(data), header=0)
+                    df = normalize_kline_columns(df, zip_file)
+                except (ValueError, KeyError) as e:
+                    # Fallback: Try header=None with positional mapping
+                    logger.warning(f"Header parsing failed for {zip_file}, trying positional mapping: {e}")
+                    try:
+                        df = pd.read_csv(BytesIO(data), header=None)
+                        # Binance klines standard 12-column format (0-indexed):
+                        # 0: open_time, 1: open, 2: high, 3: low, 4: close, 5: volume,
+                        # 6: close_time, 7: quote_asset_volume, 8: count, 9: taker_buy_volume, ...
+                        df = df.rename(columns={
+                            4: 'close',         # Column 4: close price
+                            5: 'volume',        # Column 5: base asset volume
+                            6: 'close_time',    # Column 6: close timestamp (ms)
+                            7: 'quote_volume'   # Column 7: quote asset volume (=quote_asset_volume)
+                        })
+                        df = normalize_kline_columns(df, zip_file)
+                    except Exception as e2:
+                        logger.error(f"Both header=0 and header=None failed for {zip_file}")
+                        raise ValueError(
+                            f"CSV parsing failed for {zip_file}. "
+                            f"Binance may have changed CSV format. "
+                            f"Header error: {e}, Positional error: {e2}"
+                        ) from e2
                 all_data.append(df)
 
     if not all_data:
@@ -261,15 +364,84 @@ def load_binance_funding_rates(instrument: str, data_dir: Path) -> pd.DataFrame:
     for zip_file in sorted(funding_dir.glob(f'{binance_symbol}-fundingRate-*.zip')):
         with zipfile.ZipFile(zip_file) as z:
             csv_name = zip_file.stem + '.csv'  # Binance convention
-            with z.open(csv_name) as f:
-                # Binance Data Vision files have headers; use header=0 to read them
-                # Actual columns: calc_time, funding_interval_hours, last_funding_rate
-                # Rename to match downstream code expectations
-                df = pd.read_csv(f, header=0)
-                df = df.rename(columns={
-                    'calc_time': 'calcTime',
-                    'last_funding_rate': 'fundingRate'
-                })
+            with z.open(csv_name) as f_raw:
+                from io import BytesIO
+                data = f_raw.read()
+
+                try:
+                    # Try header=0 first
+                    df = pd.read_csv(BytesIO(data), header=0)
+                    df = normalize_funding_columns(df, zip_file)
+                except (ValueError, KeyError) as e:
+                    # Fallback: Try header=None with adaptive positional mapping
+                    logger.warning(f"Header parsing failed for {zip_file}, trying positional mapping: {e}")
+                    try:
+                        df = pd.read_csv(BytesIO(data), header=None)
+
+                        # Adaptive positional mapping with scoring (Binance funding format varies)
+                        # Column 0 MUST be timestamp (int ms or datetime-parseable)
+                        if df.shape[1] < 2:
+                            raise ValueError(f"Funding CSV has only {df.shape[1]} columns, need at least 2")
+
+                        # Column 0 is always timestamp
+                        df = df.rename(columns={0: 'calcTime'})
+
+                        # Find fundingRate column using scoring heuristic
+                        # Do NOT use pd.api.types.is_numeric_dtype (columns may be object strings)
+                        candidate_scores = []
+
+                        for col_idx in range(1, df.shape[1]):
+                            # Coerce to numeric (handles object strings)
+                            s = pd.to_numeric(df[col_idx], errors='coerce')
+
+                            # Convert to NumPy array to avoid dtype issues with np.isfinite
+                            s_np = s.to_numpy(dtype=float, na_value=np.nan)
+                            finite_mask = np.isfinite(s_np)
+
+                            if finite_mask.sum() == 0:
+                                continue  # All NaN, skip
+
+                            parseable_ratio = finite_mask.mean()
+                            s_finite_np = s_np[finite_mask]
+                            median_abs = np.median(np.abs(s_finite_np))
+                            nonzero_ratio = (np.abs(s_finite_np) > 0).mean()
+
+                            # Hard thresholds (reject non-funding columns)
+                            if parseable_ratio < 0.80:
+                                continue  # Too many unparseable values
+                            if median_abs <= 1e-12:
+                                continue  # All zeros / near-zero
+                            if median_abs >= 0.5:
+                                continue  # Too large to be funding rate (e.g., interval hours = 8)
+
+                            # Score: prefer small but nonzero funding-like magnitudes
+                            score = parseable_ratio + 0.2 * nonzero_ratio - 0.1 * np.log10(1 + median_abs)
+                            candidate_scores.append((col_idx, score, median_abs))
+
+                        if not candidate_scores:
+                            logger.error(f"No valid fundingRate column found in {zip_file}")
+                            logger.error(f"CSV shape: {df.shape}, columns: {list(df.columns)}")
+                            logger.error(f"Sample rows:\n{df.head(3)}")
+                            raise ValueError(
+                                f"Funding CSV parsing failed for {zip_file}. "
+                                f"No column matches funding rate heuristic (small nonzero values). "
+                                f"Binance may have changed CSV format."
+                            )
+
+                        # Pick best-scoring column
+                        funding_col = max(candidate_scores, key=lambda x: x[1])[0]
+                        df = df.rename(columns={funding_col: 'fundingRate'})
+                        df = normalize_funding_columns(df, zip_file)
+
+                    except Exception as e2:
+                        logger.error(f"Both header=0 and header=None failed for {zip_file}")
+                        logger.error(f"CSV columns: {list(df.columns) if 'df' in locals() else 'unknown'}")
+                        logger.error(f"Sample rows:\n{df.head(3) if 'df' in locals() else 'N/A'}")
+                        raise ValueError(
+                            f"CSV parsing failed for {zip_file}. "
+                            f"Binance may have changed CSV format. "
+                            f"Header error: {e}, Positional error: {e2}"
+                        ) from e2
                 all_data.append(df)
 
     if not all_data:

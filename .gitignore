@@ -29,12 +29,22 @@ venv/
 # libreoffice
 .~lock.*
 
-# raw data files (not checked into repo)
-# Ignore bulk data files but keep structure and documentation
-data/raw/**/*.zip
-data/raw/**/*.CHECKSUM
-data/raw/**/*.csv
+# Data directory policy
+# Ignore all raw data
+data/raw/**
 
-# But track documentation and metadata
-!data/raw/**/README.md
-!data/raw/metadata/*.json
+# Ignore all parquet files by default
+data/**/*.parquet
+
+# Explicitly allow metadata (negation must come after broader ignore)
+!data/raw/
+!data/raw/metadata/
+!data/raw/metadata/**
+
+# Explicitly allow tracked datasets
+!data/example_crypto_perps.parquet
+!data/test_fixtures/
+!data/test_fixtures/*.parquet
+
+# Temporary files
+*.tmp

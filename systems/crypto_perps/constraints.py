@@ -142,17 +142,17 @@ def apply_gross_leverage_cap(
 
     Args:
         weights: Dict mapping instrument -> weight
-        cap: Maximum gross leverage (e.g., 1.5)
+        cap: Maximum gross leverage (e.g., 2.0)
 
     Returns:
         Dict mapping instrument -> adjusted weight
 
     Example:
-        - weights: {BTC: 0.8, ETH: 0.6, BNB: -0.4}
-        - gross leverage = |0.8| + |0.6| + |-0.4| = 1.8
-        - cap = 1.5
-        - scaling factor = 1.5 / 1.8 = 0.833
-        - adjusted weights: {BTC: 0.667, ETH: 0.5, BNB: -0.333}
+        - weights: {BTC: 1.2, ETH: 0.8, BNB: -0.6}
+        - gross leverage = |1.2| + |0.8| + |-0.6| = 2.6
+        - cap = 2.0
+        - scaling factor = 2.0 / 2.6 = 0.769
+        - adjusted weights: {BTC: 0.923, ETH: 0.615, BNB: -0.462}
     """
     # Calculate gross leverage
     gross_leverage = sum(abs(w) for w in weights.values())
@@ -230,7 +230,7 @@ def apply_portfolio_constraints(
     Args:
         weights_df: DataFrame with date index and instrument columns (weights)
         prices_df: DataFrame with date index and instrument columns (prices)
-        gross_leverage_cap: Maximum gross leverage (e.g., 1.5)
+        gross_leverage_cap: Maximum gross leverage (e.g., 2.0)
         idm_cap: Maximum IDM (e.g., 2.5)
         corr_span: EWMA span for correlation (default 60 days)
         corr_min_periods: Minimum periods for correlation (default 20)
@@ -277,20 +277,23 @@ def apply_portfolio_constraints(
                 columns=instruments
             )
 
-        # Apply constraints
-        # 1. Gross leverage cap
-        weights_after_leverage = apply_gross_leverage_cap(weights_dict, gross_leverage_cap)
+        # Apply constraints sequentially: IDM first, then gross leverage
+        # This ensures gross leverage is never violated (absolute priority)
 
-        # 2. IDM cap
-        weights_after_idm = apply_idm_cap(weights_after_leverage, corr_matrix, idm_cap)
+        # Step 1: Apply IDM cap (may scale weights up if IDM too high)
+        weights_after_idm = apply_idm_cap(weights_dict, corr_matrix, idm_cap)
+
+        # Step 2: Apply gross leverage cap (absolute priority)
+        # This may cause IDM to exceed its cap, which we accept as necessary trade-off
+        final_weights = apply_gross_leverage_cap(weights_after_idm, gross_leverage_cap)
 
         # Store constrained weights
         for inst in weights_df.columns:
-            constrained_weights_data[inst].append(weights_after_idm.get(inst, 0.0))
+            constrained_weights_data[inst].append(final_weights.get(inst, 0.0))
 
         # Calculate diagnostics
-        gross_lev = sum(abs(w) for w in weights_after_idm.values())
-        idm = calculate_idm(weights_after_idm, corr_matrix)
+        gross_lev = sum(abs(w) for w in final_weights.values())
+        idm = calculate_idm(final_weights, corr_matrix)
 
         gross_leverage_list.append(gross_lev)
         idm_list.append(idm)

@@ -36,6 +36,7 @@ from systems.crypto_perps.sizing import calculate_target_weights, calculate_dail
 from systems.crypto_perps.constraints import apply_portfolio_constraints
 from systems.crypto_perps.execution import execute_trades
 from systems.crypto_perps.accounting import calculate_cumulative_pnl
+from systems.crypto_perps.diagnostics import DiagnosticsCollector
 
 # Configure logging
 logging.basicConfig(
@@ -88,6 +89,12 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
     logger.info(f"Gross leverage cap: {gross_lev_cap}")
     logger.info(f"IDM cap: {idm_cap}")
 
+    # Initialize diagnostics collector (optional)
+    diagnostics_enabled = config.get('diagnostics', {}).get('enabled', False)
+    collector = DiagnosticsCollector() if diagnostics_enabled else None
+    if diagnostics_enabled:
+        logger.info("Diagnostics collection: ENABLED")
+
     # Step 1: Load data
     logger.info("\nStep 1: Loading data...")
     prices_df, meta_df = load_crypto_perps_panel(data_path)
@@ -120,6 +127,25 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
         max_abs = forecast.abs().max()
         logger.info(f"  {inst}: max |forecast| = {max_abs:.2f}")
 
+    # Hook: Record forecasts (if diagnostics enabled)
+    if collector:
+        for date in prices_df.index:
+            for inst in combined_forecasts.keys():
+                # Build per-rule forecasts dict dynamically
+                per_rule = {}
+                for rule_name in ewmac.get(inst, {}).keys():
+                    if inst in ewmac and rule_name in ewmac[inst]:
+                        per_rule[rule_name] = ewmac[inst][rule_name].loc[date]
+                if inst in carry:
+                    per_rule['carry_funding'] = carry[inst].loc[date]
+
+                collector.record_forecasts(
+                    date=date,
+                    instrument=inst,
+                    forecast_combined=combined_forecasts[inst].loc[date],
+                    **per_rule
+                )
+
     # Step 4: Size positions
     logger.info("\nStep 4: Sizing positions...")
     weights_df, notionals_df = calculate_target_weights(
@@ -149,6 +175,52 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
 
     logger.info(f"  Gross leverage: mean={gross_lev_series.mean():.2f}, max={gross_lev_series.max():.2f}")
     logger.info(f"  IDM: mean={idm_series.mean():.2f}, max={idm_series.max():.2f}")
+
+    # Hook: Record weights and constraints (if diagnostics enabled)
+    if collector:
+        # Calculate overall constraint scalar
+        overall_scalars = pd.Series(index=weights_df.index, dtype=float)
+        for date in weights_df.index:
+            gross_lev = gross_lev_series.loc[date]
+            idm = idm_series.loc[date]
+            scalar = 1.0
+            if gross_lev > gross_lev_cap:
+                scalar = gross_lev_cap / gross_lev
+            if idm > idm_cap:
+                scalar = min(scalar, idm_cap / idm)
+            overall_scalars.loc[date] = scalar
+
+        # Record for each (date, instrument)
+        for date in weights_df.index:
+            for inst in weights_df.columns:
+                # Phase 1: No state machine, all instruments ACTIVE
+                collector.record_state(
+                    date=date,
+                    instrument=inst,
+                    state='ACTIVE',
+                    in_layer_a=(inst in layer_a),
+                    eligible=eligibility_df.loc[date, inst],
+                    days_in_state=0,
+                    entry_weight=np.nan,
+                    ban_source=None
+                )
+
+                collector.record_weights(
+                    date=date,
+                    instrument=inst,
+                    unconstrained=weights_df.loc[date, inst],
+                    after_exits=weights_df.loc[date, inst],  # Phase 1: no exits
+                    constrained=constrained_weights_df.loc[date, inst],
+                    current=0.0  # Will be updated in trade loop
+                )
+
+                collector.record_constraints(
+                    date=date,
+                    instrument=inst,
+                    gross_lev=gross_lev_series.loc[date],
+                    idm=idm_series.loc[date],
+                    overall_scalar=overall_scalars.loc[date]
+                )
 
     # Convert weights to notionals
     constrained_notionals_df = constrained_weights_df * capital
@@ -184,6 +256,25 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
     total_costs = costs_df.sum().sum()
     logger.info(f"  Total trading costs: ${total_costs:.2f}")
 
+    # Hook: Record trades (if diagnostics enabled)
+    if collector:
+        for date in trades_df.index:
+            for inst in trades_df.columns:
+                trade_weight = trades_df.loc[date, inst]
+                # Determine trade reason (Phase 1: all buffer-based)
+                if abs(trade_weight) > 1e-10:
+                    reason = 'buffer_trade'
+                else:
+                    reason = 'buffer_no_trade'
+
+                collector.record_trade(
+                    date=date,
+                    instrument=inst,
+                    trade=trade_weight,
+                    reason=reason,
+                    buffer_threshold=np.nan  # Buffer threshold not easily accessible here
+                )
+
     # Step 7: Calculate PnL and equity curve
     logger.info("\nStep 7: Calculating PnL and equity curve...")
     price_pnl_df, funding_pnl_df, total_pnl_df, equity_curve = calculate_cumulative_pnl(
@@ -202,6 +293,18 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
     logger.info(f"  Final equity: ${final_equity:,.2f}")
     logger.info(f"  Total return: {total_return:+.2%}")
     logger.info(f"  Total PnL: ${total_pnl:+,.2f}")
+
+    # Hook: Record PnL (if diagnostics enabled)
+    if collector:
+        for date in price_pnl_df.index:
+            for inst in price_pnl_df.columns:
+                collector.record_pnl(
+                    date=date,
+                    instrument=inst,
+                    pnl_price=price_pnl_df.loc[date, inst],
+                    pnl_funding=funding_pnl_df.loc[date, inst],
+                    pnl_costs=costs_df.loc[date, inst]
+                )
 
     # Step 8: Write outputs
     logger.info("\nStep 8: Writing outputs...")
@@ -228,9 +331,28 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
     pnl_breakdown.to_csv(pnl_breakdown_file)
     logger.info(f"  Saved PnL breakdown: {pnl_breakdown_file}")
 
+    # Write diagnostics (if enabled)
+    if collector:
+        diagnostics_file = output_path / 'diagnostics.parquet'
+        collector.write_parquet(diagnostics_file)
+        logger.info(f"  Saved diagnostics: {diagnostics_file}")
+
     logger.info("\n" + "=" * 80)
     logger.info("Backtest complete!")
     logger.info("=" * 80)
+
+    # Return dict of computed objects (for ablation runner and metrics calculation)
+    return {
+        'equity_curve': equity_curve,
+        'weights_df': constrained_weights_df,
+        'trades_df': trades_df,
+        'state_df': None,  # Phase 1: no state machine
+        'pnl_price_df': price_pnl_df,
+        'pnl_funding_df': funding_pnl_df,
+        'costs_df': costs_df,
+        'gross_leverage_series': gross_lev_series,
+        'idm_series': idm_series
+    }
 
 
 def main():

@@ -6,14 +6,17 @@ Loads price data and metadata (funding rates, ADV, costs) from parquet files
 import pandas as pd
 import numpy as np
 from typing import Tuple
+from sysdata.crypto.schema import validate_schema_compliance
 
 
-def load_crypto_perps_panel(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def load_crypto_perps_panel(path: str, validate_schema: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Load crypto perpetual futures data from parquet file
 
     Args:
         path: Path to parquet file containing crypto perps data
+        validate_schema: If True, validate against canonical schema (default: True)
+                        Set to False for exploratory / ad-hoc usage
 
     Returns:
         Tuple of (prices_df, meta_df):
@@ -29,6 +32,14 @@ def load_crypto_perps_panel(path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     # Read parquet file
     df = pd.read_parquet(path)
+
+    # Optional schema validation (enabled by default in production paths)
+    if validate_schema:
+        schema_errors = validate_schema_compliance(df, require_rectangular=False)
+        if schema_errors:
+            raise ValueError(
+                f"Dataset schema validation failed:\n" + "\n".join(schema_errors)
+            )
 
     # Validate required columns
     required_cols = ['date', 'instrument', 'close', 'funding_rate',
