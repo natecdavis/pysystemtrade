@@ -789,33 +789,149 @@ class TestConstraints:
 class TestExecution:
     """Test suite for execution and cost model (Step 8)"""
 
-    @pytest.mark.skip(reason="Not yet implemented")
     def test_trading_buffer(self):
         """
         Test that trading buffers prevent unnecessary trades
         """
-        pass
+        from systems.crypto_perps.execution import apply_trading_buffer
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        # Setup
+        capital = 5000.0
+        buffer_frac = 0.1  # 10% of position vol
+
+        # Very small delta (should not trade)
+        # With 10% weight, ~5% daily vol, buffer is ~0.05% of capital
+        # So delta needs to be < 0.0005 to avoid trading
+        target_weights = {'BTCUSDT_PERP': 0.10}
+        current_weights = {'BTCUSDT_PERP': 0.10001}  # Tiny difference (0.01% of capital)
+        prices = {'BTCUSDT_PERP': 30000.0}
+        daily_vols = {'BTCUSDT_PERP': 1500.0}  # ~5% daily vol
+        eligible = {'BTCUSDT_PERP': True}
+
+        trades = apply_trading_buffer(
+            target_weights=target_weights,
+            current_weights=current_weights,
+            buffer_frac=buffer_frac,
+            prices=prices,
+            daily_vols=daily_vols,
+            capital=capital,
+            eligible=eligible
+        )
+
+        # Very small delta should result in no trade
+        assert trades['BTCUSDT_PERP'] == 0.0, \
+            f"Small delta should not trigger trade, got {trades['BTCUSDT_PERP']}"
+
+        # Large delta (should trade)
+        target_weights_large = {'BTCUSDT_PERP': 0.20}  # Significant difference
+        trades_large = apply_trading_buffer(
+            target_weights=target_weights_large,
+            current_weights=current_weights,
+            buffer_frac=buffer_frac,
+            prices=prices,
+            daily_vols=daily_vols,
+            capital=capital,
+            eligible=eligible
+        )
+
+        # Large delta should result in trade
+        assert abs(trades_large['BTCUSDT_PERP']) > 0, \
+            "Large delta should trigger trade"
+
     def test_frozen_position_no_trades(self):
         """
         Test that frozen positions (ineligible instruments) do not trade
         """
-        pass
+        from systems.crypto_perps.execution import apply_trading_buffer
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        capital = 5000.0
+        buffer_frac = 0.1
+
+        # Large delta but instrument is frozen (ineligible)
+        target_weights = {'BTCUSDT_PERP': 0.20}
+        current_weights = {'BTCUSDT_PERP': 0.0}
+        prices = {'BTCUSDT_PERP': 30000.0}
+        daily_vols = {'BTCUSDT_PERP': 1500.0}
+        eligible = {'BTCUSDT_PERP': False}  # Frozen!
+
+        trades = apply_trading_buffer(
+            target_weights=target_weights,
+            current_weights=current_weights,
+            buffer_frac=buffer_frac,
+            prices=prices,
+            daily_vols=daily_vols,
+            capital=capital,
+            eligible=eligible
+        )
+
+        # No trade should occur for frozen instrument
+        assert trades['BTCUSDT_PERP'] == 0.0, \
+            "Frozen instrument should not trade"
+
     def test_cost_calculation(self):
         """
         Test that costs are calculated correctly (RTC and SRcost)
         """
-        pass
+        from systems.crypto_perps.execution import calculate_trade_costs
 
-    @pytest.mark.skip(reason="Not yet implemented")
+        capital = 5000.0
+
+        # Trade: buy 10% of capital in BTC
+        trades = {'BTCUSDT_PERP': 0.10}
+        prices = {'BTCUSDT_PERP': 30000.0}
+        meta = {
+            'BTCUSDT_PERP': {
+                'spread_frac': 0.0003,  # 3 bps
+                'taker_fee_frac': 0.0004  # 4 bps
+            }
+        }
+        daily_vols = {'BTCUSDT_PERP': 1500.0}
+
+        rtc_costs, srcosts = calculate_trade_costs(
+            trades=trades,
+            prices=prices,
+            meta=meta,
+            capital=capital,
+            daily_vols=daily_vols
+        )
+
+        # Calculate expected RTC
+        trade_notional = 0.10 * capital  # $500
+        expected_rtc = trade_notional * (0.0003 + 0.0004)  # $500 * 0.0007 = $0.35
+
+        assert np.isclose(rtc_costs['BTCUSDT_PERP'], expected_rtc), \
+            f"RTC should be ${expected_rtc:.2f}, got ${rtc_costs['BTCUSDT_PERP']:.2f}"
+
+        # SRcost should be positive (diagnostic metric)
+        assert srcosts['BTCUSDT_PERP'] > 0, \
+            "SRcost should be positive for non-zero trade"
+
     def test_cost_subtraction_from_pnl(self):
         """
-        Test that RTC costs are subtracted from PnL
+        Test that RTC costs are properly calculated for PnL subtraction
+        This will be tested in the accounting module
         """
-        pass
+        from systems.crypto_perps.execution import calculate_trade_costs
+
+        capital = 5000.0
+        trades = {'BTCUSDT_PERP': 0.0}  # No trade
+        prices = {'BTCUSDT_PERP': 30000.0}
+        meta = {'BTCUSDT_PERP': {'spread_frac': 0.0003, 'taker_fee_frac': 0.0004}}
+        daily_vols = {'BTCUSDT_PERP': 1500.0}
+
+        rtc_costs, srcosts = calculate_trade_costs(
+            trades=trades,
+            prices=prices,
+            meta=meta,
+            capital=capital,
+            daily_vols=daily_vols
+        )
+
+        # No trade should mean zero cost
+        assert rtc_costs['BTCUSDT_PERP'] == 0.0, \
+            "No trade should have zero RTC cost"
+        assert srcosts['BTCUSDT_PERP'] == 0.0, \
+            "No trade should have zero SRcost"
 
 
 class TestAccounting:
