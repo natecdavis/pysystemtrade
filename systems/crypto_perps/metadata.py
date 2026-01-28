@@ -97,8 +97,13 @@ def write_run_metadata(
         - Config snapshot
         - Headline metrics (sharpe, return, vol, drawdown, exposure)
     """
+    # Get system version
+    version_file = Path(__file__).parent.parent.parent / 'VERSION'
+    system_version = version_file.read_text().strip() if version_file.exists() else 'unknown'
+
     metadata = {
         'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'system_version': system_version,
         'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         'git_commit': get_git_commit(),
         'git_status': get_git_status(),

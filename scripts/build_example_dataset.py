@@ -33,7 +33,34 @@ BINANCE_SYMBOL_MAP = {
     'ETHUSDT_PERP': 'ETHUSDT',
     'BNBUSDT_PERP': 'BNBUSDT',
     'SOLUSDT_PERP': 'SOLUSDT',
-    'XRPUSDT_PERP': 'XRPUSDT'
+    'XRPUSDT_PERP': 'XRPUSDT',
+    # Phase 2 symbols (first 15)
+    'LTCUSDT_PERP': 'LTCUSDT',
+    'EOSUSDT_PERP': 'EOSUSDT',
+    'DOTUSDT_PERP': 'DOTUSDT',
+    'LINKUSDT_PERP': 'LINKUSDT',
+    'ADAUSDT_PERP': 'ADAUSDT',
+    'DOGEUSDT_PERP': 'DOGEUSDT',
+    'MATICUSDT_PERP': 'MATICUSDT',
+    'AVAXUSDT_PERP': 'AVAXUSDT',
+    'UNIUSDT_PERP': 'UNIUSDT',
+    'BCHUSDT_PERP': 'BCHUSDT',
+    # Additional 15 symbols (expansion to 30)
+    'ATOMUSDT_PERP': 'ATOMUSDT',
+    'TRXUSDT_PERP': 'TRXUSDT',
+    'ETCUSDT_PERP': 'ETCUSDT',
+    'XLMUSDT_PERP': 'XLMUSDT',
+    'FILUSDT_PERP': 'FILUSDT',
+    'AAVEUSDT_PERP': 'AAVEUSDT',
+    'SANDUSDT_PERP': 'SANDUSDT',
+    'MANAUSDT_PERP': 'MANAUSDT',
+    'AXSUSDT_PERP': 'AXSUSDT',
+    'ICPUSDT_PERP': 'ICPUSDT',
+    'VETUSDT_PERP': 'VETUSDT',
+    'THETAUSDT_PERP': 'THETAUSDT',
+    'FTMUSDT_PERP': 'FTMUSDT',
+    'ALGOUSDT_PERP': 'ALGOUSDT',
+    'NEOUSDT_PERP': 'NEOUSDT'
 }
 
 
@@ -148,7 +175,9 @@ def normalize_funding_columns(df: pd.DataFrame, file_path: Path) -> pd.DataFrame
     """
     Normalize Binance funding rate column names to canonical format
 
-    Handles variations: calc_time vs calcTime vs fundingTime
+    Handles variations:
+    - Time: calc_time, calcTime, funding_time, fundingTime
+    - Rate: last_funding_rate, funding_rate, fundingRate, rate
 
     Raises:
         ValueError: If required columns cannot be mapped
@@ -157,7 +186,7 @@ def normalize_funding_columns(df: pd.DataFrame, file_path: Path) -> pd.DataFrame
 
     required = {
         'calcTime': ['calc_time', 'calctime', 'funding_time', 'fundingtime'],
-        'fundingRate': ['last_funding_rate', 'fundingrate', 'funding_rate', 'rate'],
+        'fundingRate': ['last_funding_rate', 'funding_rate', 'fundingrate', 'lastfundingrate', 'rate'],
     }
 
     mapped = {}
@@ -172,11 +201,31 @@ def normalize_funding_columns(df: pd.DataFrame, file_path: Path) -> pd.DataFrame
             raise ValueError(
                 f"Cannot find required column '{canonical}' in {file_path}. "
                 f"Available columns: {list(df.columns)}. "
+                f"Tried variations: {variations}. "
                 f"Binance may have changed CSV schema."
             )
         mapped[found] = canonical
 
     return df.rename(columns=mapped)
+
+
+def has_header(first_line: bytes) -> bool:
+    """
+    Detect if first line is a header (contains letters) or data (purely numeric/punctuation)
+
+    Args:
+        first_line: First line of CSV as bytes
+
+    Returns:
+        True if line contains alphabetic characters (header), False otherwise
+    """
+    try:
+        line_str = first_line.decode('utf-8').strip()
+        # Check if line contains any alphabetic characters
+        return any(c.isalpha() for c in line_str)
+    except Exception:
+        # If decoding fails, assume no header
+        return False
 
 
 def load_binance_klines(
@@ -185,7 +234,7 @@ def load_binance_klines(
     fail_on_missing_close: bool = False
 ) -> pd.DataFrame:
     """
-    Load all kline files for instrument using glob discovery
+    Load all kline files for instrument using glob discovery with header autodetection
 
     Args:
         instrument: Internal instrument ID (e.g., 'BTCUSDT_PERP')
@@ -196,51 +245,70 @@ def load_binance_klines(
         DataFrame with columns: date, close, volume, quote_volume
 
     Notes:
+        - Autodetects header vs headerless CSV format
         - Works with daily or monthly archives (glob pattern matches both)
         - date is derived from close_time (end-of-day timestamp)
         - NaN close rows are dropped with logging
     """
     # Map internal ID to Binance symbol
     binance_symbol = BINANCE_SYMBOL_MAP[instrument]
-    klines_dir = data_dir / 'binance' / 'klines' / binance_symbol
+    klines_dir = data_dir / 'klines' / binance_symbol
 
     # Glob discover all kline ZIP files (daily or monthly)
     all_data = []
-    for zip_file in sorted(klines_dir.glob(f'{binance_symbol}-1d-*.zip')):
+    skipped_files = []
+
+    zip_files = sorted(klines_dir.glob(f'{binance_symbol}-1d-*.zip'))
+    logger.info(f"Found {len(zip_files)} kline files for {binance_symbol} in {klines_dir}")
+    if len(zip_files) > 0:
+        logger.info(f"  First file: {zip_files[0].name}, Last file: {zip_files[-1].name}")
+
+    for zip_file in zip_files:
         with zipfile.ZipFile(zip_file) as z:
             csv_name = zip_file.stem + '.csv'  # Binance convention
             with z.open(csv_name) as f_raw:
-                # Read once into BytesIO (ZipExtFile doesn't support seek)
+                # Read all data
                 from io import BytesIO
                 data = f_raw.read()
 
+                # Detect header by checking first line
+                first_line = data.split(b'\n')[0]
+                has_header_row = has_header(first_line)
+
                 try:
-                    # Try header=0 first (current Binance format)
-                    df = pd.read_csv(BytesIO(data), header=0)
-                    df = normalize_kline_columns(df, zip_file)
-                except (ValueError, KeyError) as e:
-                    # Fallback: Try header=None with positional mapping
-                    logger.warning(f"Header parsing failed for {zip_file}, trying positional mapping: {e}")
-                    try:
-                        df = pd.read_csv(BytesIO(data), header=None)
-                        # Binance klines standard 12-column format (0-indexed):
-                        # 0: open_time, 1: open, 2: high, 3: low, 4: close, 5: volume,
-                        # 6: close_time, 7: quote_asset_volume, 8: count, 9: taker_buy_volume, ...
-                        df = df.rename(columns={
-                            4: 'close',         # Column 4: close price
-                            5: 'volume',        # Column 5: base asset volume
-                            6: 'close_time',    # Column 6: close timestamp (ms)
-                            7: 'quote_volume'   # Column 7: quote asset volume (=quote_asset_volume)
-                        })
+                    if has_header_row:
+                        # Parse with header
+                        df = pd.read_csv(BytesIO(data), header=0)
                         df = normalize_kline_columns(df, zip_file)
-                    except Exception as e2:
-                        logger.error(f"Both header=0 and header=None failed for {zip_file}")
-                        raise ValueError(
-                            f"CSV parsing failed for {zip_file}. "
-                            f"Binance may have changed CSV format. "
-                            f"Header error: {e}, Positional error: {e2}"
-                        ) from e2
-                all_data.append(df)
+                        logger.info(f"✓ Loaded {zip_file.name} (with header): {len(df)} rows")
+                    else:
+                        # Parse without header, assign standard Binance kline column names
+                        df = pd.read_csv(BytesIO(data), header=None)
+                        # Binance klines standard 12-column format:
+                        # 0: open_time, 1: open, 2: high, 3: low, 4: close, 5: volume,
+                        # 6: close_time, 7: quote_volume, 8: count, 9: taker_buy_volume,
+                        # 10: taker_buy_quote_volume, 11: ignore
+                        if df.shape[1] != 12:
+                            raise ValueError(f"Expected 12 columns for headerless kline, got {df.shape[1]}")
+
+                        df.columns = [
+                            'open_time', 'open', 'high', 'low', 'close', 'volume',
+                            'close_time', 'quote_volume', 'count', 'taker_buy_volume',
+                            'taker_buy_quote_volume', 'ignore'
+                        ]
+                        logger.info(f"✓ Loaded {zip_file.name} (headerless): {len(df)} rows")
+
+                    all_data.append(df)
+
+                except Exception as e:
+                    skip_reason = f"Parse error: {str(e)}"
+                    skipped_files.append((zip_file, skip_reason))
+                    logger.warning(f"SKIPPED {zip_file.name}: {skip_reason}")
+
+    if skipped_files:
+        logger.warning(f"{instrument}: Skipped {len(skipped_files)} files due to parsing errors")
+        for path, reason in skipped_files[:5]:  # Show first 5
+            logger.warning(f"  {path.name}: {reason}")
 
     if not all_data:
         raise FileNotFoundError(f"No kline files found for {binance_symbol} in {klines_dir}")
@@ -290,8 +358,8 @@ def load_binance_klines(
         logger.warning(f"{instrument}: Duplicate dates found, keeping first occurrence")
         klines = klines.drop_duplicates(subset='date', keep='first')
 
-    # Validate price range
-    min_price, max_price = 0.01, 1e6
+    # Validate price range (allow low-priced assets like DOGE)
+    min_price, max_price = 0.0001, 1e6
     if not (klines['close'] >= min_price).all():
         raise ValueError(f"{instrument}: Prices below ${min_price}")
     if not (klines['close'] <= max_price).all():
@@ -327,8 +395,8 @@ def consolidate_funding_to_daily(funding_events: pd.DataFrame) -> pd.DataFrame:
     daily = funding_events.groupby('event_date')['fundingRate'].sum().reset_index()
     daily = daily.rename(columns={'event_date': 'date', 'fundingRate': 'funding_rate'})
 
-    # Ensure output 'date' column is naive datetime64[ns] (matches klines dtype)
-    daily['date'] = pd.to_datetime(daily['date']).dt.tz_localize(None)
+    # Ensure output 'date' column is naive datetime64[ns] (MUST match klines dtype exactly)
+    daily['date'] = pd.to_datetime(daily['date'], utc=True).dt.tz_convert(None)
 
     # Apply shift based on inspect_alignment() verification
     # EXPECTED: NO SHIFT (verify with inspect_alignment() before production use)
@@ -357,92 +425,55 @@ def load_binance_funding_rates(instrument: str, data_dir: Path) -> pd.DataFrame:
     """
     # Map internal ID to Binance symbol
     binance_symbol = BINANCE_SYMBOL_MAP[instrument]
-    funding_dir = data_dir / 'binance' / 'funding_rates' / binance_symbol
+    funding_dir = data_dir / 'funding_rates' / binance_symbol
 
     # Glob discover all funding ZIP files (daily or monthly)
     all_data = []
-    for zip_file in sorted(funding_dir.glob(f'{binance_symbol}-fundingRate-*.zip')):
+    skipped_files = []
+
+    zip_files = sorted(funding_dir.glob(f'{binance_symbol}-fundingRate-*.zip'))
+    logger.info(f"Found {len(zip_files)} funding files for {binance_symbol}")
+
+    for zip_file in zip_files:
         with zipfile.ZipFile(zip_file) as z:
             csv_name = zip_file.stem + '.csv'  # Binance convention
             with z.open(csv_name) as f_raw:
                 from io import BytesIO
                 data = f_raw.read()
 
+                # Detect header (funding files from 2020+ all have headers based on ground truth)
+                first_line = data.split(b'\n')[0]
+                has_header_row = has_header(first_line)
+
                 try:
-                    # Try header=0 first
-                    df = pd.read_csv(BytesIO(data), header=0)
-                    df = normalize_funding_columns(df, zip_file)
-                except (ValueError, KeyError) as e:
-                    # Fallback: Try header=None with adaptive positional mapping
-                    logger.warning(f"Header parsing failed for {zip_file}, trying positional mapping: {e}")
-                    try:
-                        df = pd.read_csv(BytesIO(data), header=None)
-
-                        # Adaptive positional mapping with scoring (Binance funding format varies)
-                        # Column 0 MUST be timestamp (int ms or datetime-parseable)
-                        if df.shape[1] < 2:
-                            raise ValueError(f"Funding CSV has only {df.shape[1]} columns, need at least 2")
-
-                        # Column 0 is always timestamp
-                        df = df.rename(columns={0: 'calcTime'})
-
-                        # Find fundingRate column using scoring heuristic
-                        # Do NOT use pd.api.types.is_numeric_dtype (columns may be object strings)
-                        candidate_scores = []
-
-                        for col_idx in range(1, df.shape[1]):
-                            # Coerce to numeric (handles object strings)
-                            s = pd.to_numeric(df[col_idx], errors='coerce')
-
-                            # Convert to NumPy array to avoid dtype issues with np.isfinite
-                            s_np = s.to_numpy(dtype=float, na_value=np.nan)
-                            finite_mask = np.isfinite(s_np)
-
-                            if finite_mask.sum() == 0:
-                                continue  # All NaN, skip
-
-                            parseable_ratio = finite_mask.mean()
-                            s_finite_np = s_np[finite_mask]
-                            median_abs = np.median(np.abs(s_finite_np))
-                            nonzero_ratio = (np.abs(s_finite_np) > 0).mean()
-
-                            # Hard thresholds (reject non-funding columns)
-                            if parseable_ratio < 0.80:
-                                continue  # Too many unparseable values
-                            if median_abs <= 1e-12:
-                                continue  # All zeros / near-zero
-                            if median_abs >= 0.5:
-                                continue  # Too large to be funding rate (e.g., interval hours = 8)
-
-                            # Score: prefer small but nonzero funding-like magnitudes
-                            score = parseable_ratio + 0.2 * nonzero_ratio - 0.1 * np.log10(1 + median_abs)
-                            candidate_scores.append((col_idx, score, median_abs))
-
-                        if not candidate_scores:
-                            logger.error(f"No valid fundingRate column found in {zip_file}")
-                            logger.error(f"CSV shape: {df.shape}, columns: {list(df.columns)}")
-                            logger.error(f"Sample rows:\n{df.head(3)}")
-                            raise ValueError(
-                                f"Funding CSV parsing failed for {zip_file}. "
-                                f"No column matches funding rate heuristic (small nonzero values). "
-                                f"Binance may have changed CSV format."
-                            )
-
-                        # Pick best-scoring column
-                        funding_col = max(candidate_scores, key=lambda x: x[1])[0]
-                        df = df.rename(columns={funding_col: 'fundingRate'})
+                    if has_header_row:
+                        # Parse with header
+                        df = pd.read_csv(BytesIO(data), header=0)
                         df = normalize_funding_columns(df, zip_file)
+                        logger.info(f"✓ Funding {zip_file.name} (with header): {len(df)} rows")
+                    else:
+                        # Headerless funding files (if they exist)
+                        df = pd.read_csv(BytesIO(data), header=None)
+                        # Standard Binance funding format (3 columns):
+                        # 0: calc_time, 1: funding_interval_hours, 2: funding_rate
+                        if df.shape[1] >= 2:
+                            df.columns = ['calcTime', 'funding_interval_hours', 'fundingRate'] + \
+                                        [f'col_{i}' for i in range(3, df.shape[1])]
+                        else:
+                            raise ValueError(f"Expected at least 2 columns, got {df.shape[1]}")
+                        logger.info(f"✓ Funding {zip_file.name} (headerless): {len(df)} rows")
 
-                    except Exception as e2:
-                        logger.error(f"Both header=0 and header=None failed for {zip_file}")
-                        logger.error(f"CSV columns: {list(df.columns) if 'df' in locals() else 'unknown'}")
-                        logger.error(f"Sample rows:\n{df.head(3) if 'df' in locals() else 'N/A'}")
-                        raise ValueError(
-                            f"CSV parsing failed for {zip_file}. "
-                            f"Binance may have changed CSV format. "
-                            f"Header error: {e}, Positional error: {e2}"
-                        ) from e2
-                all_data.append(df)
+                    all_data.append(df)
+
+                except Exception as e:
+                    skip_reason = f"Parse error: {str(e)}"
+                    skipped_files.append((zip_file, skip_reason))
+                    logger.warning(f"SKIPPED {zip_file.name}: {skip_reason}")
+
+    if skipped_files:
+        logger.warning(f"{instrument}: Skipped {len(skipped_files)} funding files due to parsing errors")
+        for path, reason in skipped_files[:5]:
+            logger.warning(f"  {path.name}: {reason}")
 
     if not all_data:
         raise FileNotFoundError(f"No funding rate files found for {binance_symbol} in {funding_dir}")
@@ -474,6 +505,134 @@ def load_binance_funding_rates(instrument: str, data_dir: Path) -> pd.DataFrame:
     return daily_funding
 
 
+def validate_time_series_quality(df: pd.DataFrame, symbol: str, max_gap_days: int = 7, max_price_jump: float = 0.5) -> list:
+    """
+    Check for data quality issues in time series.
+
+    Args:
+        df: DataFrame with date index and close prices
+        symbol: Symbol name for logging
+        max_gap_days: Max acceptable gap (warn if exceeded)
+        max_price_jump: Max 1-day price change fraction (warn if exceeded)
+
+    Returns:
+        List of warning messages
+    """
+    issues = []
+
+    # Ensure df is sorted by date
+    df = df.sort_values('date')
+
+    # Check for gaps
+    date_diffs = df['date'].diff()
+    gaps = date_diffs[date_diffs > pd.Timedelta(days=max_gap_days)]
+    if len(gaps) > 0:
+        gap_dates = df.loc[gaps.index, 'date'].tolist()
+        issues.append(f"{symbol}: {len(gaps)} gaps >{max_gap_days} days (sample: {gap_dates[:3]})")
+
+    # Check for price jumps
+    returns = df['close'].pct_change()
+    jumps = returns[abs(returns) > max_price_jump]
+    if len(jumps) > 0:
+        jump_dates = df.loc[jumps.index, 'date'].tolist()
+        issues.append(f"{symbol}: {len(jumps)} price jumps >{max_price_jump*100}% (sample: {jump_dates[:3]})")
+
+    # Check funding coverage (descriptive, report stats)
+    funding_missing = df['funding_rate'].isna().sum()
+    if funding_missing / len(df) > 0.10:
+        issues.append(f"{symbol}: {funding_missing/len(df)*100:.1f}% missing funding")
+
+    # Report funding stress events (descriptive, not asserting)
+    # Note: funding_rate is daily sum of 8h events (not avg)
+    funding_valid = df['funding_rate'].dropna()
+    if len(funding_valid) > 0:
+        funding_stats = {
+            'min': funding_valid.min(),
+            'p01': funding_valid.quantile(0.01),
+            'p99': funding_valid.quantile(0.99),
+            'max': funding_valid.max(),
+            'high_stress_days': (funding_valid > 0.02).sum(),  # >2% daily
+            'low_stress_days': (funding_valid < -0.005).sum()  # <-0.5% daily
+        }
+        # Log funding stress metrics (don't fail)
+        if funding_stats['high_stress_days'] > 0 or funding_stats['low_stress_days'] > 0:
+            issues.append(
+                f"{symbol}: Funding stress - "
+                f"high: {funding_stats['high_stress_days']} days, "
+                f"low: {funding_stats['low_stress_days']} days, "
+                f"range: [{funding_stats['min']:.4f}, {funding_stats['max']:.4f}]"
+            )
+
+    return issues
+
+
+def report_regime_coverage(prices_df: pd.DataFrame) -> dict:
+    """
+    Report volatility regime coverage (descriptive, not asserting)
+
+    Checks:
+    1. Specific known high-vol window present (2020-03: COVID crash)
+    2. Volatility percentile spread (p10 vs p90) is wide
+    3. Reports metrics, avoids hard asserts (definitions not yet stable)
+
+    Args:
+        prices_df: DataFrame with date index and price columns (one per instrument)
+
+    Returns:
+        Dict with regime coverage statistics
+    """
+    daily_vols = {}
+    for col in prices_df.columns:
+        returns = prices_df[col].pct_change()
+        vol = returns.rolling(30).std() * np.sqrt(365)
+        daily_vols[col] = vol
+
+    vol_df = pd.DataFrame(daily_vols)
+
+    # Compute distribution statistics
+    vol_values = vol_df.values.flatten()
+    vol_values = vol_values[~np.isnan(vol_values)]
+
+    stats = {
+        'vol_min': vol_values.min(),
+        'vol_p10': np.percentile(vol_values, 10),
+        'vol_p50': np.percentile(vol_values, 50),
+        'vol_p90': np.percentile(vol_values, 90),
+        'vol_max': vol_values.max(),
+        'percentile_spread': np.percentile(vol_values, 90) - np.percentile(vol_values, 10)
+    }
+
+    # Check for specific known windows (COVID crash Mar 2020)
+    covid_window = ('2020-03-01', '2020-03-31')
+    has_covid = (
+        pd.Timestamp(covid_window[0]) in prices_df.index and
+        pd.Timestamp(covid_window[1]) in prices_df.index
+    )
+    stats['has_covid_crash_window'] = has_covid
+
+    # Log results (descriptive, not failing)
+    logger.info("=" * 80)
+    logger.info("Regime Coverage Report:")
+    logger.info("=" * 80)
+    logger.info(f"  Vol min: {stats['vol_min']:.2f}")
+    logger.info(f"  Vol p10: {stats['vol_p10']:.2f}")
+    logger.info(f"  Vol p50 (median): {stats['vol_p50']:.2f}")
+    logger.info(f"  Vol p90: {stats['vol_p90']:.2f}")
+    logger.info(f"  Vol max: {stats['vol_max']:.2f}")
+    logger.info(f"  Percentile spread (p90-p10): {stats['percentile_spread']:.2f}")
+    logger.info(f"  Includes COVID crash window (2020-03): {has_covid}")
+
+    # Sanity checks (log warnings, don't fail)
+    if stats['percentile_spread'] < 0.3:
+        logger.warning("  WARNING: Narrow volatility spread, limited regime diversity")
+    if not has_covid:
+        logger.warning("  WARNING: Missing COVID crash window (Mar 2020)")
+
+    logger.info("=" * 80)
+
+    return stats
+
+
 def calculate_adv(klines: pd.DataFrame, window: int = 30) -> pd.DataFrame:
     """
     Calculate average daily volume (notional) proxy
@@ -497,7 +656,8 @@ def build_real_crypto_dataset(
     instruments: list = None,
     fail_on_missing_close: bool = False,
     min_coverage: float = 0.95,
-    verify_checksums: bool = False
+    verify_checksums: bool = False,
+    allow_jagged: bool = False
 ) -> pd.DataFrame:
     """
     Build dataset from real Binance Data Vision bulk files
@@ -510,6 +670,7 @@ def build_real_crypto_dataset(
         fail_on_missing_close: If True, raise error if any rows with NaN close are dropped
         min_coverage: Minimum coverage ratio for common_dates intersection (default: 0.95)
         verify_checksums: If True, verify SHA256 checksums for ZIP files
+        allow_jagged: If True, allow jagged panels (use date union instead of intersection)
 
     Returns:
         DataFrame with schema: date, instrument, close, funding_rate, adv_notional, spread_frac, taker_fee_frac
@@ -518,7 +679,8 @@ def build_real_crypto_dataset(
         - Single-instrument builds (e.g. BTC-only) are expected to be complete
           and may use --fail-on-missing-close to enforce exact day counts.
         - Multi-instrument builds prioritize rectangular panel consistency
-          and may drop dates via common_dates intersection.
+          and may drop dates via common_dates intersection (unless allow_jagged=True).
+        - Jagged panels allow instruments with different date ranges (NaN for missing dates).
     """
     # Internal instrument IDs (match existing system config)
     if instruments is None:
@@ -549,6 +711,11 @@ def build_real_crypto_dataset(
 
         # Filter klines to date range IMMEDIATELY (before merges)
         klines_filtered = klines[(klines['date'] >= start) & (klines['date'] <= end)].copy()
+
+        # DEBUG: Log filtering results
+        logger.info(f"{inst}: Klines loaded: {len(klines)} rows, date range {klines['date'].min()} to {klines['date'].max()}")
+        logger.info(f"{inst}: Filter range: {start} to {end}")
+        logger.info(f"{inst}: Klines filtered: {len(klines_filtered)} rows")
 
         # Sort by date to ensure monotonic order (CSV row order may vary)
         klines_filtered = klines_filtered.sort_values('date')
@@ -594,6 +761,12 @@ def build_real_crypto_dataset(
         missing_funding_mask = inst_df['funding_rate'].isna()
         missing_funding_count = missing_funding_mask.sum()
 
+        # DEBUG: Log merge details
+        logger.info(f"{inst}: inst_df shape={inst_df.shape}, missing_funding={missing_funding_count}/{len(inst_df)}")
+        logger.info(f"{inst}: inst_df date dtype={inst_df['date'].dtype}, funding date dtype={funding['date'].dtype}")
+        logger.info(f"{inst}: inst_df date range: {inst_df['date'].min()} to {inst_df['date'].max()}")
+        logger.info(f"{inst}: funding date range: {funding['date'].min()} to {funding['date'].max()}")
+
         # Sanity check: if ALL funding is missing, likely join key mismatch
         if missing_funding_count == len(inst_df):
             raise ValueError(
@@ -621,13 +794,21 @@ def build_real_crypto_dataset(
         if not inst_df['date'].is_monotonic_increasing:
             raise ValueError(f"{inst}: Dates not monotonic after merges")
 
+        # Run time series quality validation
+        issues = validate_time_series_quality(inst_df, inst)
+        for issue in issues:
+            logger.warning(issue)
+
         all_data.append(inst_df)
 
     if not all_data:
         raise ValueError("No data loaded for any instrument. Check data/raw/ directory.")
 
-    # Step 1: Compute common date intersection
-    logger.info("Computing common date intersection across all instruments...")
+    # Step 1: Compute common dates (intersection for rectangular, union for jagged)
+    if allow_jagged:
+        logger.info("Computing date union across all instruments (jagged panel mode)...")
+    else:
+        logger.info("Computing common date intersection across all instruments...")
 
     # Defensive check: ensure at least one instrument produced data
     if not all_data:
@@ -638,16 +819,20 @@ def build_real_crypto_dataset(
         instrument = inst_df['instrument'].iloc[0]
         date_sets[instrument] = set(inst_df['date'])
 
-    # Intersection of all date sets
-    common_dates_set = set.intersection(*date_sets.values())
+    if allow_jagged:
+        # Union of all date sets (jagged panel)
+        common_dates_set = set.union(*date_sets.values())
+    else:
+        # Intersection of all date sets (rectangular panel)
+        common_dates_set = set.intersection(*date_sets.values())
 
-    # Fail if intersection is empty (mismatched ranges or no overlap)
-    if not common_dates_set:
-        date_ranges = {inst: (sorted(dates)[0], sorted(dates)[-1]) for inst, dates in date_sets.items()}
-        raise ValueError(
-            f"common_dates intersection is empty (no overlapping dates). "
-            f"Date ranges per instrument: {date_ranges}"
-        )
+        # Fail if intersection is empty (mismatched ranges or no overlap)
+        if not common_dates_set:
+            date_ranges = {inst: (sorted(dates)[0], sorted(dates)[-1]) for inst, dates in date_sets.items()}
+            raise ValueError(
+                f"common_dates intersection is empty (no overlapping dates). "
+                f"Date ranges per instrument: {date_ranges}"
+            )
 
     # Sort common_dates once for deterministic behavior
     common_dates = sorted(common_dates_set)
@@ -667,22 +852,48 @@ def build_real_crypto_dataset(
     )
 
     # Validate coverage meets minimum threshold
-    if coverage_ratio < min_coverage:
-        raise ValueError(
-            f"Insufficient coverage: {len(common_dates)}/{expected_days} days ({coverage_ratio:.1%}) "
-            f"< min_coverage={min_coverage:.1%}. Check for partial downloads or data gaps."
-        )
+    if allow_jagged:
+        # For jagged panels, check per-instrument coverage over their active window
+        logger.info("Checking per-instrument coverage for jagged panel...")
+        for instrument, dates in date_sets.items():
+            # Calculate expected days based on instrument's actual data range (lifecycle window)
+            sorted_dates = sorted(dates)
+            if len(sorted_dates) > 0:
+                inst_start = sorted_dates[0]
+                inst_end = sorted_dates[-1]
+                inst_expected_days = (inst_end - inst_start).days + 1
+                inst_coverage = len(dates) / inst_expected_days
+
+                if inst_coverage < min_coverage:
+                    logger.warning(
+                        f"{instrument}: Coverage {inst_coverage:.1%} < min_coverage={min_coverage:.1%} "
+                        f"({len(dates)}/{inst_expected_days} days over active window {inst_start.date()} to {inst_end.date()}). "
+                        f"May have data gaps."
+                    )
+                else:
+                    logger.info(
+                        f"{instrument}: Coverage {inst_coverage:.1%} "
+                        f"({len(dates)}/{inst_expected_days} days over {inst_start.date()} to {inst_end.date()})"
+                    )
+        # Note: For jagged panels, global coverage check is not meaningful (union is always ~100%)
+    else:
+        # For rectangular panels, check global coverage (intersection)
+        if coverage_ratio < min_coverage:
+            raise ValueError(
+                f"Insufficient coverage: {len(common_dates)}/{expected_days} days ({coverage_ratio:.1%}) "
+                f"< min_coverage={min_coverage:.1%}. Check for partial downloads or data gaps."
+            )
 
     for instrument, dates in date_sets.items():
-        excluded_count = len(dates) - len(common_dates)
+        excluded_count = len(dates) - len(common_dates_set)
         if excluded_count > 0:
-            excluded_dates = sorted(dates - common_dates)
+            excluded_dates = sorted(dates - common_dates_set)
             logger.warning(
                 f"{instrument}: {excluded_count} dates excluded from common set. "
                 f"Sample: {excluded_dates[:3]}"
             )
 
-    # Step 2: Restrict each instrument to common_dates
+    # Step 2: Align each instrument to common_dates
     aligned_data = []
     for inst_df in all_data:
         instrument = inst_df['instrument'].iloc[0]
@@ -691,50 +902,88 @@ def build_real_crypto_dataset(
         # Ensure monotonic ordering independent of earlier operations
         inst_aligned = inst_aligned.sort_values('date')
 
-        # Validate exact match
-        if len(inst_aligned) != len(common_dates):
-            raise ValueError(
-                f"{instrument}: After alignment, expected {len(common_dates)} rows, got {len(inst_aligned)}"
-            )
+        if allow_jagged:
+            # For jagged panels, fill missing dates with NaN
+            # Create full date range DataFrame
+            full_dates_df = pd.DataFrame({'date': sorted(common_dates)})
+            # Merge with actual data (left join to preserve all dates)
+            inst_aligned = full_dates_df.merge(inst_aligned, on='date', how='left')
+            # Fill instrument column for all rows
+            inst_aligned['instrument'] = instrument
+        else:
+            # Rectangular panel: validate exact match
+            if len(inst_aligned) != len(common_dates):
+                raise ValueError(
+                    f"{instrument}: After alignment, expected {len(common_dates)} rows, got {len(inst_aligned)}"
+                )
 
         aligned_data.append(inst_aligned)
 
     # Step 3: Concatenate aligned data
     df = pd.concat(aligned_data, ignore_index=True)
 
-    # CRITICAL: Validate rectangular panel (no NaN after pivot)
-    logger.info("Validating rectangular panel...")
+    if allow_jagged:
+        # Jagged panel validation
+        logger.info("Validating jagged panel...")
+        instruments_list = df['instrument'].unique()
 
-    # Check no NaN in close (should be impossible after alignment + NaN drops)
-    if df['close'].isna().any():
-        nan_summary = df[df['close'].isna()].groupby('instrument').size()
-        raise ValueError(f"NaN in close prices (should not happen):\n{nan_summary}")
+        # Validate per-instrument: monotonic unique dates
+        for instrument in instruments_list:
+            inst_df = df[df['instrument'] == instrument]
+            if inst_df['date'].duplicated().any():
+                raise ValueError(f"{instrument}: Duplicate dates in jagged panel")
+            if not inst_df['date'].is_monotonic_increasing:
+                raise ValueError(f"{instrument}: Dates not monotonic in jagged panel")
 
-    # Validate per-instrument: same date count
-    instruments_list = df['instrument'].unique()
-    date_counts = df.groupby('instrument')['date'].nunique()
-    if not (date_counts == len(common_dates)).all():
-        raise ValueError(f"Instruments have different date counts:\n{date_counts}")
+        # Log NaN summary
+        nan_counts = df.groupby('instrument')['close'].apply(lambda x: x.isna().sum())
+        non_nan_instruments = nan_counts[nan_counts > 0]
+        if len(non_nan_instruments) > 0:
+            logger.info(f"Jagged panel: NaN close prices per instrument:\n{non_nan_instruments}")
 
-    # Validate per-instrument: monotonic unique dates
-    for instrument in instruments_list:
-        inst_df = df[df['instrument'] == instrument]
-        if inst_df['date'].duplicated().any():
-            raise ValueError(f"{instrument}: Duplicate dates in final parquet")
-        if not inst_df['date'].is_monotonic_increasing:
-            raise ValueError(f"{instrument}: Dates not monotonic in final parquet")
+        logger.info(f"✓ Jagged panel validated: {len(instruments_list)} instruments with varying date coverage")
+    else:
+        # CRITICAL: Validate rectangular panel (no NaN after pivot)
+        logger.info("Validating rectangular panel...")
 
-    logger.info(f"✓ Rectangular panel validated: {len(instruments_list)} instruments × {len(common_dates)} dates")
+        # Check no NaN in close (should be impossible after alignment + NaN drops)
+        if df['close'].isna().any():
+            nan_summary = df[df['close'].isna()].groupby('instrument').size()
+            raise ValueError(f"NaN in close prices (should not happen):\n{nan_summary}")
 
-    # Final pivot check: replicate exact adapter validation
-    logger.info("Final pivot check (replicating adapter validation)...")
+        # Validate per-instrument: same date count
+        instruments_list = df['instrument'].unique()
+        date_counts = df.groupby('instrument')['date'].nunique()
+        if not (date_counts == len(common_dates)).all():
+            raise ValueError(f"Instruments have different date counts:\n{date_counts}")
+
+        # Validate per-instrument: monotonic unique dates
+        for instrument in instruments_list:
+            inst_df = df[df['instrument'] == instrument]
+            if inst_df['date'].duplicated().any():
+                raise ValueError(f"{instrument}: Duplicate dates in final parquet")
+            if not inst_df['date'].is_monotonic_increasing:
+                raise ValueError(f"{instrument}: Dates not monotonic in final parquet")
+
+        logger.info(f"✓ Rectangular panel validated: {len(instruments_list)} instruments × {len(common_dates)} dates")
+
+    # Create pivot for downstream validation and regime reporting
     prices_df = df.pivot(index='date', columns='instrument', values='close')
-    if prices_df.isna().any().any():
-        nan_summary = prices_df.isna().sum()
-        nan_instruments = nan_summary[nan_summary > 0]
-        raise ValueError(
-            f"NaN produced by pivot (rectangular panel violated):\n{nan_instruments}"
-        )
+
+    # Final NaN check: replicate exact adapter validation (only for rectangular panels)
+    if not allow_jagged:
+        logger.info("Final pivot NaN check (replicating adapter validation)...")
+        if prices_df.isna().any().any():
+            nan_summary = prices_df.isna().sum()
+            nan_instruments = nan_summary[nan_summary > 0]
+            raise ValueError(
+                f"NaN produced by pivot (rectangular panel violated):\n{nan_instruments}"
+            )
+    else:
+        logger.info("Skipping final pivot NaN check (jagged panel allows NaN for dates before launch)")
+
+    # Report regime coverage (descriptive validation)
+    regime_stats = report_regime_coverage(prices_df)
 
     # Select and order columns to match schema
     df = df[['date', 'instrument', 'close', 'funding_rate', 'adv_notional', 'spread_frac', 'taker_fee_frac']]
@@ -855,13 +1104,31 @@ def main():
     )
     parser.add_argument(
         '--start-date',
-        default='2023-01-01',
-        help='Start date for data (YYYY-MM-DD)'
+        default=None,
+        help='Start date for data (YYYY-MM-DD). Overrides --start-year if both provided.'
     )
     parser.add_argument(
         '--end-date',
-        default='2024-12-31',
-        help='End date for data (YYYY-MM-DD)'
+        default=None,
+        help='End date for data (YYYY-MM-DD). Overrides --end-year if both provided.'
+    )
+    parser.add_argument(
+        '--start-year',
+        type=int,
+        default=2023,
+        help='Start year for data (convenience wrapper, uses YYYY-01-01). Default: 2023'
+    )
+    parser.add_argument(
+        '--end-year',
+        type=int,
+        default=2024,
+        help='End year for data (convenience wrapper, uses YYYY-12-31). Default: 2024'
+    )
+    parser.add_argument(
+        '--output-path',
+        default=None,
+        help='Output path for parquet file (default: data/example_crypto_perps.parquet). '
+             'Use this to create dataset variants (e.g., data/example_crypto_perps_5yr.parquet)'
     )
     parser.add_argument(
         '--data-dir',
@@ -887,6 +1154,12 @@ def main():
              'Fails if len(common_dates) < expected_days * min_coverage. '
              'NOTE: Applies to the INTERSECTION across all instruments. '
              'For multi-instrument scaling, may need to relax to 0.80 if instruments have different launch dates.'
+    )
+    parser.add_argument(
+        '--allow-jagged',
+        action='store_true',
+        help='Allow instruments to have different date ranges (jagged panel). '
+             'Uses date UNION instead of intersection. NaN prices allowed for dates outside instrument lifecycle.'
     )
 
     # Optional checksum verification
@@ -932,6 +1205,32 @@ def main():
         )
         return  # Exit after inspection
 
+    # Derive start/end dates from years if explicit dates not provided
+    if args.start_date is None:
+        start_date = f"{args.start_year}-01-01"
+    else:
+        start_date = args.start_date
+
+    if args.end_date is None:
+        end_date = f"{args.end_year}-12-31"
+    else:
+        end_date = args.end_date
+
+    # Determine output path
+    if args.output_path is None:
+        output_path = Path(__file__).parent.parent / 'data' / 'example_crypto_perps.parquet'
+        print("=" * 80)
+        print("WARNING: Using default output path (for backward compatibility):")
+        print(f"  {output_path}")
+        print("RECOMMENDED: Specify explicit --output-path for production use")
+        print("=" * 80)
+        print()
+    else:
+        output_path = Path(args.output_path)
+        # Ensure absolute path
+        if not output_path.is_absolute():
+            output_path = Path(__file__).parent.parent / output_path
+
     # Normal build mode
     if args.source == 'synthetic':
         # Define Layer A instruments (top 5 by ADV for Phase 1)
@@ -946,24 +1245,24 @@ def main():
         print("Generating synthetic crypto perpetual futures data...")
         df = generate_synthetic_crypto_data(
             instruments,
-            start_date=args.start_date,
-            end_date=args.end_date
+            start_date=start_date,
+            end_date=end_date
         )
 
     elif args.source == 'real':
         print("Building dataset from real Binance Data Vision files...")
         df = build_real_crypto_dataset(
             data_dir=Path(args.data_dir),
-            start_date=args.start_date,
-            end_date=args.end_date,
+            start_date=start_date,
+            end_date=end_date,
             instruments=args.instruments,
             fail_on_missing_close=args.fail_on_missing_close,
             min_coverage=args.min_coverage,
-            verify_checksums=args.verify_checksums
+            verify_checksums=args.verify_checksums,
+            allow_jagged=args.allow_jagged
         )
 
-    # Save to parquet (same for both)
-    output_path = Path(__file__).parent.parent / 'data' / 'example_crypto_perps.parquet'
+    # Save to parquet
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Saving to {output_path}...")

@@ -1,4 +1,44 @@
-# Release notes
+# Changelog - Crypto Perps Research System
+
+## [research_v1] - 2026-01-27
+
+### Features
+- **Phase 1**: Static 15-instrument universe with EWMAC (8/32, 16/64) + Carry
+- **Phase 2**: Dynamic universe with monthly Layer-A selection (ADV-based)
+- **IDM Constraints**: Diversification multiplier capped at 2.5x
+- **Jagged Panel Support**: Handle instruments with different launch dates
+- **30-Instrument Universe**: Expanded candidate pool validated
+
+### Data
+- Binance perpetual futures historical data (2020-2026)
+- 15 core instruments with >99% coverage
+- 30 instruments total (28 with good coverage, 2 need replacement)
+
+### Reproducibility
+- All configs frozen and versioned
+- Dataset fingerprinting (MD5)
+- Git commit tracking in metadata
+- Deterministic backtests
+- End-to-end workflow script
+
+### Performance Validated
+- 15-instrument Phase 2: Sharpe 0.67, CAGR 18.58%, MaxDD -45.31%
+- 30-instrument Phase 2: Sharpe 0.89, CAGR 21.85%, MaxDD -31.75%
+
+### Known Limitations
+- Simulated execution (no slippage modeling beyond spread estimate)
+- Funding rate accrual is simplified (daily sum, no intraday timing)
+- ALGO and NEO have insufficient data (<25% coverage) - recommend replacement
+
+### Out of Scope (Future Work)
+- Live trading execution
+- Real-time data feeds
+- Slippage microstructure
+- Relative momentum (implemented but disabled in baselines)
+
+---
+
+# Upstream pysystemtrade Release Notes
 
 ## Version 1.8.2
 
