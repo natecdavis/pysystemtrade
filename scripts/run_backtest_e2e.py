@@ -68,7 +68,7 @@ def download_data(instruments: list, start_year: int, end_year: int, data_dir: s
 
         for year in range(start_year, end_year + 1):
             cmd = [
-                'python', 'scripts/download_binance_data.py',
+                sys.executable, 'scripts/download_binance_data.py',
                 '--symbols', symbol,
                 '--year', str(year),
                 '--data-dir', data_dir
@@ -89,7 +89,7 @@ def build_dataset(config: dict, start_date: str, end_date: str, output_path: str
     allow_jagged = config.get('system', {}).get('allow_jagged', False)
 
     cmd = [
-        'python', 'scripts/build_example_dataset.py',
+        sys.executable, 'scripts/build_example_dataset.py',
         '--source', 'real',
         '--data-dir', data_dir,
         '--start-date', start_date,
@@ -117,7 +117,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str):
     print(f"\n=== Step 3: Running backtest ===")
 
     cmd = [
-        'python', 'systems/crypto_perps/system.py',
+        sys.executable, 'systems/crypto_perps/system.py',
         '--config', config_path,
         '--data', data_path,
         '--outdir', output_dir

@@ -4,6 +4,8 @@ import pytest
 import subprocess
 import hashlib
 import json
+import sys
+import os
 import pandas as pd
 from pathlib import Path
 import shutil
@@ -69,13 +71,17 @@ def test_deterministic_backtest_phase1():
 
         # Run backtest
         cmd = [
-            'python', 'systems/crypto_perps/system.py',
+            sys.executable, 'systems/crypto_perps/system.py',
             '--config', config,
             '--data', dataset,
             '--outdir', output_dir
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # Set PYTHONPATH to current directory
+        env = os.environ.copy()
+        env['PYTHONPATH'] = '.'
+
+        result = subprocess.run(cmd, env=env, capture_output=True, text=True)
         assert result.returncode == 0, f"Run {run} failed:\n{result.stderr}"
 
         output_dirs.append(output_dir)
@@ -114,7 +120,7 @@ def test_deterministic_dataset_build():
         output_file = f'data/test_determinism_run{run}.parquet'
 
         cmd = [
-            'python', 'scripts/build_example_dataset.py',
+            sys.executable, 'scripts/build_example_dataset.py',
             '--source', 'real',
             '--data-dir', 'data/raw/binance',
             '--start-date', '2023-01-01',
