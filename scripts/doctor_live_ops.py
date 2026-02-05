@@ -425,8 +425,7 @@ def main():
     parser.add_argument(
         '--data-dir',
         type=Path,
-        default=Path('data/raw/binance'),
-        help='Data directory for auto-discovery (default: data/raw/binance)'
+        help='Data directory for auto-discovery (default: env-aware data/raw/binance)'
     )
     parser.add_argument(
         '--cadence',

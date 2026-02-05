@@ -11,31 +11,7 @@
       "missing_months": [],
       "warnings": []
     },
-    "ETHUSDT": {
-      "last_available_month": "2024-12",
-      "months_downloaded": [],
-      "status": "up_to_date",
-      "data_lag_days": 0,
-      "missing_months": [],
-      "warnings": []
-    },
-    "BNBUSDT": {
-      "last_available_month": "2024-10",
-      "months_downloaded": [],
-      "status": "up_to_date",
-      "data_lag_days": 61,
-      "missing_months": [],
-      "warnings": []
-    },
     "SOLUSDT": {
-      "last_available_month": "2024-10",
-      "months_downloaded": [],
-      "status": "up_to_date",
-      "data_lag_days": 61,
-      "missing_months": [],
-      "warnings": []
-    },
-    "XRPUSDT": {
       "last_available_month": "2024-10",
       "months_downloaded": [],
       "status": "up_to_date",
@@ -45,16 +21,10 @@
     }
   },
   "summary": {
-    "total_instruments": 5,
-    "up_to_date": 5,
+    "total_instruments": 2,
+    "up_to_date": 2,
     "lagging": 0,
     "missing_data": 0,
     "max_lag_days": 61
-  },
-  "download_summary": {
-    "total_months_attempted": 174,
-    "successful": 330,
-    "failed": 0,
-    "dry_run": false
   }
 }

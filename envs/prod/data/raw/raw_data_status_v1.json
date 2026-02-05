@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-02-05T04:32:54Z",
+  "expected_as_of_date": "2024-12-31",
+  "dataset_as_of_date": "2024-10-31",
+  "lag_policy_days": 1,
+  "cadence": "daily",
+  "instruments": {
+    "BTCUSDT_PERP": {
+      "last_available_date": "2024-12-31",
+      "staleness_days": 0,
+      "data_sources": {
+        "vision_monthly_through": "2024-12",
+        "vision_daily_through": null,
+        "api_cache_through": null
+      },
+      "status": "up_to_date",
+      "warnings": []
+    },
+    "SOLUSDT_PERP": {
+      "last_available_date": "2024-10-31",
+      "staleness_days": 61,
+      "data_sources": {
+        "vision_monthly_through": "2024-10",
+        "vision_daily_through": null,
+        "api_cache_through": null
+      },
+      "status": "lagging",
+      "warnings": [
+        "Lagging by 61 day(s) (eligibility rules will apply)"
+      ]
+    }
+  },
+  "summary": {
+    "total_instruments": 2,
+    "up_to_date": 1,
+    "lagging": 1,
+    "max_staleness_days": 61,
+    "as_of_date_alignment": "strict_fail"
+  }
+}
