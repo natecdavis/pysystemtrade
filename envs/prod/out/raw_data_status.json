@@ -1,0 +1,39 @@
+{
+  "as_of_date": "2026-02-04",
+  "expected_as_of_date": "2026-02-03",
+  "dataset_as_of_date": "2026-02-03",
+  "tolerance_days": 1,
+  "instruments": {
+    "BTCUSDT": {
+      "last_available_date": "2026-02-03",
+      "staleness_days": 0,
+      "status": "up_to_date"
+    },
+    "ETHUSDT": {
+      "last_available_date": "2026-02-03",
+      "staleness_days": 0,
+      "status": "up_to_date"
+    },
+    "BNBUSDT": {
+      "last_available_date": "2026-02-03",
+      "staleness_days": 0,
+      "status": "up_to_date"
+    },
+    "XRPUSDT": {
+      "last_available_date": "2026-02-03",
+      "staleness_days": 0,
+      "status": "up_to_date"
+    },
+    "SOLUSDT": {
+      "last_available_date": "2026-02-03",
+      "staleness_days": 0,
+      "status": "up_to_date"
+    }
+  },
+  "summary": {
+    "up_to_date": 5,
+    "lagging": 0,
+    "missing_data": 0,
+    "max_staleness": 0
+  }
+}

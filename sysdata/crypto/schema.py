@@ -89,36 +89,74 @@ def validate_schema_compliance(df: pd.DataFrame, require_rectangular: bool = Fal
             errors.append(f"{col}: expected numeric, got {df[col].dtype}")
 
     # Check per-column rules (use NumPy arrays to avoid dtype issues with np.isfinite)
+    # For jagged panels (require_rectangular=False), allow NaN values
     if 'close' in df.columns:
-        close_np = df['close'].to_numpy(dtype=float, na_value=np.nan)
-        if not (close_np > 0).all():
-            errors.append("close: contains non-positive values")
-        if not (close_np < 1e6).all():
-            errors.append("close: contains unrealistic values > 1e6")
-        if not np.isfinite(close_np).all():
-            errors.append("close: contains inf/nan")
+        if require_rectangular:
+            # Rectangular: no NaN allowed, check all values
+            close_np = df['close'].to_numpy(dtype=float, na_value=np.nan)
+            if not (close_np > 0).all():
+                errors.append("close: contains non-positive values")
+            if not (close_np < 1e6).all():
+                errors.append("close: contains unrealistic values > 1e6")
+            if not np.isfinite(close_np).all():
+                errors.append("close: contains inf/nan")
+            if df['close'].isna().any():
+                errors.append("close: contains NaN values")
+        else:
+            # Jagged: allow NaN, but check non-NaN values
+            close_valid = df['close'].dropna()
+            if len(close_valid) > 0:
+                close_valid_np = close_valid.to_numpy(dtype=float)
+                if not (close_valid_np > 0).all():
+                    errors.append("close: contains non-positive values (excluding NaN)")
+                if not (close_valid_np < 1e6).all():
+                    errors.append("close: contains unrealistic values > 1e6 (excluding NaN)")
+                if not np.isfinite(close_valid_np).all():
+                    errors.append("close: contains inf (excluding NaN)")
 
     if 'funding_rate' in df.columns:
-        funding_np = df['funding_rate'].to_numpy(dtype=float, na_value=np.nan)
-        if not np.isfinite(funding_np).all():
-            errors.append("funding_rate: contains inf/nan")
+        if require_rectangular:
+            funding_np = df['funding_rate'].to_numpy(dtype=float, na_value=np.nan)
+            if not np.isfinite(funding_np).all():
+                errors.append("funding_rate: contains inf/nan")
+        else:
+            # Jagged: allow NaN (expected for dates without funding data)
+            funding_valid = df['funding_rate'].dropna()
+            if len(funding_valid) > 0:
+                funding_valid_np = funding_valid.to_numpy(dtype=float)
+                if not np.isfinite(funding_valid_np).all():
+                    errors.append("funding_rate: contains inf (excluding NaN)")
 
     if 'adv_notional' in df.columns:
-        adv_np = df['adv_notional'].to_numpy(dtype=float, na_value=np.nan)
-        if not (adv_np >= 0).all():
-            errors.append("adv_notional: contains negative values")
-        if not np.isfinite(adv_np).all():
-            errors.append("adv_notional: contains inf/nan")
+        if require_rectangular:
+            adv_np = df['adv_notional'].to_numpy(dtype=float, na_value=np.nan)
+            if not (adv_np >= 0).all():
+                errors.append("adv_notional: contains negative values")
+            if not np.isfinite(adv_np).all():
+                errors.append("adv_notional: contains inf/nan")
+        else:
+            # Jagged: allow NaN
+            adv_valid = df['adv_notional'].dropna()
+            if len(adv_valid) > 0:
+                adv_valid_np = adv_valid.to_numpy(dtype=float)
+                if not (adv_valid_np >= 0).all():
+                    errors.append("adv_notional: contains negative values (excluding NaN)")
+                if not np.isfinite(adv_valid_np).all():
+                    errors.append("adv_notional: contains inf (excluding NaN)")
 
     for col in ['spread_frac', 'taker_fee_frac']:
         if col in df.columns:
-            col_np = df[col].to_numpy(dtype=float, na_value=np.nan)
-            if not ((col_np >= 0) & (col_np < 1)).all():
-                errors.append(f"{col}: values outside [0, 1) range")
-
-    # Check for NaN in close prices (other columns NaN is caught by finite checks)
-    if df['close'].isna().any():
-        errors.append("close: contains NaN values")
+            if require_rectangular:
+                col_np = df[col].to_numpy(dtype=float, na_value=np.nan)
+                if not ((col_np >= 0) & (col_np < 1)).all():
+                    errors.append(f"{col}: values outside [0, 1) range")
+            else:
+                # Jagged: allow NaN
+                col_valid = df[col].dropna()
+                if len(col_valid) > 0:
+                    col_valid_np = col_valid.to_numpy(dtype=float)
+                    if not ((col_valid_np >= 0) & (col_valid_np < 1)).all():
+                        errors.append(f"{col}: values outside [0, 1) range (excluding NaN)")
 
     # Check duplicate (date, instrument)
     if df.duplicated(subset=['date', 'instrument']).any():

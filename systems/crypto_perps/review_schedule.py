@@ -165,7 +165,37 @@ def evaluate_layer_a_eligibility(
     eligible_count = sum(1 for e in eligibility.values() if e['eligible'])
     logger.info(f"{date.date()} - Layer A review: {eligible_count}/{len(instruments)} instruments eligible")
 
-    # Log ineligible instruments
+    # NEW: Diagnostic filter breakdown
+    filter_stats = {
+        'insufficient_history': 0,
+        'missing_recent_data': 0,
+        'adv_below_threshold': 0,
+        'no_adv_data': 0,
+        'passed_all_filters': 0
+    }
+
+    for inst, info in eligibility.items():
+        if info['eligible']:
+            filter_stats['passed_all_filters'] += 1
+        else:
+            reason = info['reason']
+            if 'Insufficient history' in reason:
+                filter_stats['insufficient_history'] += 1
+            elif 'Missing data in past' in reason:
+                filter_stats['missing_recent_data'] += 1
+            elif 'ADV' in reason and 'below threshold' in reason:
+                filter_stats['adv_below_threshold'] += 1
+            elif 'Missing ADV data' in reason or 'Error accessing ADV data' in reason:
+                filter_stats['no_adv_data'] += 1
+
+    logger.info(f"  Filter breakdown:")
+    logger.info(f"    Passed all filters: {filter_stats['passed_all_filters']}")
+    logger.info(f"    Failed - Insufficient history: {filter_stats['insufficient_history']}")
+    logger.info(f"    Failed - Missing recent data: {filter_stats['missing_recent_data']}")
+    logger.info(f"    Failed - ADV below threshold: {filter_stats['adv_below_threshold']}")
+    logger.info(f"    Failed - No ADV data: {filter_stats['no_adv_data']}")
+
+    # Log ineligible instruments (existing debug logging)
     for inst, info in eligibility.items():
         if not info['eligible']:
             logger.debug(f"  {inst}: INELIGIBLE - {info['reason']}")
@@ -221,6 +251,9 @@ def get_review_membership(
         get_review_membership._cache = {}
 
     cache = get_review_membership._cache
+
+    # Initialize membership to empty list (defensive coding)
+    membership = []
 
     # Find last review date <= current date
     past_reviews = [r for r in review_dates if r <= date]

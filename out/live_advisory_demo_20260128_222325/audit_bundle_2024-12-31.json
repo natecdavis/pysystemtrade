@@ -1,0 +1,74 @@
+{
+  "timestamp_utc": "2026-01-29T03:23:30Z",
+  "system_version": "research_v1",
+  "as_of_date": "2024-12-31",
+  "last_complete_bar_date": "2024-12-31",
+  "data_lag_days": 394,
+  "advisory_cadence": "monthly",
+  "backtest_metadata": {
+    "backtest_dir": "out/live_advisory_demo_20260128_222325/backtest_latest",
+    "config_hash": "unknown",
+    "dataset_fingerprint": "6a09154831adc56bbc858763890ac73c",
+    "git_commit": "5910397716938b232e63f2d81d024505d547ca1a",
+    "dataset_path": "/Users/nathanieldavis/pysystemtrade-crypto-perps/data/example_crypto_perps_5yr.parquet",
+    "dataset_date_range": [
+      null,
+      null
+    ]
+  },
+  "actual_positions": {
+    "source_file": "live/current_positions.csv",
+    "timestamp": "2026-01-28T00:00:00Z",
+    "prices_snapshot": {
+      "BTCUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "ETHUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "BNBUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "XRPUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      }
+    }
+  },
+  "equity_info": {
+    "current_equity_usd": 5000.0,
+    "initial_capital_usd": 5000.0,
+    "total_pnl_pct": 0.0,
+    "source": "manual_input"
+  },
+  "forecasts_snapshot": {},
+  "constraints_snapshot": {
+    "note": "IDM from target portfolio model, not actual positions"
+  },
+  "target_portfolio": {
+    "target_weights": {
+      "BNBUSDT_PERP": 0.6459,
+      "BTCUSDT_PERP": 0.6453,
+      "ETHUSDT_PERP": 0.1033,
+      "XRPUSDT_PERP": 0.4956
+    },
+    "target_notionals": {
+      "BNBUSDT_PERP": 3229.53,
+      "BTCUSDT_PERP": 3226.47,
+      "ETHUSDT_PERP": 516.67,
+      "XRPUSDT_PERP": 2477.97
+    }
+  },
+  "warnings": [
+    "Advisory based on data through 2024-12-31 (394 day lag)",
+    "Estimated costs - check live spreads",
+    "Monthly cadence advisory - not for intraday decisions"
+  ]
+}

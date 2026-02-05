@@ -1,0 +1,60 @@
+{
+  "as_of_date": "2024-12-31",
+  "expected_last_month": "2024-10",
+  "lag_policy_months": 2,
+  "instruments": {
+    "BTCUSDT": {
+      "last_available_month": "2024-12",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 0,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ETHUSDT": {
+      "last_available_month": "2024-12",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 0,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BNBUSDT": {
+      "last_available_month": "2024-10",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 61,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SOLUSDT": {
+      "last_available_month": "2024-10",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 61,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XRPUSDT": {
+      "last_available_month": "2024-10",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 61,
+      "missing_months": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "total_instruments": 5,
+    "up_to_date": 5,
+    "lagging": 0,
+    "missing_data": 0,
+    "max_lag_days": 61
+  },
+  "download_summary": {
+    "total_months_attempted": 174,
+    "successful": 330,
+    "failed": 0,
+    "dry_run": false
+  }
+}

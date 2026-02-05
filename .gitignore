@@ -43,6 +43,8 @@ data/**/*.parquet
 
 # Explicitly allow tracked datasets
 !data/example_crypto_perps.parquet
+!data/example_crypto_perps_5yr.parquet
+!data/example_crypto_perps_15x4yr.parquet
 !data/test_fixtures/
 !data/test_fixtures/*.parquet
 

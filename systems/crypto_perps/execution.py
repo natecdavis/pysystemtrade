@@ -212,6 +212,125 @@ def calculate_trade_costs(
     return rtc_costs, srcosts
 
 
+def execute_trade_for_date(
+    target_weights: Dict[str, float],
+    current_weights: Dict[str, float],
+    prices: Dict[str, float],
+    meta: Dict[str, Dict[str, float]],  # {inst: {spread_frac, taker_fee_frac}}
+    eligible: Dict[str, bool],
+    daily_vols: Dict[str, float],
+    capital: float,
+    buffer_frac: float,
+    state: Dict[str, str] = None  # Optional Phase 2 states
+) -> Tuple[Dict[str, float], Dict[str, float]]:
+    """
+    Execute trades for a single date with buffers and cost calculation
+
+    Encapsulates the per-date logic from execute_trades() for reuse in daily loop.
+
+    Phase 2: If state dict provided and state == 'banned_flatten', bypass buffer.
+
+    Args:
+        target_weights: Dict mapping instrument -> target weight
+        current_weights: Dict mapping instrument -> current weight
+        prices: Dict mapping instrument -> current price
+        meta: Dict mapping instrument -> {spread_frac, taker_fee_frac}
+        eligible: Dict mapping instrument -> eligibility status
+        daily_vols: Dict mapping instrument -> daily volatility
+        capital: Total capital
+        buffer_frac: Buffer fraction (e.g., 0.1)
+        state: Optional dict mapping instrument -> state string (Phase 2)
+
+    Returns:
+        Tuple of (trades, costs):
+        - trades: Dict mapping instrument -> trade weight
+        - costs: Dict mapping instrument -> RTC cost in dollars
+
+    Notes:
+        - Reuses apply_trading_buffer() for buffer logic
+        - BANNED_FLATTEN bypass forces trade regardless of buffer
+        - Matches existing execute_trades() behavior exactly
+    """
+    from systems.crypto_perps.universe import InstrumentState
+
+    instruments = list(target_weights.keys())
+
+    # Phase 2: Force-flatten and zero-position states (before buffer logic)
+    # States requiring immediate flatten: BANNED_FLATTEN, DELISTED
+    # States requiring zero position: NOT_YET_LAUNCHED, WARMUP, IDM_INELIGIBLE
+    if state is not None:
+        FLATTEN_STATES = [
+            InstrumentState.BANNED_FLATTEN.value,
+            InstrumentState.DELISTED.value
+        ]
+        ZERO_POSITION_STATES = [
+            InstrumentState.NOT_YET_LAUNCHED.value,
+            InstrumentState.WARMUP.value,
+            InstrumentState.IDM_INELIGIBLE.value
+        ]
+
+        for inst in instruments:
+            inst_state = state.get(inst, InstrumentState.ACTIVE.value)
+
+            # Force flatten for terminal states
+            if inst_state in FLATTEN_STATES:
+                # Force trade to zero (bypass buffer)
+                target_val = 0.0
+                current_val = current_weights.get(inst, 0.0)
+                desired_trade = target_val - current_val
+
+                if abs(desired_trade) > 1e-10:
+                    # Ensure target is set to zero for cost calc
+                    target_weights[inst] = 0.0
+                    # Mark as eligible for trading (override ineligibility to allow flatten)
+                    eligible[inst] = True
+                else:
+                    # Already flat, no trade needed
+                    target_weights[inst] = 0.0
+
+            # Ensure zero position for pre-launch/warmup states
+            elif inst_state in ZERO_POSITION_STATES:
+                # These should already have zero target, but enforce it
+                target_weights[inst] = 0.0
+                current_val = current_weights.get(inst, 0.0)
+
+                # If somehow have a non-zero position, force flatten
+                if abs(current_val) > 1e-10:
+                    # Mark as eligible to allow flatten
+                    eligible[inst] = True
+
+    # Apply trading buffers (for non-BANNED instruments)
+    trades = apply_trading_buffer(
+        target_weights=target_weights,
+        current_weights=current_weights,
+        buffer_frac=buffer_frac,
+        prices=prices,
+        daily_vols=daily_vols,
+        capital=capital,
+        eligible=eligible
+    )
+
+    # Calculate costs for executed trades
+    costs = {}
+    for inst in instruments:
+        trade = trades.get(inst, 0.0)
+        if abs(trade) < 1e-10:
+            costs[inst] = 0.0
+            continue
+
+        # Get cost parameters
+        inst_meta = meta.get(inst, {})
+        spread_frac = inst_meta.get('spread_frac', 0.0003)
+        fee_frac = inst_meta.get('taker_fee_frac', 0.0004)
+
+        # Calculate RTC (round-trip cost)
+        notional = abs(trade) * capital
+        rtc = notional * (spread_frac / 2 + fee_frac)
+        costs[inst] = rtc
+
+    return trades, costs
+
+
 def execute_trades(
     target_weights_df: pd.DataFrame,
     current_weights_df: pd.DataFrame,
@@ -284,70 +403,52 @@ def execute_trades(
                     'taker_fee_frac': 0.0004
                 }
 
-        # Phase 2: Check for BANNED_FLATTEN bypass (before buffer logic)
-        # If instrument is BANNED_FLATTEN, force trade to target regardless of buffer
-        if state_df is not None:
-            from systems.crypto_perps.universe import InstrumentState
+        # Get states for Phase 2
+        states = state_df.loc[date].to_dict() if state_df is not None else None
 
-            # Get states for this date
-            states = state_df.loc[date].to_dict()
-
-            # Override trades for BANNED_FLATTEN instruments
-            for inst in instruments:
-                state = states.get(inst, InstrumentState.ACTIVE.value)
-                if state == InstrumentState.BANNED_FLATTEN.value:
-                    # Force trade to target (bypass buffer)
-                    target_val = target.get(inst, 0.0)
-                    current_val = current.get(inst, 0.0)
-                    desired_trade = target_val - current_val
-
-                    # Only record trade if meaningful (avoid spurious trades when already flat)
-                    if abs(desired_trade) > 1e-10:
-                        target[inst] = target_val  # Ensure target is set for cost calc
-                        # Mark as eligible for trading (override ineligibility)
-                        eligible[inst] = True
-                    else:
-                        # Already flat, no trade needed
-                        target[inst] = current_val  # No delta
-
-        # Apply trading buffers (for non-BANNED instruments)
-        trades = apply_trading_buffer(
+        # Execute trades using helper (ensures baseline equivalence)
+        trades, rtc_costs = execute_trade_for_date(
             target_weights=target,
             current_weights=current,
-            buffer_frac=buffer_frac,
-            prices=prices,
-            daily_vols=daily_vols,
-            capital=capital,
-            eligible=eligible
-        )
-
-        # Phase 2: Override trades for BANNED_FLATTEN (explicit bypass)
-        # This ensures immediate execution even if buffer would prevent it
-        if state_df is not None:
-            from systems.crypto_perps.universe import InstrumentState
-
-            states = state_df.loc[date].to_dict()
-            for inst in instruments:
-                state = states.get(inst, InstrumentState.ACTIVE.value)
-                if state == InstrumentState.BANNED_FLATTEN.value:
-                    target_val = target.get(inst, 0.0)
-                    current_val = current.get(inst, 0.0)
-                    desired_trade = target_val - current_val
-
-                    # Force trade regardless of buffer
-                    if abs(desired_trade) > 1e-10:
-                        trades[inst] = desired_trade
-                    else:
-                        trades[inst] = 0.0
-
-        # Calculate costs for all trades (including bypass trades)
-        rtc_costs, srcosts = calculate_trade_costs(
-            trades=trades,
             prices=prices,
             meta=meta,
+            eligible=eligible,
+            daily_vols=daily_vols,
             capital=capital,
-            daily_vols=daily_vols
+            buffer_frac=buffer_frac,
+            state=states
         )
+
+        # Calculate SRcost (diagnostic) - not returned by helper
+        srcosts = {}
+        for inst in instruments:
+            trade_weight = trades.get(inst, 0.0)
+            if abs(trade_weight) < 1e-10:
+                srcosts[inst] = 0.0
+                continue
+
+            daily_vol = daily_vols.get(inst, 0.0)
+            price = prices.get(inst, 1.0)
+
+            if daily_vol > 0 and price > 0:
+                # Annual volatility (percentage)
+                annual_vol_pct = (daily_vol / price) * np.sqrt(BUSINESS_DAYS_IN_YEAR)
+
+                # Position size in capital terms
+                position_notional = abs(trade_weight) * capital
+
+                # Annual volatility in dollars
+                annual_vol_dollars = position_notional * annual_vol_pct
+
+                if annual_vol_dollars > 0:
+                    # SRcost = cost / annual volatility
+                    srcost = rtc_costs[inst] / annual_vol_dollars
+                else:
+                    srcost = 0.0
+            else:
+                srcost = 0.0
+
+            srcosts[inst] = srcost
 
         # Store results
         for inst in instruments:

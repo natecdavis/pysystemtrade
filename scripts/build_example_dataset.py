@@ -231,7 +231,8 @@ def has_header(first_line: bytes) -> bool:
 def load_binance_klines(
     instrument: str,
     data_dir: Path,
-    fail_on_missing_close: bool = False
+    fail_on_missing_close: bool = False,
+    include_api_cache: bool = False
 ) -> pd.DataFrame:
     """
     Load all kline files for instrument using glob discovery with header autodetection
@@ -240,6 +241,7 @@ def load_binance_klines(
         instrument: Internal instrument ID (e.g., 'BTCUSDT_PERP')
         data_dir: Root data directory (e.g., Path('data/raw'))
         fail_on_missing_close: If True, raise error if any rows with NaN close are dropped
+        include_api_cache: If True, also load from api_cache directory and deduplicate (Vision > API)
 
     Returns:
         DataFrame with columns: date, close, volume, quote_volume
@@ -249,6 +251,7 @@ def load_binance_klines(
         - Works with daily or monthly archives (glob pattern matches both)
         - date is derived from close_time (end-of-day timestamp)
         - NaN close rows are dropped with logging
+        - If include_api_cache=True, merges Vision ZIPs + API cache with deduplication
     """
     # Map internal ID to Binance symbol
     binance_symbol = BINANCE_SYMBOL_MAP[instrument]
@@ -369,7 +372,69 @@ def load_binance_klines(
     if not (klines['quote_volume'] >= 0).all():
         raise ValueError(f"{instrument}: Negative volume found")
 
-    return klines.sort_values('date').reset_index(drop=True)
+    vision_klines = klines.sort_values('date').reset_index(drop=True)
+
+    # Load API cache if requested (V1 daily operations)
+    if include_api_cache:
+        api_cache_dir = data_dir / 'api_cache' / binance_symbol
+        if api_cache_dir.exists():
+            cache_files = list(api_cache_dir.glob('*_klines.parquet'))
+            if cache_files:
+                logger.info(f"Loading {len(cache_files)} API cache files for {binance_symbol}")
+
+                api_cache_dfs = []
+                for cache_file in cache_files:
+                    try:
+                        df = pd.read_parquet(cache_file)
+                        # API cache has columns: date, open, high, low, close, volume, quote_volume
+                        # Ensure date is datetime
+                        if not pd.api.types.is_datetime64_any_dtype(df['date']):
+                            df['date'] = pd.to_datetime(df['date'])
+                        api_cache_dfs.append(df)
+                    except Exception as e:
+                        logger.warning(f"Failed to load API cache {cache_file.name}: {e}")
+
+                if api_cache_dfs:
+                    api_cache_klines = pd.concat(api_cache_dfs, ignore_index=True)
+
+                    # Ensure date column format matches Vision data
+                    api_cache_klines['date'] = pd.to_datetime(api_cache_klines['date'], utc=True).dt.tz_convert(None)
+
+                    # Select columns matching Vision data
+                    api_cache_klines = api_cache_klines[['date', 'close', 'volume', 'quote_volume']].copy()
+
+                    # Coerce to numeric
+                    api_cache_klines['close'] = pd.to_numeric(api_cache_klines['close'], errors='coerce')
+                    api_cache_klines['volume'] = pd.to_numeric(api_cache_klines['volume'], errors='coerce')
+                    api_cache_klines['quote_volume'] = pd.to_numeric(api_cache_klines['quote_volume'], errors='coerce')
+
+                    # Drop NaN close
+                    api_cache_klines = api_cache_klines[api_cache_klines['close'].notna()].copy()
+
+                    # Merge with Vision data (Vision > API cache for duplicates)
+                    logger.info(
+                        f"Merging Vision ({len(vision_klines)} rows) + "
+                        f"API cache ({len(api_cache_klines)} rows)"
+                    )
+
+                    # Concatenate
+                    merged = pd.concat([vision_klines, api_cache_klines], ignore_index=True)
+
+                    # Deduplicate by date (keep first = Vision priority)
+                    merged = merged.sort_values('date')
+                    duplicates = merged.duplicated(subset='date', keep='first')
+                    if duplicates.any():
+                        logger.info(
+                            f"Deduplicating {duplicates.sum()} rows "
+                            f"(Vision data takes precedence over API cache)"
+                        )
+                    merged = merged.drop_duplicates(subset='date', keep='first')
+
+                    return merged.sort_values('date').reset_index(drop=True)
+        else:
+            logger.debug(f"No API cache directory found for {binance_symbol}")
+
+    return vision_klines
 
 
 def consolidate_funding_to_daily(funding_events: pd.DataFrame) -> pd.DataFrame:
@@ -657,7 +722,9 @@ def build_real_crypto_dataset(
     fail_on_missing_close: bool = False,
     min_coverage: float = 0.95,
     verify_checksums: bool = False,
-    allow_jagged: bool = False
+    allow_jagged: bool = False,
+    include_api_cache: bool = False,
+    metadata_dir: Path = None
 ) -> pd.DataFrame:
     """
     Build dataset from real Binance Data Vision bulk files
@@ -671,6 +738,8 @@ def build_real_crypto_dataset(
         min_coverage: Minimum coverage ratio for common_dates intersection (default: 0.95)
         verify_checksums: If True, verify SHA256 checksums for ZIP files
         allow_jagged: If True, allow jagged panels (use date union instead of intersection)
+        include_api_cache: If True, include API cache data (V1 daily operations)
+        metadata_dir: Path to metadata directory. Precedence: explicit > {data_dir}/metadata > data/raw/metadata
 
     Returns:
         DataFrame with schema: date, instrument, close, funding_rate, adv_notional, spread_frac, taker_fee_frac
@@ -686,8 +755,25 @@ def build_real_crypto_dataset(
     if instruments is None:
         instruments = ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'BNBUSDT_PERP', 'SOLUSDT_PERP', 'XRPUSDT_PERP']
 
+    # Resolve metadata directory with precedence rules
+    if metadata_dir is None:
+        # Try {data_dir}/metadata first
+        candidate1 = data_dir / 'metadata'
+        if (candidate1 / 'binance_market_info.json').exists():
+            metadata_dir = candidate1
+        else:
+            # Fall back to legacy location
+            candidate2 = Path('data/raw/metadata')
+            if (candidate2 / 'binance_market_info.json').exists():
+                metadata_dir = candidate2
+            else:
+                raise FileNotFoundError(
+                    f"Metadata not found. Tried: {candidate1}, {candidate2}. "
+                    f"Use --metadata-dir to specify explicit location."
+                )
+
     # Load metadata (spread and fee estimates)
-    metadata_file = data_dir / 'metadata' / 'binance_market_info.json'
+    metadata_file = metadata_dir / 'binance_market_info.json'
     with open(metadata_file, 'r') as f:
         market_info = json.load(f)
 
@@ -700,7 +786,7 @@ def build_real_crypto_dataset(
 
         # Load klines
         try:
-            klines = load_binance_klines(inst, data_dir, fail_on_missing_close)
+            klines = load_binance_klines(inst, data_dir, fail_on_missing_close, include_api_cache)
         except FileNotFoundError as e:
             logger.error(f"Skipping {inst}: {e}")
             continue
@@ -1136,6 +1222,12 @@ def main():
         help='Root directory for raw data files'
     )
     parser.add_argument(
+        '--metadata-dir',
+        type=Path,
+        default=None,
+        help='Metadata directory. Precedence: explicit > {data-dir}/metadata > data/raw/metadata'
+    )
+    parser.add_argument(
         '--instruments',
         nargs='+',
         default=None,
@@ -1160,6 +1252,12 @@ def main():
         action='store_true',
         help='Allow instruments to have different date ranges (jagged panel). '
              'Uses date UNION instead of intersection. NaN prices allowed for dates outside instrument lifecycle.'
+    )
+    parser.add_argument(
+        '--include-api-cache',
+        action='store_true',
+        help='Include API cache data (for V1 daily operations). '
+             'Merges Vision ZIPs + API cache with deduplication (Vision > API cache for duplicates).'
     )
 
     # Optional checksum verification
@@ -1259,7 +1357,9 @@ def main():
             fail_on_missing_close=args.fail_on_missing_close,
             min_coverage=args.min_coverage,
             verify_checksums=args.verify_checksums,
-            allow_jagged=args.allow_jagged
+            allow_jagged=args.allow_jagged,
+            include_api_cache=args.include_api_cache,
+            metadata_dir=args.metadata_dir
         )
 
     # Save to parquet

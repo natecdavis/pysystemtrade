@@ -18,7 +18,7 @@ Missing Price Handling:
 
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import logging
 from enum import Enum
 
@@ -30,22 +30,52 @@ class InstrumentState(Enum):
     Instrument states for Phase 2 state machine
 
     State Semantics:
+    - NOT_YET_LAUNCHED: Before instrument launch date (position must be 0)
+    - WARMUP: After launch but insufficient history for indicators (position must be 0)
+    - IDM_INELIGIBLE: Insufficient overlap for IDM calculation (position must be 0)
     - ACTIVE: Normal trading (increase/decrease positions)
     - INELIGIBLE_HOLD: Temporarily fails daily eligibility (reduce-only via decay)
-    - BANNED_FLATTEN: Instrument removed/untradeable (immediate flatten to 0)
+    - DELISTED: Permanently removed from exchange (immediate flatten to 0)
+    - BANNED_FLATTEN: Manually banned instrument (immediate flatten to 0)
 
     State Transitions:
-    - ACTIVE ↔ INELIGIBLE_HOLD (based on daily eligibility)
-    - BANNED_FLATTEN (never exits, permanent or until unbanned)
+    - NOT_YET_LAUNCHED → WARMUP (on launch date)
+    - WARMUP → IDM_INELIGIBLE or ACTIVE (after sufficient indicator history)
+    - IDM_INELIGIBLE → ACTIVE (after sufficient overlap with peers)
+    - ACTIVE ↔ INELIGIBLE_HOLD (based on daily eligibility: ADV, missing price)
+    - DELISTED (terminal state, never exits)
+    - BANNED_FLATTEN (terminal state unless manually unbanned)
+
+    State Priority Order (for determine_instrument_state):
+    1. BANNED_FLATTEN (manual override, highest priority)
+    2. NOT_YET_LAUNCHED (before launch date)
+    3. DELISTED (after delist date)
+    4. WARMUP (insufficient history for indicators)
+    5. IDM_INELIGIBLE (insufficient overlap for IDM)
+    6. INELIGIBLE_HOLD (ADV too low, missing price)
+    7. ACTIVE (fully eligible for trading)
 
     CRITICAL: INELIGIBLE_HOLD does NOT auto-transition to BANNED_FLATTEN
     - These are separate states with different purposes
     - INELIGIBLE_HOLD = temporarily ineligible, reduce-only until eligible again
-    - BANNED_FLATTEN = permanently removed (exchange delist, data loss, config ban)
+    - DELISTED/BANNED_FLATTEN = permanently removed (exchange delist, data loss, config ban)
+    - IDM_INELIGIBLE = instrument valid but insufficient data overlap for diversification benefit
     """
-    ACTIVE = "active"
-    INELIGIBLE_HOLD = "ineligible_hold"
-    BANNED_FLATTEN = "banned_flatten"
+    NOT_YET_LAUNCHED = "NOT_YET_LAUNCHED"
+    WARMUP = "WARMUP"
+    IDM_INELIGIBLE = "IDM_INELIGIBLE"
+    ACTIVE = "ACTIVE"
+    INELIGIBLE_HOLD = "INELIGIBLE_HOLD"
+    DELISTED = "DELISTED"
+    BANNED_FLATTEN = "BANNED_FLATTEN"
+
+
+# Minimum history required for indicators (conservative: covers all warmup periods)
+MIN_HISTORY_DAYS = 90  # Conservative: covers vol (35), EWMAC (64), carry (30), correlation (60)
+
+# IDM eligibility requirements (conservative: prevent optimistic diversification assumptions)
+IDM_MIN_OVERLAP_DAYS = 60  # Min overlapping returns required for pairwise correlation
+IDM_MIN_PEER_COUNT = 2  # Min number of peers with sufficient overlap
 
 
 # Phase 1: Static Layer A instruments (top 5 by ADV)
@@ -56,6 +86,200 @@ LAYER_A_INSTRUMENTS = [
     'SOLUSDT_PERP',
     'XRPUSDT_PERP'
 ]
+
+
+def has_sufficient_history(
+    instrument: str,
+    date: pd.Timestamp,
+    prices_df: pd.DataFrame,
+    min_days: int = MIN_HISTORY_DAYS
+) -> bool:
+    """
+    Check if instrument has enough history for indicators
+
+    Args:
+        instrument: Instrument code
+        date: Date to check
+        prices_df: DataFrame with date index and instrument columns
+        min_days: Minimum number of valid (non-NaN) prices required
+
+    Returns:
+        True if instrument has sufficient history, False otherwise
+    """
+    if instrument not in prices_df.columns:
+        return False
+
+    # Get historical prices up to (but not including) this date
+    hist_prices = prices_df.loc[:date, instrument]
+
+    # Count valid (non-NaN) prices
+    valid_count = hist_prices.notna().sum()
+
+    return valid_count >= min_days
+
+
+def is_idm_eligible(
+    instrument: str,
+    date: pd.Timestamp,
+    prices_df: pd.DataFrame,
+    instruments: List[str],
+    min_overlap_days: int = IDM_MIN_OVERLAP_DAYS,
+    min_peer_count: int = IDM_MIN_PEER_COUNT
+) -> Tuple[bool, str]:
+    """
+    Check if instrument has sufficient overlap for IDM calculation
+
+    Conservative IDM eligibility policy:
+    - Instrument must have overlapping returns with >= min_peer_count other instruments
+    - Each peer must have >= min_overlap_days overlapping non-NaN returns
+    - This prevents optimistic IDM inflation from instruments with sparse overlap
+
+    Args:
+        instrument: Instrument code to check
+        date: Date to check (use data up to this date)
+        prices_df: DataFrame with date index and instrument columns
+        instruments: List of all instruments in universe
+        min_overlap_days: Minimum overlapping returns required with each peer
+        min_peer_count: Minimum number of peers with sufficient overlap
+
+    Returns:
+        Tuple of (is_eligible, reason):
+        - is_eligible: True if has sufficient overlap
+        - reason: Empty string if eligible, otherwise reason for ineligibility
+
+    Notes:
+        - Computes returns internally via pct_change()
+        - Only counts overlapping non-NaN returns (both instruments have valid prices)
+        - Used to determine IDM_INELIGIBLE state
+    """
+    if instrument not in prices_df.columns:
+        return False, "Instrument not in prices_df"
+
+    # Get historical prices up to this date
+    hist_prices = prices_df.loc[:date]
+
+    # Compute returns (need both t and t-1 prices for each instrument)
+    returns_df = hist_prices.pct_change()
+
+    # Get this instrument's returns
+    inst_returns = returns_df[instrument]
+    inst_valid = inst_returns.notna()
+
+    # Count peers with sufficient overlap
+    peers_with_overlap = 0
+    overlap_counts = {}
+
+    for peer in instruments:
+        if peer == instrument:
+            continue  # Skip self
+
+        if peer not in returns_df.columns:
+            continue
+
+        # Get peer's returns
+        peer_returns = returns_df[peer]
+        peer_valid = peer_returns.notna()
+
+        # Count overlapping valid returns
+        overlap = (inst_valid & peer_valid).sum()
+        overlap_counts[peer] = overlap
+
+        if overlap >= min_overlap_days:
+            peers_with_overlap += 1
+
+    # Check if enough peers
+    if peers_with_overlap >= min_peer_count:
+        return True, ""
+    else:
+        return False, f"Insufficient IDM overlap: only {peers_with_overlap}/{min_peer_count} peers with >= {min_overlap_days} days"
+
+
+def determine_instrument_state(
+    date: pd.Timestamp,
+    instrument: str,
+    prices_df: pd.DataFrame,
+    meta_df: pd.DataFrame,
+    lifecycle_df: Optional[pd.DataFrame],
+    min_adv_notional: float,
+    instruments: List[str] = None,
+    banned_instruments: List[str] = None,
+    check_idm_eligibility: bool = True
+) -> InstrumentState:
+    """
+    Determine instrument state for given date
+
+    Priority order:
+    1. BANNED_FLATTEN (manual override)
+    2. NOT_YET_LAUNCHED (before launch date)
+    3. DELISTED (after delist date)
+    4. WARMUP (launched but insufficient history for indicators)
+    5. IDM_INELIGIBLE (insufficient overlap for IDM calculation)
+    6. INELIGIBLE_HOLD (missing data or ADV too low)
+    7. ACTIVE (fully eligible for trading)
+
+    Args:
+        date: Date to check
+        instrument: Instrument code
+        prices_df: DataFrame with date index and instrument columns
+        meta_df: DataFrame with MultiIndex (date, instrument)
+        lifecycle_df: DataFrame with lifecycle metadata (None if not using jagged panels)
+        min_adv_notional: Minimum ADV threshold
+        instruments: List of all instruments in universe (required for IDM eligibility check)
+        banned_instruments: List of manually banned instruments
+        check_idm_eligibility: If True, check IDM eligibility (default: True)
+
+    Returns:
+        InstrumentState enum value
+    """
+    banned_instruments = banned_instruments or []
+    instruments = instruments or []
+
+    # Check banned list (highest priority)
+    if instrument in banned_instruments:
+        return InstrumentState.BANNED_FLATTEN
+
+    # Check lifecycle if available
+    if lifecycle_df is not None and instrument in lifecycle_df.index:
+        from sysdata.crypto.lifecycle import is_instrument_active
+        is_active, reason = is_instrument_active(instrument, date, lifecycle_df)
+
+        if not is_active:
+            if reason == "NOT_YET_LAUNCHED":
+                return InstrumentState.NOT_YET_LAUNCHED
+            elif reason == "DELISTED":
+                return InstrumentState.DELISTED
+
+    # Check if in warmup period (launched but insufficient history)
+    if lifecycle_df is not None and instrument in lifecycle_df.index:
+        launch_date = lifecycle_df.loc[instrument, 'launch_date']
+        if date >= launch_date:
+            if not has_sufficient_history(instrument, date, prices_df):
+                return InstrumentState.WARMUP
+
+    # Check IDM eligibility (conservative: require sufficient overlap with peers)
+    if check_idm_eligibility and len(instruments) > 0:
+        idm_eligible, idm_reason = is_idm_eligible(
+            instrument=instrument,
+            date=date,
+            prices_df=prices_df,
+            instruments=instruments
+        )
+        if not idm_eligible:
+            return InstrumentState.IDM_INELIGIBLE
+
+    # Check eligibility (data quality + ADV threshold)
+    is_eligible, _ = check_layer_b_eligibility(
+        date=date,
+        instrument=instrument,
+        prices_df=prices_df,
+        meta_df=meta_df,
+        min_adv_notional=min_adv_notional
+    )
+
+    if not is_eligible:
+        return InstrumentState.INELIGIBLE_HOLD
+
+    return InstrumentState.ACTIVE
 
 
 def get_layer_a_instruments() -> List[str]:
@@ -180,7 +404,8 @@ def get_eligible_instruments(
 def build_eligibility_history(
     prices_df: pd.DataFrame,
     meta_df: pd.DataFrame,
-    min_adv_notional: float
+    min_adv_notional: float,
+    layer_a_instruments: List[str] = None
 ) -> pd.DataFrame:
     """
     Build complete eligibility history for all dates and instruments
@@ -189,6 +414,7 @@ def build_eligibility_history(
         prices_df: DataFrame with date index and instrument columns
         meta_df: DataFrame with MultiIndex (date, instrument) containing metadata
         min_adv_notional: Minimum ADV threshold
+        layer_a_instruments: Optional list of instruments to check (default: use get_layer_a_instruments())
 
     Returns:
         DataFrame with date index and instrument columns (boolean values)
@@ -204,7 +430,7 @@ def build_eligibility_history(
         - Useful for vectorized operations in backtesting
         - Phase 1: Frozen instruments stay in universe (no skip-days)
     """
-    layer_a = get_layer_a_instruments()
+    layer_a = layer_a_instruments if layer_a_instruments is not None else get_layer_a_instruments()
     dates = prices_df.index
 
     eligibility_data = {}
@@ -372,20 +598,29 @@ def build_instrument_states(
     dates: pd.DatetimeIndex,
     instruments: List[str],
     eligibility_df: pd.DataFrame,
-    banned_instruments: List[str] = None
+    banned_instruments: List[str] = None,
+    lifecycle_df: Optional[pd.DataFrame] = None,
+    prices_df: Optional[pd.DataFrame] = None,
+    meta_df: Optional[pd.DataFrame] = None,
+    min_adv_notional: float = 1e7
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Build state history over constant-shape traded_universe
 
     Membership enforcement (Layer A on each date) is applied later via masking (Step 4a).
-    This function only considers:
-    1. Explicit banned list (config)
-    2. Daily eligibility (ADV + data gaps)
+    This function considers:
+    1. Explicit banned list (config) → BANNED_FLATTEN
+    2. Instrument lifecycle (launch/delist dates) → NOT_YET_LAUNCHED / DELISTED
+    3. Warmup period (insufficient history) → WARMUP
+    4. Daily eligibility (ADV + data gaps) → ACTIVE / INELIGIBLE_HOLD
 
-    Logic:
-    1. If instrument in banned_instruments → BANNED_FLATTEN
-    2. Else if passes daily eligibility (eligibility_df=True) → ACTIVE
-    3. Else if fails daily eligibility (eligibility_df=False) → INELIGIBLE_HOLD (increment days_in_state)
+    State Priority Order:
+    1. BANNED_FLATTEN (manual override, highest priority)
+    2. NOT_YET_LAUNCHED (before launch date)
+    3. DELISTED (after delist date)
+    4. WARMUP (launched but insufficient history for indicators)
+    5. INELIGIBLE_HOLD (missing data or ADV too low)
+    6. ACTIVE (eligible for trading)
 
     CRITICAL: INELIGIBLE_HOLD does NOT auto-transition to BANNED_FLATTEN.
     - BANNED_FLATTEN = instrument removed/untradeable (exchange delist, data loss, config ban)
@@ -397,9 +632,13 @@ def build_instrument_states(
         instruments: List of instruments (traded_universe = union of all Layer A)
         eligibility_df: Daily eligibility (DateIndex × Instruments, bool)
         banned_instruments: Explicit banned list from config (default empty)
+        lifecycle_df: DataFrame with instrument lifecycle metadata (None if not using jagged panels)
+        prices_df: DataFrame with prices (for warmup history check)
+        meta_df: DataFrame with metadata (for eligibility check)
+        min_adv_notional: Minimum ADV threshold (for eligibility check)
 
     Returns:
-        - state_df: DateIndex × Instruments (state as string: "active"/"ineligible_hold"/"banned_flatten")
+        - state_df: DateIndex × Instruments (state as string: "not_yet_launched"/"warmup"/"active"/"ineligible_hold"/"delisted"/"banned_flatten")
         - days_in_state_df: DateIndex × Instruments (trading days since entering INELIGIBLE_HOLD, 0 otherwise)
                            NOTE: Row-count based, not calendar days (if prices_df has gaps, decay is by data rows)
 
@@ -433,37 +672,71 @@ def build_instrument_states(
     state_df = pd.DataFrame(index=dates, columns=instruments, dtype=str)
     days_in_state_df = pd.DataFrame(0, index=dates, columns=instruments, dtype=int)
 
-    # Compute ineligibility boolean matrix (inverse of eligibility)
-    ineligible = ~eligibility_df
+    # Use lifecycle-aware state determination if lifecycle_df provided
+    if lifecycle_df is not None and prices_df is not None and meta_df is not None:
+        # Lifecycle-aware path: use determine_instrument_state for each date/instrument
+        for date in dates:
+            for instrument in instruments:
+                state = determine_instrument_state(
+                    date=date,
+                    instrument=instrument,
+                    prices_df=prices_df,
+                    meta_df=meta_df,
+                    lifecycle_df=lifecycle_df,
+                    min_adv_notional=min_adv_notional,
+                    instruments=instruments,  # Pass for IDM eligibility check
+                    banned_instruments=banned_instruments,
+                    check_idm_eligibility=True
+                )
+                state_df.loc[date, instrument] = state.value
 
-    # Vectorized approach for days_in_state (consecutive ineligible periods)
-    for instrument in instruments:
-        if instrument in banned_instruments:
-            # Explicit ban: state=banned_flatten everywhere, days_in_state=0
-            state_df[instrument] = InstrumentState.BANNED_FLATTEN.value
-            days_in_state_df[instrument] = 0
-        else:
-            # Eligibility-based states
-            # ACTIVE where eligible, INELIGIBLE_HOLD where not
-            state_df.loc[eligibility_df[instrument], instrument] = InstrumentState.ACTIVE.value
-            state_df.loc[~eligibility_df[instrument], instrument] = InstrumentState.INELIGIBLE_HOLD.value
+        # Compute days_in_state for INELIGIBLE_HOLD periods
+        ineligible = (state_df == InstrumentState.INELIGIBLE_HOLD.value)
 
-            # Days in state: cumcount within each ineligible period
-            # Group consecutive True runs, cumcount within each group
+        for instrument in instruments:
             inelig_series = ineligible[instrument]
 
-            # Create groups for consecutive ineligible periods
-            # When state changes, new group starts
-            state_changes = inelig_series != inelig_series.shift(1)
-            groups = state_changes.cumsum()
+            if inelig_series.any():
+                # Create groups for consecutive ineligible periods
+                state_changes = inelig_series != inelig_series.shift(1)
+                groups = state_changes.cumsum()
 
-            # Cumcount within each group (only for ineligible periods)
-            days_in_state_series = inelig_series.groupby(groups).cumcount()
+                # Cumcount within each group (only for ineligible periods)
+                days_in_state_series = inelig_series.groupby(groups).cumcount()
 
-            # Zero out when not ineligible
-            days_in_state_series.loc[~inelig_series] = 0
+                # Zero out when not ineligible
+                days_in_state_series.loc[~inelig_series] = 0
 
-            days_in_state_df[instrument] = days_in_state_series.values
+                days_in_state_df[instrument] = days_in_state_series.values
+    else:
+        # Legacy path (rectangular panels, no lifecycle): use original logic
+        ineligible = ~eligibility_df
+
+        for instrument in instruments:
+            if instrument in banned_instruments:
+                # Explicit ban: state=banned_flatten everywhere, days_in_state=0
+                state_df[instrument] = InstrumentState.BANNED_FLATTEN.value
+                days_in_state_df[instrument] = 0
+            else:
+                # Eligibility-based states
+                # ACTIVE where eligible, INELIGIBLE_HOLD where not
+                state_df.loc[eligibility_df[instrument], instrument] = InstrumentState.ACTIVE.value
+                state_df.loc[~eligibility_df[instrument], instrument] = InstrumentState.INELIGIBLE_HOLD.value
+
+                # Days in state: cumcount within each ineligible period
+                inelig_series = ineligible[instrument]
+
+                # Create groups for consecutive ineligible periods
+                state_changes = inelig_series != inelig_series.shift(1)
+                groups = state_changes.cumsum()
+
+                # Cumcount within each group (only for ineligible periods)
+                days_in_state_series = inelig_series.groupby(groups).cumcount()
+
+                # Zero out when not ineligible
+                days_in_state_series.loc[~inelig_series] = 0
+
+                days_in_state_df[instrument] = days_in_state_series.values
 
     logger.info("Instrument states built:")
     for instrument in instruments:

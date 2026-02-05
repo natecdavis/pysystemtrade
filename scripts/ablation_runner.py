@@ -139,6 +139,10 @@ def run_ablation_study(base_config_path, data_path, outdir, start_date, end_date
         with open(exp_outdir / 'config.yaml', 'w') as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
+        # Clear review membership cache between experiments (prevents cache pollution)
+        from systems.crypto_perps.review_schedule import clear_review_cache
+        clear_review_cache()
+
         # Run backtest (returns dict of objects)
         print(f"Running backtest for {name}...")
         try:

@@ -63,6 +63,7 @@ doctest_optionflags = ["ELLIPSIS", "NUMBER", "NORMALIZE_WHITESPACE"]
 markers = [
     "integration: Integration tests (slow, skip by default)",
     "slow: Slow tests (skip by default)",
+    "extended: Extended dataset tests (multi-year, multi-instrument - run weekly in CI)",
 ]
 testpaths = [
     # "syscore",
