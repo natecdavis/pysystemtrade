@@ -714,6 +714,117 @@ def calculate_adv(klines: pd.DataFrame, window: int = 30) -> pd.DataFrame:
     return adv.reset_index().rename(columns={'quote_volume': 'adv_notional'})
 
 
+def generate_dataset_manifest(
+    dataset_df: pd.DataFrame,
+    instruments_included: dict,
+    instruments_excluded: dict,
+    start_date: str,
+    end_date: str,
+    output_path: Path
+) -> dict:
+    """
+    Generate dataset manifest with inclusion/exclusion audit trail.
+
+    Args:
+        dataset_df: Final dataset DataFrame
+        instruments_included: {inst_id: metadata_dict}
+        instruments_excluded: {inst_id: exclusion_reason}
+        start_date: Requested start date (YYYY-MM-DD)
+        end_date: Requested end date (YYYY-MM-DD)
+        output_path: Where to save manifest JSON (atomic write)
+
+    Returns:
+        Manifest dict
+
+    Raises:
+        RuntimeError: If manifest included set != dataset instruments set (hard invariant)
+    """
+    from datetime import datetime
+    import tempfile
+    import os
+
+    # Get dataset instruments
+    dataset_instruments = set(dataset_df['instrument'].unique())
+
+    # Compute date range from dataset
+    all_dates = dataset_df['date'].unique()
+    actual_start = pd.Timestamp(all_dates.min()).strftime('%Y-%m-%d')
+    actual_end = pd.Timestamp(all_dates.max()).strftime('%Y-%m-%d')
+    total_days = len(all_dates)
+
+    manifest = {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "dataset_metadata": {
+            "requested_start_date": start_date,
+            "requested_end_date": end_date,
+            "actual_start_date": actual_start,
+            "actual_end_date": actual_end
+        },
+        "date_range": {
+            "start": actual_start,
+            "end": actual_end,
+            "total_days": total_days
+        },
+        "instruments": {
+            "included": {},
+            "excluded": {}
+        },
+        "summary": {
+            "total_candidates": len(instruments_included) + len(instruments_excluded),
+            "included_count": len(instruments_included),
+            "excluded_count": len(instruments_excluded),
+            "exclusion_breakdown": {}
+        }
+    }
+
+    # Populate included instruments
+    for inst_id, metadata in instruments_included.items():
+        manifest["instruments"]["included"][inst_id] = metadata
+
+    # Populate excluded instruments
+    for inst_id, reason in instruments_excluded.items():
+        manifest["instruments"]["excluded"][inst_id] = {
+            "reason": reason
+        }
+
+        # Count by reason
+        manifest["summary"]["exclusion_breakdown"][reason] = \
+            manifest["summary"]["exclusion_breakdown"].get(reason, 0) + 1
+
+    # CRITICAL INVARIANT: manifest included set MUST equal dataset instruments
+    manifest_included = set(manifest["instruments"]["included"].keys())
+
+    if manifest_included != dataset_instruments:
+        raise RuntimeError(
+            f"Manifest consistency check failed: "
+            f"included={sorted(manifest_included)} != dataset={sorted(dataset_instruments)}"
+        )
+
+    # Atomic write: write to temp file then rename
+    # Ensures manifest always corresponds to the current dataset
+    output_dir = output_path.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create temp file in same directory (ensures atomic rename on same filesystem)
+    fd, temp_path = tempfile.mkstemp(dir=output_dir, suffix='.json', prefix='.manifest_tmp_')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(manifest, f, indent=2)
+
+        # Atomic rename (overwrites existing manifest)
+        os.rename(temp_path, output_path)
+        logger.info(f"Dataset manifest saved (atomic): {output_path}")
+    except:
+        # Clean up temp file on error
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+        raise
+
+    return manifest
+
+
 def build_real_crypto_dataset(
     data_dir: Path,
     start_date: str,
@@ -725,7 +836,7 @@ def build_real_crypto_dataset(
     allow_jagged: bool = False,
     include_api_cache: bool = False,
     metadata_dir: Path = None
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, dict, dict]:
     """
     Build dataset from real Binance Data Vision bulk files
 
@@ -742,7 +853,10 @@ def build_real_crypto_dataset(
         metadata_dir: Path to metadata directory. Precedence: explicit > {data_dir}/metadata > data/raw/metadata
 
     Returns:
-        DataFrame with schema: date, instrument, close, funding_rate, adv_notional, spread_frac, taker_fee_frac
+        Tuple of (DataFrame, instruments_included, instruments_excluded)
+        - DataFrame with schema: date, instrument, close, funding_rate, adv_notional, spread_frac, taker_fee_frac
+        - instruments_included: {inst_id: metadata_dict} for included instruments
+        - instruments_excluded: {inst_id: exclusion_reason} for excluded instruments
 
     Policy:
         - Single-instrument builds (e.g. BTC-only) are expected to be complete
@@ -778,6 +892,9 @@ def build_real_crypto_dataset(
         market_info = json.load(f)
 
     all_data = []
+    instruments_included = {}  # Track included instruments with metadata
+    instruments_excluded = {}  # Track excluded instruments with reasons
+
     for inst in instruments:
         # Map internal ID to Binance symbol
         binance_symbol = BINANCE_SYMBOL_MAP[inst]
@@ -789,6 +906,11 @@ def build_real_crypto_dataset(
             klines = load_binance_klines(inst, data_dir, fail_on_missing_close, include_api_cache)
         except FileNotFoundError as e:
             logger.error(f"Skipping {inst}: {e}")
+            instruments_excluded[inst] = "load_error"
+            continue
+        except Exception as e:
+            logger.error(f"Skipping {inst}: load error - {e}")
+            instruments_excluded[inst] = "load_error"
             continue
 
         # Convert date strings to timestamps for type-safe comparison (ensure naive)
@@ -812,6 +934,11 @@ def build_real_crypto_dataset(
             funding = load_binance_funding_rates(inst, data_dir)
         except FileNotFoundError as e:
             logger.error(f"Skipping {inst}: {e}")
+            instruments_excluded[inst] = "missing_funding"
+            continue
+        except Exception as e:
+            logger.error(f"Skipping {inst}: funding load error - {e}")
+            instruments_excluded[inst] = "missing_funding"
             continue
 
         # Calculate ADV on pre-aligned per-instrument data
@@ -884,6 +1011,27 @@ def build_real_crypto_dataset(
         issues = validate_time_series_quality(inst_df, inst)
         for issue in issues:
             logger.warning(issue)
+
+        # Track inclusion metadata
+        # Compute funding coverage (% of days with funding data present)
+        funding_present = (~missing_funding_mask).sum()
+        funding_coverage_pct = funding_present / len(inst_df) if len(inst_df) > 0 else 0.0
+
+        # Requested date range vs actual coverage
+        start_ts = pd.Timestamp(start_date).tz_localize(None)
+        end_ts = pd.Timestamp(end_date).tz_localize(None)
+        requested_days = (end_ts - start_ts).days + 1
+
+        instruments_included[inst] = {
+            "date_range": {
+                "start": inst_df['date'].min().strftime('%Y-%m-%d'),
+                "end": inst_df['date'].max().strftime('%Y-%m-%d')
+            },
+            "coverage_days": len(inst_df),
+            "coverage_pct": len(inst_df) / requested_days,
+            "funding_coverage_pct": funding_coverage_pct,
+            "schema_compliant": True  # Passed validation
+        }
 
         all_data.append(inst_df)
 
@@ -1076,7 +1224,7 @@ def build_real_crypto_dataset(
 
     logger.info(f"Dataset built successfully: {len(df)} rows, {df['instrument'].nunique()} instruments")
 
-    return df
+    return df, instruments_included, instruments_excluded
 
 
 def generate_synthetic_crypto_data(
@@ -1349,7 +1497,7 @@ def main():
 
     elif args.source == 'real':
         print("Building dataset from real Binance Data Vision files...")
-        df = build_real_crypto_dataset(
+        df, instruments_included, instruments_excluded = build_real_crypto_dataset(
             data_dir=Path(args.data_dir),
             start_date=start_date,
             end_date=end_date,
@@ -1362,13 +1510,32 @@ def main():
             metadata_dir=args.metadata_dir
         )
 
+        # Generate manifest with deterministic naming: X.parquet → X.manifest.json
+        # Manifest is tied to dataset, not just today's date
+        manifest_path = output_path.with_suffix('.manifest.json')
+        print(f"Generating manifest: {manifest_path}...")
+        manifest = generate_dataset_manifest(
+            dataset_df=df,
+            instruments_included=instruments_included,
+            instruments_excluded=instruments_excluded,
+            start_date=start_date,
+            end_date=end_date,
+            output_path=manifest_path
+        )
+
+        # Report exclusions
+        if instruments_excluded:
+            print(f"\nExcluded {len(instruments_excluded)} instrument(s):")
+            for inst_id, reason in sorted(instruments_excluded.items()):
+                print(f"  {inst_id}: {reason}")
+
     # Save to parquet
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"Saving to {output_path}...")
+    print(f"\nSaving to {output_path}...")
     df.to_parquet(output_path, index=False)
 
-    print(f"Dataset created successfully!")
+    print(f"\nDataset created successfully!")
     print(f"  Date range: {df['date'].min()} to {df['date'].max()}")
     print(f"  Instruments: {df['instrument'].unique().tolist()}")
     print(f"  Total rows: {len(df)}")
