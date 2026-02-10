@@ -276,3 +276,80 @@ def test_deterministic_naming():
     # Verify naming convention
     manifest_path = dataset_path.with_suffix('.manifest.json')
     assert manifest_path == expected_manifest
+
+
+def test_manifest_written_alongside_dataset_and_overwrites_cleanly():
+    """Verify manifest is written alongside dataset and overwrites cleanly on rerun."""
+    import time
+
+    df = pd.DataFrame({
+        'date': pd.date_range('2024-01-01', periods=10),
+        'instrument': ['BTCUSDT_PERP'] * 10,
+        'close': [100.0] * 10,
+        'funding_rate': [0.0001] * 10,
+        'adv_notional': [1e9] * 10,
+        'spread_frac': [0.0005] * 10,
+        'taker_fee_frac': [0.0004] * 10
+    })
+
+    instruments_included = {
+        'BTCUSDT_PERP': {
+            'date_range': {'start': '2024-01-01', 'end': '2024-01-10'},
+            'coverage_days': 10,
+            'coverage_pct': 1.0,
+            'funding_coverage_pct': 1.0,
+            'schema_compliant': True
+        }
+    }
+    instruments_excluded = {}
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dataset_path = Path(tmpdir) / 'dataset_test.parquet'
+        manifest_path = dataset_path.with_suffix('.manifest.json')
+
+        # First write
+        manifest1 = generate_dataset_manifest(
+            dataset_df=df,
+            instruments_included=instruments_included,
+            instruments_excluded=instruments_excluded,
+            start_date='2024-01-01',
+            end_date='2024-01-10',
+            output_path=manifest_path
+        )
+
+        # Verify manifest is in same directory as (hypothetical) dataset
+        assert manifest_path.parent == dataset_path.parent
+        assert manifest_path.exists()
+
+        # Record first timestamp
+        first_timestamp = manifest1['generated_at']
+        first_mtime = manifest_path.stat().st_mtime
+
+        # Wait to ensure timestamp differs
+        time.sleep(0.1)
+
+        # Second write (should overwrite atomically)
+        manifest2 = generate_dataset_manifest(
+            dataset_df=df,
+            instruments_included=instruments_included,
+            instruments_excluded=instruments_excluded,
+            start_date='2024-01-01',
+            end_date='2024-01-10',
+            output_path=manifest_path
+        )
+
+        # Verify manifest still exists (not deleted/recreated incorrectly)
+        assert manifest_path.exists()
+
+        # Verify it was overwritten (new timestamp)
+        second_timestamp = manifest2['generated_at']
+        assert second_timestamp != first_timestamp
+
+        # Verify file contents match second write (atomic overwrite)
+        with open(manifest_path) as f:
+            loaded = json.load(f)
+        assert loaded['generated_at'] == second_timestamp
+
+        # Verify mtime was updated
+        second_mtime = manifest_path.stat().st_mtime
+        assert second_mtime > first_mtime

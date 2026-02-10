@@ -800,19 +800,20 @@ def generate_dataset_manifest(
             f"included={sorted(manifest_included)} != dataset={sorted(dataset_instruments)}"
         )
 
-    # Atomic write: write to temp file then rename
+    # Atomic write: write to temp file then replace
     # Ensures manifest always corresponds to the current dataset
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create temp file in same directory (ensures atomic rename on same filesystem)
+    # Create temp file in same directory (ensures atomic replace on same filesystem)
     fd, temp_path = tempfile.mkstemp(dir=output_dir, suffix='.json', prefix='.manifest_tmp_')
     try:
         with os.fdopen(fd, 'w') as f:
             json.dump(manifest, f, indent=2)
 
-        # Atomic rename (overwrites existing manifest)
-        os.rename(temp_path, output_path)
+        # Atomic replace (overwrites existing manifest atomically)
+        # os.replace() provides stronger atomicity guarantees than os.rename()
+        os.replace(temp_path, output_path)
         logger.info(f"Dataset manifest saved (atomic): {output_path}")
     except:
         # Clean up temp file on error
@@ -835,7 +836,8 @@ def build_real_crypto_dataset(
     verify_checksums: bool = False,
     allow_jagged: bool = False,
     include_api_cache: bool = False,
-    metadata_dir: Path = None
+    metadata_dir: Path = None,
+    min_history_days: int = 365
 ) -> tuple[pd.DataFrame, dict, dict]:
     """
     Build dataset from real Binance Data Vision bulk files
@@ -851,12 +853,18 @@ def build_real_crypto_dataset(
         allow_jagged: If True, allow jagged panels (use date union instead of intersection)
         include_api_cache: If True, include API cache data (V1 daily operations)
         metadata_dir: Path to metadata directory. Precedence: explicit > {data_dir}/metadata > data/raw/metadata
+        min_history_days: Minimum days of history required per instrument (default: 365)
 
     Returns:
         Tuple of (DataFrame, instruments_included, instruments_excluded)
         - DataFrame with schema: date, instrument, close, funding_rate, adv_notional, spread_frac, taker_fee_frac
         - instruments_included: {inst_id: metadata_dict} for included instruments
         - instruments_excluded: {inst_id: exclusion_reason} for excluded instruments
+
+    Exclusion Taxonomy:
+        - load_error: Failed to load klines or other required data
+        - missing_funding: Failed to load funding rates
+        - insufficient_history: coverage_days < min_history_days
 
     Policy:
         - Single-instrument builds (e.g. BTC-only) are expected to be complete
@@ -1021,14 +1029,23 @@ def build_real_crypto_dataset(
         start_ts = pd.Timestamp(start_date).tz_localize(None)
         end_ts = pd.Timestamp(end_date).tz_localize(None)
         requested_days = (end_ts - start_ts).days + 1
+        coverage_days = len(inst_df)
+
+        # Gate on minimum history requirement
+        if coverage_days < min_history_days:
+            logger.warning(
+                f"{inst}: Insufficient history - {coverage_days} days < {min_history_days} days (min_history_days)"
+            )
+            instruments_excluded[inst] = "insufficient_history"
+            continue
 
         instruments_included[inst] = {
             "date_range": {
                 "start": inst_df['date'].min().strftime('%Y-%m-%d'),
                 "end": inst_df['date'].max().strftime('%Y-%m-%d')
             },
-            "coverage_days": len(inst_df),
-            "coverage_pct": len(inst_df) / requested_days,
+            "coverage_days": coverage_days,
+            "coverage_pct": coverage_days / requested_days,
             "funding_coverage_pct": funding_coverage_pct,
             "schema_compliant": True  # Passed validation
         }
@@ -1396,6 +1413,13 @@ def main():
              'For multi-instrument scaling, may need to relax to 0.80 if instruments have different launch dates.'
     )
     parser.add_argument(
+        '--min-history-days',
+        type=int,
+        default=365,
+        help='Minimum days of history required per instrument (default: 365). '
+             'Instruments with fewer days will be excluded with reason "insufficient_history".'
+    )
+    parser.add_argument(
         '--allow-jagged',
         action='store_true',
         help='Allow instruments to have different date ranges (jagged panel). '
@@ -1507,7 +1531,8 @@ def main():
             verify_checksums=args.verify_checksums,
             allow_jagged=args.allow_jagged,
             include_api_cache=args.include_api_cache,
-            metadata_dir=args.metadata_dir
+            metadata_dir=args.metadata_dir,
+            min_history_days=args.min_history_days
         )
 
         # Generate manifest with deterministic naming: X.parquet → X.manifest.json
