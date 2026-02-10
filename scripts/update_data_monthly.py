@@ -53,20 +53,31 @@ def load_config(config_path: Path) -> dict:
 
 def extract_universe_symbols(config: dict) -> list:
     """
-    Extract instrument symbols from config universe.
+    Extract instrument symbols for download from config.
 
-    Converts internal instrument IDs (e.g., BTCUSDT_PERP) to Binance symbols
-    (e.g., BTCUSDT) for download.
+    Uses canonical mapping via config_helpers module.
     """
-    universe_config = config.get('universe', {})
-    layer_a = universe_config.get('layer_a_instruments', [])
+    from sysdata.crypto.config_helpers import (
+        extract_candidate_instruments,
+        instrument_id_to_symbol
+    )
 
-    # Convert from instrument IDs to Binance symbols
-    symbols = []
-    for inst_id in layer_a:
-        # Remove _PERP suffix if present
-        symbol = inst_id.replace('_PERP', '')
-        symbols.append(symbol)
+    # Get candidate instruments (with error checking)
+    try:
+        candidate_ids = extract_candidate_instruments(config)
+    except ValueError as e:
+        logger.error(str(e))
+        raise
+
+    # Determine source
+    data_acq = config.get('data_acquisition', {})
+    if 'candidate_instruments' in data_acq:
+        logger.info(f"Using data_acquisition.candidate_instruments: {len(candidate_ids)} instruments")
+    else:
+        logger.info(f"Using universe.layer_a_instruments: {len(candidate_ids)} instruments (fallback)")
+
+    # Convert using canonical mapping
+    symbols = [instrument_id_to_symbol(inst_id) for inst_id in candidate_ids]
 
     return symbols
 

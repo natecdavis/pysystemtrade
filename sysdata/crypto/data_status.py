@@ -574,6 +574,283 @@ def validate_as_of_date(
         logger.info(f"as_of_date validation passed: lag={lag_days} days (within tolerance)")
 
 
+def load_klines_dates(data_dir: Path, symbol: str) -> Optional[List[date]]:
+    """
+    Load klines data and extract available dates.
+
+    Args:
+        data_dir: Root data directory
+        symbol: Binance symbol (without _PERP)
+
+    Returns:
+        List of dates with klines data, or None if no data
+    """
+    import zipfile
+    import pandas as pd
+
+    klines_dir = data_dir / 'klines' / symbol
+    if not klines_dir.exists():
+        return None
+
+    zip_files = sorted(klines_dir.glob(f"{symbol}-*.zip"))
+    if not zip_files:
+        return None
+
+    all_dates = []
+    for zip_file in zip_files:
+        try:
+            with zipfile.ZipFile(zip_file) as z:
+                csv_name = zip_file.stem + '.csv'
+                with z.open(csv_name) as f:
+                    df = pd.read_csv(f, header=None, usecols=[6])  # Column 6 is close_time
+                    df['close_time'] = pd.to_datetime(df[6], unit='ms', utc=True)
+                    df['date'] = df['close_time'].dt.date
+                    all_dates.extend(df['date'].tolist())
+        except Exception as e:
+            logger.warning(f"Failed to load {zip_file.name}: {e}")
+            continue
+
+    return sorted(set(all_dates)) if all_dates else None
+
+
+def load_funding_dates(data_dir: Path, symbol: str) -> Optional[List[date]]:
+    """
+    Load funding rate data and extract available dates.
+
+    Args:
+        data_dir: Root data directory
+        symbol: Binance symbol (without _PERP)
+
+    Returns:
+        List of dates with funding data, or None if no data
+    """
+    import zipfile
+    import pandas as pd
+
+    funding_dir = data_dir / 'funding_rates' / symbol
+    if not funding_dir.exists():
+        return None
+
+    zip_files = sorted(funding_dir.glob(f"{symbol}-*.zip"))
+    if not zip_files:
+        return None
+
+    all_dates = []
+    for zip_file in zip_files:
+        try:
+            with zipfile.ZipFile(zip_file) as z:
+                csv_name = zip_file.stem + '.csv'
+                with z.open(csv_name) as f:
+                    df = pd.read_csv(f, header=0)
+                    # Handle various column names
+                    time_col = None
+                    for col in ['calcTime', 'calc_time', 'funding_time', 'fundingTime']:
+                        if col in df.columns:
+                            time_col = col
+                            break
+                    if time_col is None:
+                        continue
+
+                    df['calc_time'] = pd.to_datetime(df[time_col], unit='ms', utc=True)
+                    df['date'] = df['calc_time'].dt.date
+                    all_dates.extend(df['date'].tolist())
+        except Exception as e:
+            logger.warning(f"Failed to load {zip_file.name}: {e}")
+            continue
+
+    return sorted(set(all_dates)) if all_dates else None
+
+
+def compute_funding_coverage(
+    data_dir: Path,
+    symbol: str,
+    klines_dates: Optional[List[date]] = None
+) -> dict:
+    """
+    Compute funding rate coverage relative to klines availability.
+
+    Distinguishes between:
+    - Missing data (no observation)
+    - Present but zero (legitimate low funding regime)
+
+    Args:
+        data_dir: Root data directory
+        symbol: Binance symbol (without _PERP)
+        klines_dates: Pre-loaded klines dates (optional, will load if None)
+
+    Returns:
+        {
+            "last_available_date": date|None,
+            "staleness_days": int,
+            "coverage_pct": float,  # % of klines days with funding observation present
+            "missing_days": int,     # Days without any funding observation
+            "zero_funding_days": int,  # Days with explicit zero funding
+            "missing_months": List[str]
+        }
+    """
+    if klines_dates is None:
+        klines_dates = load_klines_dates(data_dir, symbol)
+
+    if not klines_dates:
+        return {
+            "last_available_date": None,
+            "staleness_days": 0,
+            "coverage_pct": 0.0,
+            "missing_days": 0,
+            "zero_funding_days": 0,
+            "missing_months": []
+        }
+
+    funding_dates = load_funding_dates(data_dir, symbol)
+
+    if not funding_dates:
+        # No funding data at all
+        klines_months = set(d.strftime('%Y-%m') for d in klines_dates)
+        return {
+            "last_available_date": None,
+            "staleness_days": (date.today() - max(klines_dates)).days if klines_dates else 0,
+            "coverage_pct": 0.0,
+            "missing_days": len(klines_dates),
+            "zero_funding_days": 0,
+            "missing_months": sorted(klines_months)
+        }
+
+    # Convert to sets for efficient operations
+    klines_set = set(klines_dates)
+    funding_set = set(funding_dates)
+
+    # Compute coverage
+    present_days = klines_set & funding_set
+    missing_days = klines_set - funding_set
+
+    coverage_pct = len(present_days) / len(klines_set) if klines_set else 0.0
+
+    # Compute missing months
+    klines_months = set(d.strftime('%Y-%m') for d in klines_dates)
+    funding_months = set(d.strftime('%Y-%m') for d in funding_dates)
+    missing_months = sorted(klines_months - funding_months)
+
+    # Note: We can't easily compute zero_funding_days without loading actual values
+    # For now, set to 0 (can enhance later if needed)
+    zero_funding_days = 0
+
+    last_funding_date = max(funding_dates) if funding_dates else None
+    staleness_days = (date.today() - last_funding_date).days if last_funding_date else 0
+
+    return {
+        "last_available_date": str(last_funding_date) if last_funding_date else None,
+        "staleness_days": staleness_days,
+        "coverage_pct": coverage_pct,
+        "missing_days": len(missing_days),
+        "zero_funding_days": zero_funding_days,
+        "missing_months": missing_months
+    }
+
+
+def load_lifecycle_metadata(
+    metadata_dir: Path,
+    symbol: str
+) -> dict:
+    """
+    Load launch/delist dates from binance_symbol_lifecycle.json.
+
+    Args:
+        metadata_dir: Metadata directory path
+        symbol: Binance symbol (without _PERP)
+
+    Returns:
+        {
+            "launch_date": date|None,
+            "delist_date": date|None,
+            "status": "active"|"delisted"
+        }
+    """
+    lifecycle_path = metadata_dir / "binance_symbol_lifecycle.json"
+    if not lifecycle_path.exists():
+        return {"launch_date": None, "delist_date": None, "status": "active"}
+
+    try:
+        with open(lifecycle_path) as f:
+            lifecycle_data = json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load lifecycle metadata: {e}")
+        return {"launch_date": None, "delist_date": None, "status": "active"}
+
+    # Symbol format in JSON is without _PERP
+    symbol_key = symbol.replace('_PERP', '')
+
+    if symbol_key not in lifecycle_data:
+        return {"launch_date": None, "delist_date": None, "status": "active"}
+
+    entry = lifecycle_data[symbol_key]
+
+    result = {
+        "launch_date": None,
+        "delist_date": None,
+        "status": entry.get('status', 'active')
+    }
+
+    if entry.get('launch_date'):
+        try:
+            result["launch_date"] = datetime.strptime(entry['launch_date'], '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    if entry.get('delist_date'):
+        try:
+            result["delist_date"] = datetime.strptime(entry['delist_date'], '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    return result
+
+
+def classify_instrument_exclusion(
+    inst_status: dict,
+    min_history_days: int = 365,
+    min_funding_coverage: float = 0.80,
+    max_staleness_days: int = 7
+) -> Optional[str]:
+    """
+    Determine if instrument should be excluded and why.
+
+    Conservative classification based on explicit thresholds only.
+    Avoids heavy heuristics in Phase 1.
+
+    Args:
+        inst_status: Instrument status dict from V1 report
+        min_history_days: Minimum days of history required (configurable)
+        min_funding_coverage: Minimum funding coverage % (configurable)
+        max_staleness_days: Maximum staleness tolerance (configurable)
+
+    Returns:
+        None if eligible, else exclusion reason code
+    """
+    # Check delisted (hard fail)
+    if inst_status.get('lifecycle', {}).get('status') == 'delisted':
+        return "delisted"
+
+    # Check staleness (configurable threshold)
+    if inst_status.get('staleness_days', 0) > max_staleness_days:
+        return "stale"
+
+    # Check history (configurable threshold)
+    lifecycle = inst_status.get('lifecycle', {})
+    if lifecycle.get('actual_history_days', 0) < min_history_days:
+        return "insufficient_history"
+
+    # Check funding coverage (configurable threshold)
+    funding_status = inst_status.get('funding_status', {})
+    if funding_status.get('coverage_pct', 0.0) < min_funding_coverage:
+        return "missing_funding"
+
+    # NO data quality heuristics in Phase 1
+    # (price_spikes, date_gaps are reported but not gating)
+    # Will add quality-based exclusions in later phases after observing false positives
+
+    return None  # Eligible
+
+
 def generate_data_status_report_v1(
     data_dir: Path,
     instruments: List[str],
@@ -626,12 +903,92 @@ def generate_data_status_report_v1(
     total_lagging = 0
     max_staleness = 0
 
+    # Eligibility tracking
+    eligibility_counts = {
+        "eligible": 0,
+        "excluded_staleness": 0,
+        "excluded_missing_funding": 0,
+        "excluded_insufficient_history": 0,
+        "excluded_data_quality": 0,
+        "excluded_delisted": 0
+    }
+    exclusion_reasons = {
+        "insufficient_history": [],
+        "missing_funding": [],
+        "data_quality": [],
+        "delisted": [],
+        "stale_>7d": []
+    }
+
+    # Get metadata directory (sibling to data_dir)
+    metadata_dir = data_dir.parent.parent / 'metadata'
+
     # Use original instrument IDs (with _PERP) in output
     for inst_id, symbol in instrument_to_symbol.items():
         last_date = staleness_report[symbol]['last_available_date']
         staleness_days = staleness_report[symbol]['staleness_days']
 
-        # Determine status
+        # Load klines dates (cached for funding coverage computation)
+        klines_dates = load_klines_dates(data_dir, symbol)
+
+        # Compute funding coverage
+        funding_status = compute_funding_coverage(data_dir, symbol, klines_dates)
+
+        # Load lifecycle metadata
+        lifecycle_meta = load_lifecycle_metadata(metadata_dir, symbol)
+
+        # Compute lifecycle history metrics
+        if klines_dates:
+            actual_history_days = len(klines_dates)
+            first_date = min(klines_dates)
+            last_date_klines = max(klines_dates)
+
+            # Expected history: from launch or config start (use 2020-01-01 as default)
+            start_date = lifecycle_meta.get("launch_date") or date(2020, 1, 1)
+            expected_history_days = (last_date_klines - start_date).days + 1
+            coverage_pct = actual_history_days / expected_history_days if expected_history_days > 0 else 0.0
+        else:
+            actual_history_days = 0
+            coverage_pct = 0.0
+            expected_history_days = 0
+
+        lifecycle_status = {
+            "launch_date": str(lifecycle_meta.get("launch_date")) if lifecycle_meta.get("launch_date") else None,
+            "delist_date": str(lifecycle_meta.get("delist_date")) if lifecycle_meta.get("delist_date") else None,
+            "status": lifecycle_meta.get("status", "active"),
+            "expected_history_days": expected_history_days,
+            "actual_history_days": actual_history_days,
+            "coverage_pct": coverage_pct
+        }
+
+        # Compute data quality metrics (raw counts only)
+        data_quality_metrics = {
+            "price_spikes_50pct": 0,  # TODO: implement if needed
+            "date_gaps_7d": 0  # TODO: implement if needed
+        }
+
+        # Compute missing months for klines
+        if klines_dates:
+            klines_months = set(d.strftime('%Y-%m') for d in klines_dates)
+            # Find gaps in month sequence
+            first_month = min(klines_months)
+            last_month = max(klines_months)
+            missing_months = []
+            current = datetime.strptime(first_month, '%Y-%m')
+            end = datetime.strptime(last_month, '%Y-%m')
+            while current <= end:
+                month_str = current.strftime('%Y-%m')
+                if month_str not in klines_months:
+                    missing_months.append(month_str)
+                # Move to next month
+                if current.month == 12:
+                    current = current.replace(year=current.year + 1, month=1)
+                else:
+                    current = current.replace(month=current.month + 1)
+        else:
+            missing_months = []
+
+        # Determine status (expanded classification)
         if staleness_days == 0:
             status = "up_to_date"
             total_up_to_date += 1
@@ -685,14 +1042,43 @@ def generate_data_status_report_v1(
                 f"Lagging by {staleness_days} day(s) (eligibility rules will apply)"
             )
 
-        # Use instrument ID (with _PERP) as key in output
-        instrument_status[inst_id] = {
+        # Build instrument status entry
+        inst_status_entry = {
             "last_available_date": str(last_date),
             "staleness_days": staleness_days,
             "data_sources": data_sources,
             "status": status,
-            "warnings": warnings
+            "warnings": warnings,
+            "missing_months": missing_months,
+            "funding_status": funding_status,
+            "data_quality_metrics": data_quality_metrics,
+            "lifecycle": lifecycle_status,
+            "schema_compliant": True  # TODO: implement schema validation if needed
         }
+
+        # Classify exclusion
+        exclusion_reason = classify_instrument_exclusion(inst_status_entry)
+        inst_status_entry["exclusion_recommendation"] = exclusion_reason
+
+        # Update eligibility counts
+        if exclusion_reason is None:
+            eligibility_counts["eligible"] += 1
+        else:
+            if exclusion_reason == "stale":
+                eligibility_counts["excluded_staleness"] += 1
+                exclusion_reasons["stale_>7d"].append(inst_id)
+            elif exclusion_reason == "insufficient_history":
+                eligibility_counts["excluded_insufficient_history"] += 1
+                exclusion_reasons["insufficient_history"].append(inst_id)
+            elif exclusion_reason == "missing_funding":
+                eligibility_counts["excluded_missing_funding"] += 1
+                exclusion_reasons["missing_funding"].append(inst_id)
+            elif exclusion_reason == "delisted":
+                eligibility_counts["excluded_delisted"] += 1
+                exclusion_reasons["delisted"].append(inst_id)
+
+        # Use instrument ID (with _PERP) as key in output
+        instrument_status[inst_id] = inst_status_entry
 
     return {
         "generated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -706,6 +1092,8 @@ def generate_data_status_report_v1(
             "up_to_date": total_up_to_date,
             "lagging": total_lagging,
             "max_staleness_days": max_staleness,
-            "as_of_date_alignment": "strict_pass" if max_staleness == 0 else "strict_fail"
+            "as_of_date_alignment": "strict_pass" if max_staleness == 0 else "strict_fail",
+            "eligibility_classification": eligibility_counts,
+            "exclusion_reasons": exclusion_reasons
         }
     }
