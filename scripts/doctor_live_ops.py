@@ -49,9 +49,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def check_data_recency(data_status_path: Path, cadence: str) -> tuple[str, list, list]:
+def check_data_recency(data_status_path: Path, cadence: str, tradable_universe: list = None) -> tuple[str, list, list]:
     """
     Check data recency from data_status.json (PRIMARY SOURCE).
+
+    Args:
+        data_status_path: Path to V1 data status report
+        cadence: Cadence (daily or monthly)
+        tradable_universe: List of tradable instrument IDs (filters V1 report to only these instruments)
 
     Returns:
         (status, errors, warnings)
@@ -96,8 +101,16 @@ def check_data_recency(data_status_path: Path, cadence: str) -> tuple[str, list,
                 f"Dataset as_of_date ({dataset_as_of_date}) lags expected ({expected_as_of_date}) by 1 day"
             )
 
-        # Check staleness summary
-        instruments = data_status.get('instruments', {})
+        # Check staleness summary - FILTER to tradable universe only
+        all_instruments = data_status.get('instruments', {})
+
+        # Filter to tradable universe if provided
+        if tradable_universe:
+            instruments = {inst_id: inst_data for inst_id, inst_data in all_instruments.items()
+                          if inst_id in tradable_universe}
+        else:
+            instruments = all_instruments
+
         stale_count = sum(1 for inst_data in instruments.values() if inst_data.get('staleness_days', 0) > 0)
         max_staleness = max((inst_data.get('staleness_days', 0) for inst_data in instruments.values()), default=0)
 
@@ -488,11 +501,21 @@ def main():
             )
             sys.exit(2)
 
+    # Load config to get tradable universe
+    try:
+        with open(args.config) as f:
+            config = yaml.safe_load(f)
+        from sysdata.crypto.config_helpers import extract_tradable_instruments
+        tradable_universe = extract_tradable_instruments(config)
+    except Exception as e:
+        logger.error(f"Failed to load config: {e}")
+        sys.exit(1)
+
     # Run checks
     checks = {}
 
     # Check 1: Data recency
-    status, errors, warnings = check_data_recency(args.data_status_path, args.cadence)
+    status, errors, warnings = check_data_recency(args.data_status_path, args.cadence, tradable_universe)
     checks['data_recency'] = (status, errors, warnings)
 
     # Check 2: Manifest integrity (optional if output_dir provided)

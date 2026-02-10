@@ -207,8 +207,9 @@ def update_raw_data(
 
         # Also generate V1 day-level report for live ops
         logger.info("Generating V1 day-level data status report...")
-        universe_config = config.get('universe', {})
-        instrument_ids = universe_config.get('layer_a_instruments', [])
+        # V1 report should cover all candidate instruments (not just tradable universe)
+        from sysdata.crypto.config_helpers import extract_candidate_instruments
+        instrument_ids = extract_candidate_instruments(config)
 
         v1_report = generate_data_status_report_v1(
             data_dir,
@@ -284,9 +285,9 @@ def update_raw_data(
     # Also generate V1 day-level report for live ops
     logger.info("Generating V1 day-level data status report...")
 
-    # Use canonical mapping: load config to get instrument IDs
-    universe_config = config.get('universe', {})
-    instrument_ids = universe_config.get('layer_a_instruments', [])
+    # V1 report should cover all candidate instruments (not just tradable universe)
+    from sysdata.crypto.config_helpers import extract_candidate_instruments
+    instrument_ids = extract_candidate_instruments(config)
 
     v1_report = generate_data_status_report_v1(
         data_dir,
