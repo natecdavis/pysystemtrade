@@ -29,24 +29,30 @@ venv/
 # libreoffice
 .~lock.*
 
-# Data directory policy
-# Ignore all raw data
-data/raw/**
+# Generated crypto backtest outputs
+systems/provided/crypto_example/output/*.csv
+systems/provided/crypto_example/output/*.md
+systems/provided/crypto_example/output/*.log
+systems/provided/crypto_example/backtest_cache/*_returns.csv
 
-# Ignore all parquet files by default
-data/**/*.parquet
+# macOS artifacts
+.DS_Store
 
-# Explicitly allow metadata (negation must come after broader ignore)
-!data/raw/
-!data/raw/metadata/
-!data/raw/metadata/**
+# Backtest outputs (generated artifacts)
+out/
+envs/*/out/
 
-# Explicitly allow tracked datasets
-!data/example_crypto_perps.parquet
-!data/example_crypto_perps_5yr.parquet
-!data/example_crypto_perps_15x4yr.parquet
-!data/test_fixtures/
-!data/test_fixtures/*.parquet
+# Live trading state (runtime data)
+envs/*/live/current_*.csv
+envs/*/live/current_*.txt
 
-# Temporary files
-*.tmp
+# Environment working data
+envs/*/data/
+
+# Downloaded Binance raw data (ZIPs are re-downloadable)
+*.zip
+
+# Research outputs and working directories
+research/
+reports/
+/live/

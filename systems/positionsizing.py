@@ -143,15 +143,47 @@ class PositionSizing(SystemStage):
 
     @diagnostic()
     def _is_instrument_long_only(self, instrument_code: str) -> bool:
-        list_of_long_only_instruments = self._get_list_of_long_only_instruments()
+        """
+        Check if an instrument should be constrained to long-only positions.
 
-        return instrument_code in list_of_long_only_instruments
+        Supports two modes:
+        - long_only_instruments: True → All instruments are long-only (global mode)
+        - long_only_instruments: [BTC, ETH] → Specific instruments are long-only
+        """
+        config = self.config
+        long_only_config = config.get_element_or_default("long_only_instruments", [])
+
+        # Global mode: apply to all instruments
+        if long_only_config is True:
+            return True
+
+        # List mode: check if instrument is in the list
+        if isinstance(long_only_config, list):
+            return instrument_code in long_only_config
+
+        # Default: no constraint
+        return False
 
     @diagnostic()
     def _get_list_of_long_only_instruments(self) -> list:
+        """
+        Get list of long-only instruments.
+
+        Note: This method is deprecated in favor of _is_instrument_long_only()
+        which handles both global and list modes. Kept for backwards compatibility.
+        """
         config = self.config
         long_only = config.get_element_or_default("long_only_instruments", [])
-        return long_only
+
+        # If True, return empty list (global mode is handled in _is_instrument_long_only)
+        if long_only is True:
+            return []
+
+        # If list, return as-is
+        if isinstance(long_only, list):
+            return long_only
+
+        return []
 
     def avg_abs_forecast(self) -> float:
         return self.config.average_absolute_forecast
@@ -201,6 +233,49 @@ class PositionSizing(SystemStage):
         vol_scalar = cash_vol_target / instr_value_vol
 
         return vol_scalar
+
+    def get_subsystem_position_with_min_notional(
+        self, instrument_code: str
+    ) -> pd.Series:
+        """
+        Get subsystem position, setting to zero if below minimum notional value.
+
+        This is used for retail trading where exchanges have minimum order sizes.
+        Any position whose notional value (abs(position * price)) is below the
+        minimum threshold is set to zero.
+
+        Config values:
+        - min_notional_position: Dollar amount (default $25)
+
+        :param instrument_code: instrument to get values for
+        :type instrument_code: str
+
+        :returns: Tx1 pd.Series with min notional filter applied
+        """
+        # Get raw position
+        raw_position = self.get_subsystem_position(instrument_code)
+
+        # Get config
+        min_notional = self.config.get_element_or_default("min_notional_position", 25.0)
+
+        if min_notional <= 0:
+            # Filter disabled
+            return raw_position
+
+        # Get instrument price
+        prices = self.parent.rawdata.get_daily_prices(instrument_code)
+
+        # Align to position index
+        prices_aligned = prices.reindex(raw_position.index, method="ffill")
+
+        # Calculate notional value of each position
+        notional_values = raw_position.abs() * prices_aligned
+
+        # Set to zero where below minimum
+        position_filtered = raw_position.copy()
+        position_filtered[notional_values < min_notional] = 0.0
+
+        return position_filtered
 
     @diagnostic()
     def get_instrument_value_vol(self, instrument_code: str) -> pd.Series:

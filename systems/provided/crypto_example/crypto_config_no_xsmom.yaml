@@ -1,0 +1,191 @@
+# 13-rule crypto configuration (without XSMOM)
+#
+# This config is identical to crypto_config_diversified.yaml except:
+# - No RelMomentum (XSMOM) rules
+# - Forecast weights adjusted to equal-weight 13 rules
+#
+# Purpose: A/B testing to isolate the effect of XSMOM rules
+#
+# Trading rules: 13 total
+# - EWMAC: 4 variations (8/32, 16/64, 32/128, 64/256)
+# - Breakout: 4 variations (10, 20, 40, 80)
+# - TSMOM: 3 variations (63, 126, 252 day lookbacks)
+# - Accel: 2 variations (16, 32)
+
+# Capital and risk settings
+percentage_vol_target: 25.0
+notional_trading_capital: 100000
+base_currency: USD
+
+# Trading rules - EWMAC + Breakout + TSMOM + Accel (no XSMOM)
+trading_rules:
+  # EWMAC - Standard spans from Carver's book
+  ewmac8_32:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 8
+      Lslow: 32
+  ewmac16_64:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 16
+      Lslow: 64
+  ewmac32_128:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 32
+      Lslow: 128
+  ewmac64_256:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 64
+      Lslow: 256
+  # Breakout - provides diversification from EWMAC
+  breakout10:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 10
+  breakout20:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 20
+  breakout40:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 40
+  breakout80:
+    function: systems.provided.rules.breakout.breakout
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 80
+  # TSMOM - Time-Series Momentum (Moskowitz et al.)
+  tsmom63:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 63
+      skip: 5
+  tsmom126:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 126
+      skip: 5
+  tsmom252:
+    function: systems.provided.rules.tsmom.tsmom
+    data:
+      - "rawdata.get_daily_prices"
+    other_args:
+      lookback: 252
+      skip: 5
+  # Accel - Momentum of momentum (Carver)
+  accel16:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "rawdata.get_daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args:
+      Lfast: 16
+  accel32:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "rawdata.get_daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args:
+      Lfast: 32
+
+# Forecast weights - equal weighted across 13 rules (1/13 = 0.0769)
+forecast_weights:
+  ewmac8_32: 0.0769
+  ewmac16_64: 0.0769
+  ewmac32_128: 0.0769
+  ewmac64_256: 0.0769
+  breakout10: 0.0769
+  breakout20: 0.0769
+  breakout40: 0.0769
+  breakout80: 0.0769
+  tsmom63: 0.0769
+  tsmom126: 0.0769
+  tsmom252: 0.0769
+  accel16: 0.0769
+  accel32: 0.0769
+
+# Forecast capping
+forecast_cap: 20.0
+
+# Instruments - same as diversified config
+instrument_weights:
+  BTC: 0.083
+  ETH: 0.083
+  LTC: 0.083
+  XRP: 0.083
+  XLM: 0.083
+  ADA: 0.083
+  LINK: 0.083
+  ATOM: 0.083
+  DOT: 0.083
+  UNI: 0.083
+  AAVE: 0.083
+  SOL: 0.083
+
+# Instrument diversification multiplier (same as diversified)
+instrument_div_multiplier: 1.22
+
+# Volatility calculation (same as diversified)
+volatility_calculation:
+  func: sysquant.estimators.vol.robust_vol_calc
+  days: 35
+  min_periods: 10
+  vol_abs_min: 0.0000001
+  vol_floor: True
+  floor_min_periods: 100
+  floor_days: 500
+  floor_min_quant: 0.05
+
+# Position buffering (same as diversified)
+buffer_method: forecast
+buffer_size: 0.10
+
+# Walk-forward estimation (same as diversified)
+use_forecast_scale_estimates: True
+use_forecast_div_mult_estimates: True
+
+# Forecast scalar estimation config (same as diversified)
+forecast_scalar_estimate:
+   pool_instruments: True
+   window: 250000
+   min_periods: 250
+   backfill: True
+
+# Forecast correlation estimation config (same as diversified)
+forecast_correlation_estimate:
+   pool_instruments: True
+   date_method: expanding
+   frequency: W
+   using_exponent: True
+   ew_lookback: 250
+   min_periods: 20
+   floor_at_zero: True
+   forward_fill_data: True
+
+# FDM estimation config (same as diversified)
+forecast_div_mult_estimate:
+   ewma_span: 125
+   dm_max: 2.5
+
+# Fixed weights (same as diversified)
+use_forecast_weight_estimates: False
+use_instrument_weight_estimates: False
+use_instrument_div_mult_estimates: False
+
+# Average absolute forecast
+average_absolute_forecast: 10.0

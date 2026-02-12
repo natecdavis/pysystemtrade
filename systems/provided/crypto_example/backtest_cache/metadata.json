@@ -1,0 +1,29 @@
+{
+  "carry_returns": {
+    "source": "carry_returns.py",
+    "start_date": "2020-01-01",
+    "end_date": "2026-01-06",
+    "vol_target": 0.125,
+    "cached_at": "2026-01-17T11:13:59.958074"
+  },
+  "btc_returns": {
+    "source": "data/crypto/BTC.csv",
+    "start_date": "2013-10-07",
+    "end_date": "2025-03-31",
+    "cached_at": "2026-01-17T11:33:06.292617"
+  },
+  "trend_static_returns": {
+    "system": "crypto_system (static universe)",
+    "start_date": "2010-07-16",
+    "end_date": "2026-01-08",
+    "instruments": "12 static",
+    "cached_at": "2026-01-17T11:36:26.893967"
+  },
+  "trend_dynamic_returns": {
+    "system": "crypto_system_with_dynamic_universe",
+    "start_date": "2010-07-16",
+    "end_date": "2026-01-08",
+    "instruments": "~185 dynamic",
+    "cached_at": "2026-01-17T11:53:06.917034"
+  }
+}

@@ -1,84 +1,125 @@
-# CLAUDE.md — Working Rules for This Repo
+# CLAUDE.md
 
-This file defines **how Claude Code should operate** in this repository. It does **not** redefine system logic.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 1) Source of truth (read first)
+## Project Overview
 
-Before writing any code, read:
+pysystemtrade is Rob Carver's systematic futures trading system implementing the framework from "Systematic Trading". It provides both backtesting and live production trading via Interactive Brokers.
 
-1. **Agent Instructions README** (`AGENT_INSTRUCTIONS_README`)
-2. **Crypto Perps Design Spec (Agent-Ready Revision)**
+## Build and Development Commands
 
-If there is any conflict:
+```bash
+# Install in editable mode with dev dependencies
+python -m pip install --editable '.[dev]'
 
-> **Design Spec > Agent Instructions README > This file**
+# Run tests
+pytest
 
-Do not invent behavior not explicitly specified in those documents.
+# Run a single test module
+pytest sysdata/tests/test_config.py
 
----
+# Run tests including slow tests
+pytest --runslow
 
-## 2) Scope lock
+# Skip a specific test
+pytest --ignore=sysinit/futures/tests/test_sysinit_futures.py
 
-- Implement **Phase 1 (MVP) only** unless explicitly instructed otherwise.
-- Do **not** proceed to Layer B dynamics, state-machine exits, or relative momentum unless told to do so.
-- Do **not** refactor `pysystemtrade` core abstractions.
+# Format code (Black 23.11.0, line length 88)
+black .
+```
 
-If something seems missing or ambiguous:
-- Choose the simplest assumption
-- Encode it in a test
-- Stop and surface the ambiguity
+## Architecture Overview
 
----
+### Package Structure
 
-## 3) How to work (required)
+The codebase uses `sys*` prefixed packages:
 
-- Make **small, sequential commits** aligned to the Phase 1 checklist.
-- After each logical step:
-  - Run tests
-  - Ensure the repo is in a runnable state
-- Prefer clarity over cleverness.
+- **syscore/** - Utilities (pandas helpers, dates, files, exceptions)
+- **sysdata/** - Data layer with multiple backends (CSV, MongoDB, Parquet, Arctic)
+- **sysobjects/** - Domain objects (instruments, contracts, prices, positions)
+- **systems/** - Backtesting engine with stage-based pipeline
+- **sysexecution/** - Order management (instrument → contract → broker orders)
+- **sysproduction/** - Live trading orchestration and reporting
+- **sysbrokers/** - Broker abstraction (Interactive Brokers implementation)
+- **syslogging/** - Centralized logging
 
-Avoid:
-- Large refactors
-- Abstract base classes without need
-- Generalization beyond the spec
+### Backtesting System
 
----
+Stage-based pipeline where each stage is independently cacheable:
 
-## 4) Testing discipline
+```
+Data (csvFuturesSimData/dbFuturesSimData)
+  → System (orchestrator with Config)
+    → RawData (prices, volatility)
+    → Rules (trading rule forecasts)
+    → ForecastScaleCap (scale to vol target)
+    → ForecastCombine (weight rule forecasts)
+    → PositionSizing (capital-based sizing)
+    → Portfolios (instrument weights)
+    → Accounts (P&L calculation)
+```
 
-- Use `pytest`
-- Tests are part of the deliverable, not optional
-- If behavior matters, it must be asserted in a test
+Key classes: `System` (systems/basesystem.py), `SystemStage` (systems/stage.py)
 
-Required minimum tests:
-- Forecast scaling and caps
-- Gross leverage cap
-- IDM cap
-- Accounting identity: `total_pnl = price + funding − costs`
+Example usage:
+```python
+from systems.provided.example.simplesystem import simplesystem
+system = simplesystem()
+system.portfolio.get_notional_position("SOFR")
+system.accounts.portfolio().sharpe()
+```
 
----
+### Production System
 
-## 5) Coding style
+Daily cycle: price updates → backtest signals → order generation → execution
 
-- Follow existing `pysystemtrade` conventions where applicable
-- Prefer explicit variable names over abbreviations
-- Keep functions small and single-purpose
-- Add docstrings only where behavior is non-obvious
+**dataBlob** (sysdata/data_blob.py) aggregates all data sources with standardized naming (e.g., `data.broker_contract_price`, `data.db_adjusted_prices`).
 
----
+**Order Stack Hierarchy:**
+- Instrument orders (strategy-level)
+- Contract orders (handles rolls)
+- Broker orders (IB execution)
 
-## 6) When to stop
+### Data Layer
 
-Stop work when **all Phase 1 tests pass** and the system:
+Each data type has multiple storage implementations:
+- `csv*` - CSV files (backtesting, human-readable)
+- `mongo*` / `parquet*` - Production storage
+- `ib*` - Direct from Interactive Brokers
 
-- Runs end-to-end on the example dataset
-- Produces an equity curve
-- Writes a positions CSV
+Data hierarchy: Raw Contract Prices → Multiple Prices (roll management) → Adjusted Prices (continuous series)
 
-Do **not** continue to enhancements, optimizations, or Phase 2 features unless explicitly instructed.
+### Configuration
 
----
+Three layers: defaults (sysdata/config/defaults.py) → YAML configs (systems/provided/*/config.yaml) → runtime overrides
 
-**Reminder:** This repo is optimized for *correctness and auditability*, not speed or elegance.
+Trading rules defined in YAML with Python function paths:
+```yaml
+trading_rules:
+  ewmac8:
+    function: systems.provided.rules.ewmac.ewmac_forecast_with_defaults
+    other_args:
+      Lfast: 8
+      Lslow: 32
+```
 
+## Coding Conventions
+
+- Follow PEP 8 and Black formatting (Python 3.10 target)
+- Use `arg_not_supplied` for optional parameters where relevant
+- Classes use mixedCase; methods use prefixes: `get`, `calculate`, `read`, `write`
+- Data classes inherit from `baseData`; stages inherit from `SystemStage`
+- Use `@output()` decorator for cacheable stage methods
+
+## Branch and PR Guidelines
+
+- Branch from `develop` using `bug-<issue#>-<description>` or `feature-<issue#>-<description>`
+- Open PRs against `develop` with clear summary and linked issue
+
+## Key Files
+
+- `systems/provided/example/simplesystem.py` - Simplest complete backtesting example
+- `sysdata/sim/csv_futures_sim_data.py` - Backtesting data interface
+- `sysdata/data_blob.py` - Production data aggregation
+- `sysexecution/orders/` - Order class hierarchy
+- `private/` - Local credentials/config (not committed)
