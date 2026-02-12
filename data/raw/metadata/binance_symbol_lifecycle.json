@@ -1,0 +1,79 @@
+{
+  "BTCUSDT": {
+    "launch_date": "2019-09-08",
+    "status": "active",
+    "notes": "Binance futures launch symbol (Tier 1)"
+  },
+  "ETHUSDT": {
+    "launch_date": "2019-09-08",
+    "status": "active",
+    "notes": "Binance futures launch symbol (Tier 1)"
+  },
+  "BNBUSDT": {
+    "launch_date": "2019-09-08",
+    "status": "active",
+    "notes": "Binance futures launch symbol (Tier 2)"
+  },
+  "XRPUSDT": {
+    "launch_date": "2019-09-13",
+    "status": "active",
+    "notes": "Tier 2 symbol, launch week after futures launch"
+  },
+  "LTCUSDT": {
+    "launch_date": "2019-09-13",
+    "status": "active",
+    "notes": "Tier 2 symbol (2019+)"
+  },
+  "EOSUSDT": {
+    "launch_date": "2019-09-13",
+    "status": "delisted",
+    "delist_date": "2026-01-01",
+    "notes": "Tier 2 symbol (2019+), delisted Jan 2026 - all Jan 2026 daily files return 404"
+  },
+  "SOLUSDT": {
+    "launch_date": "2020-07-27",
+    "status": "active",
+    "notes": "Perp available from Jul 2020 (mid-year) - excluded from Phase 1 to preserve Jan-Jun 2020 coverage"
+  },
+  "DOTUSDT": {
+    "launch_date": "2020-08-20",
+    "status": "active",
+    "notes": "Tier 3 symbol (2020+ DeFi)"
+  },
+  "LINKUSDT": {
+    "launch_date": "2020-07-24",
+    "status": "active",
+    "notes": "Tier 3 symbol (2020+ DeFi)"
+  },
+  "ADAUSDT": {
+    "launch_date": "2020-08-27",
+    "status": "active",
+    "notes": "Tier 3 symbol (2020+)"
+  },
+  "DOGEUSDT": {
+    "launch_date": "2021-05-10",
+    "status": "active",
+    "notes": "Tier 4 symbol (2021+ Elon pump era)"
+  },
+  "MATICUSDT": {
+    "launch_date": "2021-02-11",
+    "status": "delisted",
+    "delist_date": "2024-10-01",
+    "notes": "Tier 4 symbol (2021+ scaling solutions), no klines available after Sep 2024 (funding rates continue)"
+  },
+  "AVAXUSDT": {
+    "launch_date": "2021-07-13",
+    "status": "active",
+    "notes": "Tier 4 symbol (2021+ L1 competition)"
+  },
+  "UNIUSDT": {
+    "launch_date": "2021-01-19",
+    "status": "active",
+    "notes": "Tier 4 symbol (2021+ DeFi governance)"
+  },
+  "BCHUSDT": {
+    "launch_date": "2019-09-13",
+    "status": "active",
+    "notes": "Tier 2 symbol (BTC fork)"
+  }
+}

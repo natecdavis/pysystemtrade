@@ -1,0 +1,15 @@
+# Test configuration for automatic discovery
+# This config uses auto_discover to pull from the registry
+
+data_acquisition:
+  auto_discover: true  # Enable registry-based discovery
+
+universe:
+  layer_a_instruments:
+    # Small fallback list if registry doesn't exist
+    - BTCUSDT_PERP
+    - ETHUSDT_PERP
+
+# NOTE: When auto_discover is enabled, data_acquisition will download
+# ALL instruments from discovered_candidate_instruments.json (541 instruments),
+# but the trading universe remains just the 2 instruments above.

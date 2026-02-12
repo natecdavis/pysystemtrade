@@ -1,4 +1,73 @@
-# pysystemtrade
+# pysystemtrade - Crypto Perpetual Futures Extension
+
+This is an extension of Rob Carver's pysystemtrade framework adapted for cryptocurrency perpetual futures trading on Binance.
+
+**Version:** research_v1
+**Date:** 2026-01-27
+
+## Quick Start - Running a Backtest
+
+### Composable Workflow
+
+```bash
+# Most common: Run backtest with existing dataset
+python scripts/run_backtest_e2e.py \
+    --config config/crypto_perps_baseline_v1.yaml \
+    --data data/example_crypto_perps_5yr.parquet
+
+# Build dataset then run backtest
+python scripts/run_backtest_e2e.py \
+    --config config/crypto_perps_baseline_v1.yaml \
+    --build-dataset \
+    --start-date 2020-01-01 \
+    --end-date 2024-12-31
+
+# Full workflow: download + build + backtest
+python scripts/run_backtest_e2e.py \
+    --config config/crypto_perps_baseline_v1.yaml \
+    --download-data \
+    --build-dataset \
+    --start-year 2020 \
+    --end-year 2024 \
+    --start-date 2020-01-01 \
+    --end-date 2024-12-31
+```
+
+### Output Structure
+
+Backtest outputs are saved to `out/{config_name}_{config_hash}/`:
+- `equity_curve.csv` - Daily equity curve
+- `positions.csv` - Position history
+- `pnl_breakdown.csv` - PnL decomposition
+- `layer_a_membership.csv` - Layer-A membership history (Phase 2)
+- `idm_history.csv` - IDM time series
+- `diagnostics.parquet` - Full diagnostics
+- `metadata.json` - Run metadata and metrics
+
+### Reproducibility
+
+Same config + same data → identical outputs (deterministic).
+
+Metadata includes:
+- Git commit hash
+- Dataset fingerprint (MD5)
+- Config snapshot
+- System version
+- Run timestamp
+
+### Key Features
+
+- **Phase 1**: Static 15-instrument universe with EWMAC + Carry
+- **Phase 2**: Dynamic universe with monthly Layer-A selection
+- **IDM Constraints**: Diversification multiplier capped at 2.5x
+- **Jagged Panel Support**: Handle instruments with different launch dates
+- **Real Data**: Binance perpetual futures (2020-2026)
+
+See [CHANGELOG.md](CHANGELOG.md) for full release notes and validated performance.
+
+---
+
+# Upstream pysystemtrade
 
 Systematic futures trading in python
 
@@ -7,8 +76,8 @@ Rob Carver
 [https://qoppac.blogspot.com/p/pysystemtrade.html](https://qoppac.blogspot.com/p/pysystemtrade.html)
 
 
-Version 1.8.2
- 
+Upstream Version 1.8.2
+
 
 2024-11-06
 

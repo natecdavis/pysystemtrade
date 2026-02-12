@@ -1,0 +1,3 @@
+instrument,contracts,mark_price_usd,notional_usd,timestamp,notes
+BTCUSDT_PERP,0.0,0.0,0.0,2024-12-31T00:00:00Z,initial_zero_position
+SOLUSDT_PERP,0.0,0.0,0.0,2024-12-31T00:00:00Z,initial_zero_position

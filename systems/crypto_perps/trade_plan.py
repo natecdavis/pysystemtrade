@@ -1,0 +1,709 @@
+"""
+Trade plan generation for live advisory system.
+
+Compares target positions from research_v1 backtest against actual current positions
+to generate actionable trade recommendations with risk checks and audit trail.
+
+V1 Extension: Staleness-based eligibility overlay for daily operations.
+"""
+
+import pandas as pd
+import numpy as np
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional
+from datetime import datetime, date as Date
+import json
+import logging
+
+from systems.crypto_perps.staleness_overlay import (
+    apply_staleness_overlay,
+    compute_staleness_summary,
+    validate_staleness_inputs
+)
+
+logger = logging.getLogger(__name__)
+
+
+def load_actual_positions(positions_path: Path) -> pd.DataFrame:
+    """
+    Load actual current positions from CSV file.
+
+    Expected schema:
+        instrument,contracts,mark_price_usd,notional_usd,timestamp,notes
+
+    Validates:
+        - notional_usd == contracts × mark_price_usd (within 1e-6)
+        - All required columns present
+
+    Returns:
+        DataFrame with 'instrument' as index and columns:
+            contracts, mark_price_usd, notional_usd, timestamp, notes
+    """
+    df = pd.read_csv(positions_path)
+
+    # Validate required columns
+    required_cols = ['instrument', 'contracts', 'mark_price_usd', 'notional_usd', 'timestamp']
+    missing = set(required_cols) - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required columns in actual positions: {missing}")
+
+    # Validate notional calculation
+    computed_notional = df['contracts'] * df['mark_price_usd']
+    notional_diff = np.abs(df['notional_usd'] - computed_notional)
+    invalid_rows = df[notional_diff > 1e-6]
+
+    if len(invalid_rows) > 0:
+        raise ValueError(
+            f"Notional validation failed for {len(invalid_rows)} instrument(s). "
+            f"notional_usd must equal contracts × mark_price_usd:\n{invalid_rows}"
+        )
+
+    # Set index
+    df = df.set_index('instrument')
+
+    return df
+
+
+def load_backtest_positions(backtest_dir: Path, as_of_date: str) -> pd.Series:
+    """
+    Load target positions from backtest for specific date.
+
+    Args:
+        backtest_dir: Path to backtest output directory
+        as_of_date: Date string in YYYY-MM-DD format
+
+    Returns:
+        Series with instrument as index, target notional as values
+    """
+    positions_path = backtest_dir / 'positions.csv'
+    if not positions_path.exists():
+        raise FileNotFoundError(f"Backtest positions not found: {positions_path}")
+
+    # Load positions
+    df = pd.read_csv(positions_path, index_col=0, parse_dates=True)
+
+    # Check if as_of_date exists
+    as_of_dt = pd.to_datetime(as_of_date)
+    if as_of_dt not in df.index:
+        raise ValueError(
+            f"Date {as_of_date} not found in backtest positions. "
+            f"Available range: {df.index[0].date()} to {df.index[-1].date()}"
+        )
+
+    # Extract target positions for as_of_date
+    targets = df.loc[as_of_dt]
+
+    return targets
+
+
+def load_backtest_diagnostics(backtest_dir: Path, as_of_date: str) -> pd.Series:
+    """
+    Load diagnostics (forecasts, constraints, state) for specific date.
+
+    Returns:
+        Series with instrument as index
+    """
+    diagnostics_path = backtest_dir / 'diagnostics.parquet'
+    if not diagnostics_path.exists():
+        raise FileNotFoundError(f"Backtest diagnostics not found: {diagnostics_path}")
+
+    # Load diagnostics
+    df = pd.read_parquet(diagnostics_path)
+
+    # Filter to as_of_date
+    as_of_dt = pd.to_datetime(as_of_date)
+    df_date = df[df.index.get_level_values(0) == as_of_dt]
+
+    # Reset index to get instrument column
+    df_date = df_date.reset_index(level=0, drop=True)
+
+    return df_date
+
+
+def load_backtest_metadata(backtest_dir: Path) -> dict:
+    """Load backtest metadata (config, dataset fingerprint, etc.)"""
+    metadata_path = backtest_dir / 'metadata.json'
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Backtest metadata not found: {metadata_path}")
+
+    with open(metadata_path) as f:
+        return json.load(f)
+
+
+def load_staleness_data(data_status_path: Path) -> Tuple[Optional[pd.Series], Optional[Date], Optional[Date]]:
+    """
+    Load staleness data from data_status.json file.
+
+    Args:
+        data_status_path: Path to raw_data_status.json
+
+    Returns:
+        Tuple of (staleness_days, expected_as_of_date, dataset_as_of_date)
+        Returns (None, None, None) if file doesn't exist or is missing required fields
+    """
+    if not data_status_path.exists():
+        logger.warning(f"Data status file not found: {data_status_path}. Staleness overlay skipped.")
+        return None, None, None
+
+    with open(data_status_path) as f:
+        status = json.load(f)
+
+    # Check if this is a V1 report (has staleness tracking)
+    if 'instruments' not in status:
+        logger.warning("Data status file is missing 'instruments' field. Staleness overlay skipped.")
+        return None, None, None
+
+    # Extract staleness per instrument
+    staleness_dict = {}
+    for inst, data in status['instruments'].items():
+        if 'staleness_days' in data:
+            staleness_dict[inst] = data['staleness_days']
+
+    if not staleness_dict:
+        logger.warning("Data status file has no staleness_days. Staleness overlay skipped.")
+        return None, None, None
+
+    staleness_series = pd.Series(staleness_dict)
+
+    # Extract dates
+    expected_as_of_date = None
+    dataset_as_of_date = None
+
+    if 'expected_as_of_date' in status:
+        expected_as_of_date = datetime.strptime(status['expected_as_of_date'], '%Y-%m-%d').date()
+
+    if 'dataset_as_of_date' in status:
+        dataset_as_of_date = datetime.strptime(status['dataset_as_of_date'], '%Y-%m-%d').date()
+
+    return staleness_series, expected_as_of_date, dataset_as_of_date
+
+
+def calculate_position_deltas(
+    targets: pd.Series,
+    actuals: pd.DataFrame,
+    current_equity: float
+) -> pd.DataFrame:
+    """
+    Calculate position deltas (target - actual) for all instruments.
+
+    Args:
+        targets: Series of target notional positions (from backtest)
+        actuals: DataFrame of actual positions (from manual input)
+        current_equity: Current account equity
+
+    Returns:
+        DataFrame with columns:
+            target_notional, current_notional, delta_notional, delta_weight, current_contracts, mark_price_usd
+    """
+    # Build results dataframe
+    results = []
+
+    for inst in targets.index:
+        target_notional = targets[inst]
+
+        # Get actual position (default to 0 if not present)
+        if inst in actuals.index:
+            current_notional = actuals.loc[inst, 'notional_usd']
+            current_contracts = actuals.loc[inst, 'contracts']
+            mark_price = actuals.loc[inst, 'mark_price_usd']
+        else:
+            current_notional = 0.0
+            current_contracts = 0.0
+            mark_price = 0.0
+
+        # Calculate delta
+        delta_notional = target_notional - current_notional
+        delta_weight = delta_notional / current_equity if current_equity > 0 else 0.0
+
+        results.append({
+            'instrument': inst,
+            'current_contracts': current_contracts,
+            'mark_price_usd': mark_price,
+            'current_notional': current_notional,
+            'target_notional': target_notional,
+            'delta_notional': delta_notional,
+            'delta_weight': delta_weight
+        })
+
+    df = pd.DataFrame(results)
+    df = df.set_index('instrument')
+
+    return df
+
+
+def estimate_trade_costs(
+    deltas: pd.DataFrame,
+    spread_frac: float = 0.00025,
+    taker_fee_frac: float = 0.0004
+) -> pd.Series:
+    """
+    Estimate round-trip costs for trades.
+
+    RTC = |delta_notional| × (spread_frac/2 + taker_fee_frac)
+
+    Default: 0.00065 (65 bps) = 0.00025/2 + 0.0004
+
+    Returns:
+        Series with instrument as index, estimated cost as values
+    """
+    rtc_frac = spread_frac / 2 + taker_fee_frac
+    costs = deltas['delta_notional'].abs() * rtc_frac
+    return costs
+
+
+def check_gross_leverage(
+    actuals: pd.DataFrame,
+    deltas: pd.DataFrame,
+    current_equity: float,
+    gross_leverage_cap: float
+) -> dict:
+    """
+    Check gross leverage before and after trades.
+
+    Gross leverage = sum(|notional|) / equity
+
+    Returns:
+        dict with keys: actual_current, after_trades, cap, headroom, status
+    """
+    # Current gross leverage (actual positions)
+    actual_instruments = actuals.index
+    current_gross_notional = actuals.loc[actual_instruments, 'notional_usd'].abs().sum()
+    actual_current = current_gross_notional / current_equity if current_equity > 0 else 0.0
+
+    # After trades gross leverage (target positions)
+    after_gross_notional = deltas['target_notional'].abs().sum()
+    after_trades = after_gross_notional / current_equity if current_equity > 0 else 0.0
+
+    # Check cap
+    headroom = gross_leverage_cap - after_trades
+    status = 'pass' if after_trades <= gross_leverage_cap else 'fail'
+
+    return {
+        'actual_current': round(actual_current, 2),
+        'after_trades': round(after_trades, 2),
+        'cap': gross_leverage_cap,
+        'headroom': round(headroom, 2),
+        'status': status,
+        'note': 'Using current_equity, not initial_capital'
+    }
+
+
+def check_min_position_sizes(
+    deltas: pd.DataFrame,
+    current_equity: float,
+    min_position_frac: float
+) -> dict:
+    """
+    Identify trades below minimum position size threshold.
+
+    Returns:
+        dict with keys: threshold_usd, below_threshold (list), status
+    """
+    threshold_usd = current_equity * min_position_frac
+
+    # Find trades below threshold
+    below = deltas[deltas['delta_notional'].abs() < threshold_usd]
+    below_instruments = below.index.tolist()
+
+    status = 'pass' if len(below_instruments) == 0 else 'warn'
+
+    return {
+        'threshold_usd': round(threshold_usd, 2),
+        'below_threshold': below_instruments,
+        'status': status
+    }
+
+
+def classify_trade_reason(row: pd.Series) -> str:
+    """
+    Classify trade reason based on target and current positions.
+
+    Returns:
+        One of: target_increase | target_decrease | flatten_to_zero | new_position | rebalance
+    """
+    current = row['current_notional']
+    target = row['target_notional']
+    delta = row['delta_notional']
+
+    # Thresholds for classification
+    ZERO_THRESHOLD = 1e-6
+
+    # New position (current is zero or near-zero)
+    if abs(current) < ZERO_THRESHOLD and abs(target) > ZERO_THRESHOLD:
+        return 'new_position'
+
+    # Flatten to zero (target is zero or near-zero)
+    if abs(target) < ZERO_THRESHOLD and abs(current) > ZERO_THRESHOLD:
+        return 'flatten_to_zero'
+
+    # Same sign, increasing magnitude
+    if np.sign(current) == np.sign(target) and abs(target) > abs(current):
+        return 'target_increase'
+
+    # Same sign, decreasing magnitude
+    if np.sign(current) == np.sign(target) and abs(target) < abs(current):
+        return 'target_decrease'
+
+    # Different signs (flip from long to short or vice versa)
+    if np.sign(current) != np.sign(target):
+        return 'rebalance'
+
+    # Default
+    return 'rebalance'
+
+
+def rank_trades_by_priority(deltas: pd.DataFrame) -> pd.DataFrame:
+    """
+    Rank trades by priority for manual execution.
+
+    Priority = by absolute notional size (largest first)
+
+    Returns:
+        DataFrame with 'priority' column added (1 = highest priority)
+    """
+    # Sort by absolute delta (largest first)
+    deltas_sorted = deltas.copy()
+    deltas_sorted['abs_delta'] = deltas_sorted['delta_notional'].abs()
+    deltas_sorted = deltas_sorted.sort_values('abs_delta', ascending=False)
+
+    # Assign priority (1-indexed)
+    deltas_sorted['priority'] = range(1, len(deltas_sorted) + 1)
+
+    # Drop temporary column
+    deltas_sorted = deltas_sorted.drop(columns=['abs_delta'])
+
+    # Sort by priority
+    deltas_sorted = deltas_sorted.sort_values('priority')
+
+    return deltas_sorted
+
+
+def generate_trade_plan(
+    backtest_dir: Path,
+    actual_positions_path: Path,
+    current_equity: float,
+    as_of_date: str,
+    config: dict,
+    data_status_path: Optional[Path] = None
+) -> Tuple[pd.DataFrame, dict, dict]:
+    """
+    Generate trade plan by comparing backtest targets to actual positions.
+
+    Args:
+        backtest_dir: Path to backtest output directory
+        actual_positions_path: Path to actual positions CSV
+        current_equity: Current account equity in USD
+        as_of_date: Evaluation date (must match last date in backtest)
+        config: System config dict (for spread_frac, fees, caps, etc.)
+        data_status_path: Optional path to raw_data_status.json (for V1 staleness overlay)
+
+    Returns:
+        Tuple of (trade_plan_df, sanity_checks_dict, audit_bundle_dict)
+
+    Raises:
+        ValueError: If as_of_date doesn't match backtest end or other validation failures
+    """
+    logger.info(f"Generating trade plan for {as_of_date}")
+
+    # 1. Validate as_of_date matches backtest end
+    logger.info("Loading backtest positions...")
+    positions_csv = pd.read_csv(backtest_dir / 'positions.csv', index_col=0, parse_dates=True)
+    backtest_end_date = positions_csv.index[-1].strftime('%Y-%m-%d')
+
+    if as_of_date != backtest_end_date:
+        raise ValueError(
+            f"Date mismatch: backtest ends at {backtest_end_date}, requested {as_of_date}. "
+            f"Targets must be FRESH (not stale). Re-run backtest with latest data."
+        )
+
+    # 2. Load backtest outputs
+    logger.info("Loading backtest outputs...")
+    targets = load_backtest_positions(backtest_dir, as_of_date)
+    diagnostics = load_backtest_diagnostics(backtest_dir, as_of_date)
+    metadata = load_backtest_metadata(backtest_dir)
+
+    # 3. Load actual positions
+    logger.info("Loading actual positions...")
+    actuals = load_actual_positions(actual_positions_path)
+
+    # Validate instruments
+    target_instruments = set(targets.index)
+    actual_instruments = set(actuals.index)
+
+    # Check for instruments in actuals but not in universe
+    extra_instruments = actual_instruments - target_instruments
+    if extra_instruments:
+        raise ValueError(
+            f"Instruments in actual positions but NOT in universe: {extra_instruments}. "
+            f"This is not allowed - remove these instruments or update config."
+        )
+
+    # Missing instruments in actuals are OK (default to 0.0)
+    missing_instruments = target_instruments - actual_instruments
+    if missing_instruments:
+        logger.info(f"Instruments in universe but not in actual positions (defaulting to 0.0): {missing_instruments}")
+
+    # 3.5. Apply staleness overlay (V1 daily operations)
+    staleness_overlay_applied = False
+    staleness_audit = None
+    staleness_summary = None
+
+    if data_status_path:
+        logger.info("Loading staleness data...")
+        staleness_days, expected_date, dataset_date = load_staleness_data(data_status_path)
+
+        if staleness_days is not None:
+            logger.info("Applying staleness-based eligibility overlay...")
+
+            # Extract actual notionals as Series
+            actual_notionals = pd.Series(
+                {inst: actuals.loc[inst, 'notional_usd'] if inst in actuals.index else 0.0
+                 for inst in targets.index}
+            )
+
+            # Validate inputs
+            validate_staleness_inputs(targets, actual_notionals, staleness_days)
+
+            # Apply overlay
+            original_targets = targets.copy()
+            targets, staleness_audit = apply_staleness_overlay(
+                targets,
+                actual_notionals,
+                staleness_days,
+                dataset_date if dataset_date else datetime.strptime(as_of_date, '%Y-%m-%d').date()
+            )
+
+            # Compute summary
+            staleness_summary = compute_staleness_summary(staleness_days)
+            staleness_overlay_applied = True
+
+            logger.info(
+                f"Staleness overlay applied: {len(staleness_audit)} instruments overridden, "
+                f"summary: {staleness_summary}"
+            )
+        else:
+            logger.info("Staleness data not available - overlay skipped (V0 mode)")
+    else:
+        logger.info("Data status path not provided - staleness overlay skipped (V0 mode)")
+
+    # 4. Calculate position deltas
+    logger.info("Calculating position deltas...")
+    deltas = calculate_position_deltas(targets, actuals, current_equity)
+
+    # 5. Estimate costs
+    logger.info("Estimating trade costs...")
+    system_config = config.get('system', {})
+    spread_frac = system_config.get('spread_frac', 0.00025)
+    taker_fee_frac = system_config.get('taker_fee_frac', 0.0004)
+
+    costs = estimate_trade_costs(deltas, spread_frac, taker_fee_frac)
+    deltas['estimated_cost'] = costs
+
+    # 6. Classify trade reasons
+    logger.info("Classifying trades...")
+    deltas['reason'] = deltas.apply(classify_trade_reason, axis=1)
+
+    # 7. Add instrument state from diagnostics
+    if 'state' in diagnostics.columns:
+        deltas['state'] = diagnostics['state']
+    else:
+        deltas['state'] = 'ACTIVE'  # Default if no state column
+
+    # 8. Rank trades by priority
+    logger.info("Ranking trades...")
+    deltas = rank_trades_by_priority(deltas)
+
+    # 9. Apply risk checks
+    logger.info("Running sanity checks...")
+
+    # Gross leverage check
+    gross_leverage_cap = system_config.get('gross_leverage_cap', 2.0)
+    gross_lev_check = check_gross_leverage(actuals, deltas, current_equity, gross_leverage_cap)
+
+    # Min position size check
+    min_position_frac = system_config.get('min_position_frac', 0.03)
+    min_size_check = check_min_position_sizes(deltas, current_equity, min_position_frac)
+
+    # Banned instruments
+    banned_instruments = deltas[deltas['state'] == 'BANNED_FLATTEN'].index.tolist()
+
+    # Instrument states summary
+    state_counts = deltas['state'].value_counts().to_dict()
+
+    # Total estimated cost
+    total_cost = deltas['estimated_cost'].sum()
+    cost_pct = total_cost / current_equity if current_equity > 0 else 0.0
+
+    # Add warnings to deltas
+    warnings = []
+    for inst in deltas.index:
+        inst_warnings = []
+
+        # Below min size
+        if inst in min_size_check['below_threshold']:
+            inst_warnings.append('below_min_trade_size')
+
+        # Would exceed gross lev (if this trade executed alone)
+        # This is approximate - full check requires sequential execution
+        # For now, just flag any trades when we're close to cap
+        if gross_lev_check['headroom'] < 0.1:
+            inst_warnings.append('near_gross_lev_cap')
+
+        # Stale target (if backtest is old)
+        # This is already checked at function entry, so we're OK here
+
+        warnings.append(','.join(inst_warnings) if inst_warnings else '')
+
+    deltas['warnings'] = warnings
+
+    # 10. Build sanity checks dict
+    initial_capital = system_config.get('capital', 5000.0)
+    equity_pnl_pct = (current_equity - initial_capital) / initial_capital if initial_capital > 0 else 0.0
+
+    # IDM from diagnostics (target portfolio only, cannot compute from actual)
+    idm_cap = system_config.get('idm_cap', 2.5)
+    if 'idm' in diagnostics.columns:
+        idm_target = diagnostics['idm'].iloc[0] if len(diagnostics) > 0 else None
+    else:
+        idm_target = None
+
+    sanity_checks = {
+        'as_of_date': as_of_date,
+        'current_equity': round(current_equity, 2),
+        'initial_capital': round(initial_capital, 2),
+        'equity_pnl_pct': round(equity_pnl_pct, 4),
+        'checks': {
+            'gross_leverage': gross_lev_check,
+            'idm_target_portfolio': {
+                'value': round(idm_target, 2) if idm_target is not None else None,
+                'cap': idm_cap,
+                'headroom': round(idm_cap - idm_target, 2) if idm_target is not None else None,
+                'status': 'pass' if idm_target is None or idm_target <= idm_cap else 'fail',
+                'note': 'IDM from target portfolio only (cannot compute from actual positions)'
+            },
+            'min_position_sizes': min_size_check,
+            'banned_instruments': {
+                'count': len(banned_instruments),
+                'instruments': banned_instruments,
+                'status': 'pass' if len(banned_instruments) == 0 else 'warn'
+            },
+            'instrument_states': state_counts,
+            'total_estimated_cost': round(total_cost, 2),
+            'cost_as_pct_of_equity': round(cost_pct, 4)
+        },
+        'overall_status': 'pass' if gross_lev_check['status'] == 'pass' else 'fail',
+        'warnings': [
+            f"{len(min_size_check['below_threshold'])} trade(s) below min_position_size threshold" if min_size_check['status'] == 'warn' else None,
+            "Using estimated spreads - check live order book before executing",
+        ]
+    }
+
+    # Remove None warnings
+    sanity_checks['warnings'] = [w for w in sanity_checks['warnings'] if w is not None]
+
+    # Update overall status
+    if any(check.get('status') == 'fail' for check in sanity_checks['checks'].values() if isinstance(check, dict) and 'status' in check):
+        sanity_checks['overall_status'] = 'fail'
+    elif any(check.get('status') == 'warn' for check in sanity_checks['checks'].values() if isinstance(check, dict) and 'status' in check):
+        sanity_checks['overall_status'] = 'pass_with_warnings'
+    else:
+        sanity_checks['overall_status'] = 'pass'
+
+    # 11. Build audit bundle
+    # Extract prices snapshot from actuals
+    prices_snapshot = {}
+    for inst in actuals.index:
+        prices_snapshot[inst] = {
+            'mark_price': round(actuals.loc[inst, 'mark_price_usd'], 2),
+            'contracts': round(actuals.loc[inst, 'contracts'], 6),
+            'notional': round(actuals.loc[inst, 'notional_usd'], 2)
+        }
+
+    # Extract forecasts snapshot from diagnostics
+    forecasts_snapshot = {}
+    forecast_cols = [c for c in diagnostics.columns if 'forecast' in c.lower() or c in ['combined_forecast']]
+    if forecast_cols:
+        for inst in diagnostics.index:
+            inst_forecasts = {}
+            for col in forecast_cols:
+                if col in diagnostics.columns:
+                    val = diagnostics.loc[inst, col]
+                    if pd.notna(val):
+                        inst_forecasts[col] = round(val, 2)
+            if inst_forecasts:
+                forecasts_snapshot[inst] = inst_forecasts
+
+    # Extract constraints snapshot
+    constraints_snapshot = {}
+    if 'idm' in diagnostics.columns and len(diagnostics) > 0:
+        constraints_snapshot['idm_target'] = round(diagnostics['idm'].iloc[0], 2)
+    if 'gross_leverage' in diagnostics.columns and len(diagnostics) > 0:
+        constraints_snapshot['gross_leverage_target'] = round(diagnostics['gross_leverage'].iloc[0], 2)
+    if 'overall_scalar' in diagnostics.columns and len(diagnostics) > 0:
+        constraints_snapshot['overall_scalar'] = round(diagnostics['overall_scalar'].iloc[0], 2)
+    constraints_snapshot['note'] = 'IDM from target portfolio model, not actual positions'
+
+    # Build target portfolio summary
+    target_weights = {}
+    target_notionals = {}
+    for inst in targets.index:
+        target_notionals[inst] = round(targets[inst], 2)
+        target_weights[inst] = round(targets[inst] / current_equity, 4) if current_equity > 0 else 0.0
+
+    audit_bundle = {
+        'timestamp_utc': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'system_version': 'research_v1',
+        'as_of_date': as_of_date,
+        'last_complete_bar_date': backtest_end_date,
+        'data_lag_days': (datetime.utcnow().date() - pd.to_datetime(backtest_end_date).date()).days,
+        'advisory_cadence': 'daily' if staleness_overlay_applied else 'monthly',
+        'backtest_metadata': {
+            'backtest_dir': str(backtest_dir),
+            'config_hash': metadata.get('config_hash', 'unknown'),
+            'dataset_fingerprint': metadata.get('dataset_fingerprint', 'unknown'),
+            'git_commit': metadata.get('git_commit', 'unknown'),
+            'dataset_path': metadata.get('dataset_path', 'unknown'),
+            'dataset_date_range': metadata.get('dataset_date_range', [None, None])
+        },
+        'actual_positions': {
+            'source_file': str(actual_positions_path),
+            'timestamp': actuals['timestamp'].iloc[0] if len(actuals) > 0 and 'timestamp' in actuals.columns else 'unknown',
+            'prices_snapshot': prices_snapshot
+        },
+        'equity_info': {
+            'current_equity_usd': round(current_equity, 2),
+            'initial_capital_usd': round(initial_capital, 2),
+            'total_pnl_pct': round(equity_pnl_pct, 4),
+            'source': 'manual_input'
+        },
+        'forecasts_snapshot': forecasts_snapshot,
+        'constraints_snapshot': constraints_snapshot,
+        'target_portfolio': {
+            'target_weights': target_weights,
+            'target_notionals': target_notionals
+        },
+        'warnings': [
+            f"Advisory based on data through {backtest_end_date} ({(datetime.utcnow().date() - pd.to_datetime(backtest_end_date).date()).days} day lag)",
+            "Estimated costs - check live spreads",
+            "Daily cadence advisory - staleness overlay applied" if staleness_overlay_applied else "Monthly cadence advisory - not for intraday decisions"
+        ]
+    }
+
+    # Add staleness overlay section (V1)
+    if staleness_overlay_applied:
+        audit_bundle['staleness_overlay'] = {
+            'applied': True,
+            'as_of_date': str(dataset_date) if dataset_date else as_of_date,
+            'expected_as_of_date': str(expected_date) if expected_date else None,
+            'summary': staleness_summary,
+            'overrides': staleness_audit if staleness_audit else {}
+        }
+    else:
+        audit_bundle['staleness_overlay'] = {
+            'applied': False,
+            'reason': 'no_data_status_file' if not data_status_path else 'v0_mode'
+        }
+
+    logger.info("Trade plan generation complete")
+
+    return deltas, sanity_checks, audit_bundle

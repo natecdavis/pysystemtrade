@@ -1,0 +1,145 @@
+╔════════════════════════════════════════════════════════════╗
+║  Full Dataset Download - 15 Instruments (2019-2025)       ║
+╚════════════════════════════════════════════════════════════╝
+
+[0;34m[1/4] Checking disk space...[0m
+[0;32m✓ Sufficient disk space[0m
+  Available: 68GiB (68GB, need ~10GB)
+
+[0;34m[2/4] Checking existing downloads...[0m
+  Klines:       76 files
+  Funding:       76 files
+  Total: 152 files
+
+[0;32m✓ Existing files will be skipped (use --force to redownload)[0m
+
+[0;34m[3/4] Calculating download plan...[0m
+  Core 7 (2019-2025): 588 months × 2 data types = 1176 files
+  2020 launches (2020-2025): 288 months × 2 = 576 files
+  2021 launches (2021-2025): 240 months × 2 = 480 files
+
+[0;32mTotal: 2232 files to download[0m
+  Estimated time: ~37 minutes (varies with network speed)
+
+Non-interactive mode: proceeding with download...
+
+
+[0;34m[4/4] Starting downloads...[0m
+
+[0;32m▶ Core 7 symbols (2019-09 launch)[0m
+
+[0;34m════════════════════════════════════════════════════════════[0m
+[0;34mDownloading BTCUSDT (2019-2025)[0m
+[0;34m════════════════════════════════════════════════════════════[0m
+
+[1;33m→ BTCUSDT 2019[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BTCUSDT 2019 failed[0m
+
+[1;33m→ BTCUSDT 2020[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BTCUSDT 2020 failed[0m
+
+[1;33m→ BTCUSDT 2021[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BTCUSDT 2021 failed[0m
+
+[1;33m→ BTCUSDT 2022[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BTCUSDT 2022 failed[0m
+
+[1;33m→ BTCUSDT 2023[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BTCUSDT 2023 failed[0m
+
+[1;33m→ BTCUSDT 2024[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BTCUSDT 2024 failed[0m
+
+[1;33m→ BTCUSDT 2025[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BTCUSDT 2025 failed[0m
+
+[0;34m════════════════════════════════════════════════════════════[0m
+[0;34mDownloading ETHUSDT (2019-2025)[0m
+[0;34m════════════════════════════════════════════════════════════[0m
+
+[1;33m→ ETHUSDT 2019[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ ETHUSDT 2019 failed[0m
+
+[1;33m→ ETHUSDT 2020[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ ETHUSDT 2020 failed[0m
+
+[1;33m→ ETHUSDT 2021[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ ETHUSDT 2021 failed[0m
+
+[1;33m→ ETHUSDT 2022[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ ETHUSDT 2022 failed[0m
+
+[1;33m→ ETHUSDT 2023[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ ETHUSDT 2023 failed[0m
+
+[1;33m→ ETHUSDT 2024[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ ETHUSDT 2024 failed[0m
+
+[1;33m→ ETHUSDT 2025[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ ETHUSDT 2025 failed[0m
+
+[0;34m════════════════════════════════════════════════════════════[0m
+[0;34mDownloading BNBUSDT (2019-2025)[0m
+[0;34m════════════════════════════════════════════════════════════[0m
+
+[1;33m→ BNBUSDT 2019[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BNBUSDT 2019 failed[0m
+
+[1;33m→ BNBUSDT 2020[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BNBUSDT 2020 failed[0m
+
+[1;33m→ BNBUSDT 2021[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BNBUSDT 2021 failed[0m
+
+[1;33m→ BNBUSDT 2022[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BNBUSDT 2022 failed[0m
+
+[1;33m→ BNBUSDT 2023[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BNBUSDT 2023 failed[0m
+
+[1;33m→ BNBUSDT 2024[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BNBUSDT 2024 failed[0m
+
+[1;33m→ BNBUSDT 2025[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ BNBUSDT 2025 failed[0m
+
+[0;34m════════════════════════════════════════════════════════════[0m
+[0;34mDownloading XRPUSDT (2019-2025)[0m
+[0;34m════════════════════════════════════════════════════════════[0m
+
+[1;33m→ XRPUSDT 2019[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ XRPUSDT 2019 failed[0m
+
+[1;33m→ XRPUSDT 2020[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ XRPUSDT 2020 failed[0m
+
+[1;33m→ XRPUSDT 2021[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ XRPUSDT 2021 failed[0m
+
+[1;33m→ XRPUSDT 2022[0m
+scripts/download_full_dataset.sh: line 150: python: command not found
+[0;31m✗ XRPUSDT 2022 failed[0m

@@ -1,0 +1,64 @@
+# Test configuration for jagged panel E2E test (BTC + SOL 2023)
+#
+# Purpose: Validate jagged panel support with minimal 2-instrument dataset
+# Dataset: data/test_jagged_btc_sol_2023.parquet (BTC + SOL, 2023)
+#
+# This config tests:
+# - Lifecycle-aware state machine (both instruments launched before 2023)
+# - Warmup period handling
+# - Correlation/IDM with only 2 instruments
+# - Position management across different states
+
+system:
+  capital: 10000.0  # $10k starting capital
+  vol_target_ann: 0.20  # 20% annualized vol target
+  gross_leverage_cap: 2.0  # Max 2x gross leverage
+  idm_cap: 1.5  # Conservative IDM cap for 2-instrument portfolio
+  min_position_frac: 0.01  # Minimum 1% position size
+  allow_jagged: true  # Enable jagged panel support
+
+universe:
+  # Layer A (static for this test)
+  layer_a_instruments:
+    - BTCUSDT_PERP
+    - SOLUSDT_PERP
+
+  daily_min_adv_notional: 10000000  # $10M min ADV
+  review_freq: null  # Phase 1: no dynamic membership
+
+rules:
+  # EWMAC pairs (fast/slow combinations)
+  ewmac_pairs:
+    - [8, 32]
+    - [16, 64]
+
+  # Carry (funding rate forecasts)
+  carry_fast_halflife: 5  # 5 days for fast EWMA
+  carry_slow_halflife: 20  # 20 days for slow EWMA
+
+  # Forecast combination weights
+  forecast_weights:
+    ewmac_8_32: 0.25
+    ewmac_16_64: 0.25
+    carry: 0.50
+
+  # Forecast scaling
+  forecast_scalar: 1.0
+  forecast_cap: 20.0  # Cap individual forecasts at ±20
+
+constraints:
+  correlation_span: 60  # 60-day EWMA for correlation
+  correlation_min_periods: 20  # Min 20 days for correlation
+
+execution:
+  buffer_frac: 0.10  # 10% buffer threshold
+
+diagnostics:
+  enabled: true  # Enable diagnostics collection
+
+output:
+  equity_curve_file: "equity_curve.csv"
+  positions_file: "positions.csv"
+  trades_file: "trades.csv"
+  diagnostics_file: "diagnostics.parquet"
+  metrics_file: "metrics.json"

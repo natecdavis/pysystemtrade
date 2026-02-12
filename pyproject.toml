@@ -21,7 +21,7 @@ dependencies = [
     "scipy>=1.0.0",
     "pymongo==3.11.3",
     "ib-insync==0.9.86",
-    "psutil==5.6.7",
+    "psutil==7.2.1",
     "Flask>=2.0.1",
     "Werkzeug>=2.0.1",
     "statsmodels==0.14.0",
@@ -60,6 +60,11 @@ log_cli_level = 10
 log_format = "%(asctime)s %(levelname)s %(name)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
 doctest_optionflags = ["ELLIPSIS", "NUMBER", "NORMALIZE_WHITESPACE"]
+markers = [
+    "integration: Integration tests (slow, skip by default)",
+    "slow: Slow tests (skip by default)",
+    "extended: Extended dataset tests (multi-year, multi-instrument - run weekly in CI)",
+]
 testpaths = [
     # "syscore",
     # "syscore/interactive/display",
