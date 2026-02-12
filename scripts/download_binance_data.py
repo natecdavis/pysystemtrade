@@ -366,7 +366,7 @@ def normalize_and_validate_symbol(symbol: str) -> str:
     Validation:
         - Must end with "USDT"
         - Must not contain "_PERP" suffix (common mistake)
-        - Length: 6-12 characters (typical range)
+        - Length: 6-18 characters (covers all Binance USDT perpetuals)
 
     Args:
         symbol: Input symbol (any case, may have whitespace)
@@ -381,8 +381,8 @@ def normalize_and_validate_symbol(symbol: str) -> str:
     symbol = symbol.strip().upper()
 
     # Validate length
-    if len(symbol) < 6 or len(symbol) > 12:
-        raise ValueError(f"Invalid symbol '{symbol}': length must be 6-12 characters")
+    if len(symbol) < 6 or len(symbol) > 18:
+        raise ValueError(f"Invalid symbol '{symbol}': length must be 6-18 characters")
 
     # Check for _PERP suffix (common mistake)
     if '_PERP' in symbol:
