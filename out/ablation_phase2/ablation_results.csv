@@ -1,5 +1,0 @@
-experiment,tag,start_date,end_date,ann_return,ann_vol,sharpe,max_drawdown,gross_exposure,turnover,days_constrained,fraction_days_constrained,exit_flattens,exit_decays
-baseline,phase2_integration,2023-01-01,2023-12-31,0.3485268187926427,0.8137744751099704,0.4282842844702694,-0.7654542227894163,1.9258242693872378,0.29552711748909766,46,0.12602739726027398,0,0
-reviews,phase2_integration,2023-01-01,2023-12-31,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,0,1825
-state_machine,phase2_integration,2023-01-01,2023-12-31,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,0,1825
-relmom,phase2_integration,2023-01-01,2023-12-31,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,0,1825
