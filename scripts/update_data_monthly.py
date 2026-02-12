@@ -17,6 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 from datetime import datetime, date
+from typing import Optional
 import yaml
 import logging
 
@@ -51,30 +52,34 @@ def load_config(config_path: Path) -> dict:
     return config
 
 
-def extract_universe_symbols(config: dict) -> list:
+def extract_universe_symbols(config: dict, env_root: Optional[Path] = None) -> list:
     """
     Extract instrument symbols for download from config.
 
     Uses canonical mapping via config_helpers module.
+    Optionally uses registry if auto_discover=true.
+
+    Args:
+        config: System config dict
+        env_root: Optional environment root path (needed for registry lookup)
+
+    Returns:
+        List of Binance symbols (e.g., ['BTCUSDT', 'ETHUSDT'])
     """
     from sysdata.crypto.config_helpers import (
-        extract_candidate_instruments,
+        extract_candidate_instruments_with_registry,
         instrument_id_to_symbol
     )
 
-    # Get candidate instruments (with error checking)
+    # Get candidate instruments (with registry support)
     try:
-        candidate_ids = extract_candidate_instruments(config)
+        candidate_ids, source = extract_candidate_instruments_with_registry(config, env_root)
     except ValueError as e:
         logger.error(str(e))
         raise
 
-    # Determine source
-    data_acq = config.get('data_acquisition', {})
-    if 'candidate_instruments' in data_acq:
-        logger.info(f"Using data_acquisition.candidate_instruments: {len(candidate_ids)} instruments")
-    else:
-        logger.info(f"Using universe.layer_a_instruments: {len(candidate_ids)} instruments (fallback)")
+    logger.info(f"Using candidate instruments from: {source}")
+    logger.info(f"  Count: {len(candidate_ids)} instruments")
 
     # Convert using canonical mapping
     symbols = [instrument_id_to_symbol(inst_id) for inst_id in candidate_ids]
@@ -89,7 +94,8 @@ def update_raw_data(
     fail_on_missing: bool = False,
     lag_months: int = 2,
     output_report: Path = None,
-    expected_as_of_date: date = None
+    expected_as_of_date: date = None,
+    env_root: Optional[Path] = None
 ) -> dict:
     """
     Update raw Binance data through last complete month.
@@ -102,6 +108,7 @@ def update_raw_data(
         lag_months: Conservative lag policy in months (default: 2 for M-2)
         output_report: Path to save data status report (default: data_dir/raw_data_status.json)
         expected_as_of_date: Override expected as_of_date (for historical testing). Default: today
+        env_root: Optional environment root path (needed for registry lookup)
 
     Returns:
         Data status report dict
@@ -113,8 +120,8 @@ def update_raw_data(
     logger.info(f"Loading config from {config_path}")
     config = load_config(config_path)
 
-    # Extract universe
-    symbols = extract_universe_symbols(config)
+    # Extract universe (with registry support)
+    symbols = extract_universe_symbols(config, env_root)
     logger.info(f"Universe: {len(symbols)} instruments")
 
     # Normalize symbols
@@ -438,7 +445,8 @@ Notes:
             args.fail_on_missing,
             args.lag_months,
             args.output_report,
-            expected_as_of_date
+            expected_as_of_date,
+            env.env_root  # Pass env_root for registry lookup
         )
 
         # Exit with success

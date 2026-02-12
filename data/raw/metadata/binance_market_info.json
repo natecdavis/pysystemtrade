@@ -118,5 +118,93 @@
   "NEOUSDT": {
     "spread_frac": 0.00035,
     "taker_fee_frac": 0.0004
+  },
+  "NEARUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "APTUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "ARBUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "OPUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "CRVUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "SNXUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "MKRUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "COMPUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "LDOUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "RUNEUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "SUSHIUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "GALAUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "ENJUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "IMXUSDT": {
+    "spread_frac": 0.00030,
+    "taker_fee_frac": 0.0004
+  },
+  "GRTUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "RENDERUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "1INCHUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "APEUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "CHZUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "ZILUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "ZRXUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
+  },
+  "IOTAUSDT": {
+    "spread_frac": 0.00035,
+    "taker_fee_frac": 0.0004
   }
 }
