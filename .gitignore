@@ -34,3 +34,25 @@ systems/provided/crypto_example/output/*.csv
 systems/provided/crypto_example/output/*.md
 systems/provided/crypto_example/output/*.log
 systems/provided/crypto_example/backtest_cache/*_returns.csv
+
+# macOS artifacts
+.DS_Store
+
+# Backtest outputs (generated artifacts)
+out/
+envs/*/out/
+
+# Live trading state (runtime data)
+envs/*/live/current_*.csv
+envs/*/live/current_*.txt
+
+# Environment working data
+envs/*/data/
+
+# Downloaded Binance raw data (ZIPs are re-downloadable)
+*.zip
+
+# Research outputs and working directories
+research/
+reports/
+/live/
