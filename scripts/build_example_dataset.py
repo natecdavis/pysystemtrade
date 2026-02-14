@@ -399,9 +399,11 @@ def load_binance_klines(
 
     # Load API cache if requested (V1 daily operations)
     if include_api_cache:
-        api_cache_dir = data_dir / 'api_cache' / binance_symbol
+        # API cache files are stored flat (not in subdirectories per symbol)
+        api_cache_dir = data_dir / 'api_cache'
         if api_cache_dir.exists():
-            cache_files = list(api_cache_dir.glob('*_klines.parquet'))
+            # Match files for this symbol: SYMBOL_YYYY-MM-DD_YYYY-MM-DD_klines.parquet
+            cache_files = list(api_cache_dir.glob(f'{binance_symbol}_*_klines.parquet'))
             if cache_files:
                 logger.info(f"Loading {len(cache_files)} API cache files for {binance_symbol}")
 
@@ -498,13 +500,14 @@ def consolidate_funding_to_daily(funding_events: pd.DataFrame) -> pd.DataFrame:
     return daily.sort_values('date').reset_index(drop=True)
 
 
-def load_binance_funding_rates(instrument: str, data_dir: Path) -> pd.DataFrame:
+def load_binance_funding_rates(instrument: str, data_dir: Path, include_api_cache: bool = False) -> pd.DataFrame:
     """
     Load and consolidate funding rates to daily with correct alignment
 
     Args:
         instrument: Internal instrument ID (e.g., 'BTCUSDT_PERP')
         data_dir: Root data directory (e.g., Path('data/raw'))
+        include_api_cache: If True, also load from api_cache directory and deduplicate (Vision > API)
 
     Returns:
         DataFrame with columns: date, funding_rate
@@ -590,7 +593,79 @@ def load_binance_funding_rates(instrument: str, data_dir: Path) -> pd.DataFrame:
     if not (daily_funding['funding_rate'] <= 0.03).all():
         logger.warning(f"{instrument}: Some funding rates > 3% daily (extreme market conditions)")
 
-    return daily_funding
+    vision_funding = daily_funding.sort_values('date').reset_index(drop=True)
+
+    # Load API cache if requested (V1 daily operations)
+    if include_api_cache:
+        # API cache files are stored flat (not in subdirectories per symbol)
+        api_cache_dir = data_dir / 'api_cache'
+        if api_cache_dir.exists():
+            # Match files for this symbol: SYMBOL_YYYY-MM-DD_YYYY-MM-DD_funding.parquet
+            cache_files = list(api_cache_dir.glob(f'{binance_symbol}_*_funding.parquet'))
+            if cache_files:
+                logger.info(f"Loading {len(cache_files)} API cache funding files for {binance_symbol}")
+
+                api_cache_dfs = []
+                for cache_file in cache_files:
+                    try:
+                        df = pd.read_parquet(cache_file)
+                        # API cache has columns: timestamp, funding_rate, symbol (8-hour intervals)
+                        # Need to consolidate to daily like Vision data
+                        if 'timestamp' in df.columns:
+                            # Rename to match consolidation function expectations
+                            df = df.rename(columns={'timestamp': 'calcTime', 'funding_rate': 'fundingRate'})
+                            # Ensure calcTime is datetime (naive)
+                            df['calcTime'] = pd.to_datetime(df['calcTime'], utc=True).dt.tz_convert(None)
+                            # Consolidate to daily
+                            daily_df = consolidate_funding_to_daily(df)
+                            api_cache_dfs.append(daily_df)
+                        else:
+                            # Already daily format (has 'date' column)
+                            if not pd.api.types.is_datetime64_any_dtype(df['date']):
+                                df['date'] = pd.to_datetime(df['date'])
+                            api_cache_dfs.append(df)
+                    except Exception as e:
+                        logger.warning(f"Failed to load API cache {cache_file.name}: {e}")
+
+                if api_cache_dfs:
+                    api_cache_funding = pd.concat(api_cache_dfs, ignore_index=True)
+
+                    # Ensure date column format matches Vision data
+                    api_cache_funding['date'] = pd.to_datetime(api_cache_funding['date'], utc=True).dt.tz_convert(None)
+
+                    # Select columns matching Vision data
+                    api_cache_funding = api_cache_funding[['date', 'funding_rate']].copy()
+
+                    # Coerce to numeric
+                    api_cache_funding['funding_rate'] = pd.to_numeric(api_cache_funding['funding_rate'], errors='coerce')
+
+                    # Drop NaN funding_rate
+                    api_cache_funding = api_cache_funding[api_cache_funding['funding_rate'].notna()].copy()
+
+                    # Merge with Vision data (Vision > API cache for duplicates)
+                    logger.info(
+                        f"Merging Vision ({len(vision_funding)} rows) + "
+                        f"API cache ({len(api_cache_funding)} rows)"
+                    )
+
+                    # Concatenate
+                    merged = pd.concat([vision_funding, api_cache_funding], ignore_index=True)
+
+                    # Deduplicate by date (keep first = Vision priority)
+                    merged = merged.sort_values('date')
+                    duplicates = merged.duplicated(subset='date', keep='first')
+                    if duplicates.any():
+                        logger.info(
+                            f"Deduplicating {duplicates.sum()} rows "
+                            f"(Vision data takes precedence over API cache)"
+                        )
+                    merged = merged.drop_duplicates(subset='date', keep='first')
+
+                    return merged.sort_values('date').reset_index(drop=True)
+        else:
+            logger.info(f"API cache directory not found: {api_cache_dir}")
+
+    return vision_funding
 
 
 def validate_time_series_quality(df: pd.DataFrame, symbol: str, max_gap_days: int = 7, max_price_jump: float = 0.5) -> list:
@@ -1058,7 +1133,7 @@ def build_real_crypto_dataset(
 
         # Load funding rates (with correct alignment)
         try:
-            funding = load_binance_funding_rates(inst, data_dir)
+            funding = load_binance_funding_rates(inst, data_dir, include_api_cache=include_api_cache)
         except FileNotFoundError as e:
             logger.error(f"Skipping {inst}: {e}")
             instruments_excluded[inst] = "missing_funding"
