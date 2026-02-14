@@ -175,3 +175,25 @@ def extract_tradable_instruments(config: dict) -> List[str]:
     """
     universe_config = config.get('universe', {})
     return universe_config.get('layer_a_instruments', [])
+
+
+def load_registry(env_root: Path) -> dict:
+    """
+    Load registry from discovered_candidate_instruments.json.
+
+    Args:
+        env_root: Environment root path (e.g., Path('envs/dev'))
+
+    Returns:
+        Registry dict with 'candidate_instruments' list
+
+    Raises:
+        FileNotFoundError: If registry file doesn't exist
+    """
+    registry_path = env_root / 'data/raw/metadata/discovered_candidate_instruments.json'
+
+    if not registry_path.exists():
+        raise FileNotFoundError(f"Registry not found: {registry_path}")
+
+    with open(registry_path) as f:
+        return json.load(f)

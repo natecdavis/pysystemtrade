@@ -737,6 +737,89 @@ def calculate_adv(klines: pd.DataFrame, window: int = 30) -> pd.DataFrame:
     return adv.reset_index().rename(columns={'quote_volume': 'adv_notional'})
 
 
+def derive_lifecycle_from_vision_data(
+    dataset_df: pd.DataFrame,
+    stale_threshold_days: int = 7
+) -> dict:
+    """
+    Derive instrument lifecycle metadata from Vision data coverage.
+
+    Analyzes actual data availability in the dataset to determine:
+    - First data date (launch or data availability start)
+    - Last data date (current or delisted)
+    - Data coverage days
+    - Status (ACTIVE, STALE, NO_DATA)
+
+    Args:
+        dataset_df: Dataset DataFrame with 'date' and 'instrument' columns
+        stale_threshold_days: Days since last data to mark as STALE
+
+    Returns:
+        Lifecycle dict keyed by instrument ID:
+        {
+            'BTCUSDT_PERP': {
+                'first_data_date': '2019-09-08',
+                'last_data_date': '2026-02-13',
+                'data_days': 2350,
+                'status': 'ACTIVE',
+                'days_since_last': 1
+            },
+            ...
+        }
+    """
+    from datetime import datetime
+
+    lifecycle = {}
+    current_date = datetime.utcnow().date()
+
+    for instrument in dataset_df['instrument'].unique():
+        try:
+            # Filter to this instrument
+            inst_data = dataset_df[dataset_df['instrument'] == instrument].copy()
+
+            if inst_data.empty:
+                lifecycle[instrument] = {
+                    'first_data_date': None,
+                    'last_data_date': None,
+                    'data_days': 0,
+                    'status': 'NO_DATA',
+                    'days_since_last': None
+                }
+                continue
+
+            # Get date coverage
+            dates = pd.to_datetime(inst_data['date']).dt.date
+            first_date = dates.min()
+            last_date = dates.max()
+            data_days = len(dates.unique())
+
+            # Calculate days since last data
+            days_since_last = (current_date - last_date).days
+
+            # Determine status
+            if days_since_last > stale_threshold_days:
+                status = 'STALE'
+            else:
+                status = 'ACTIVE'
+
+            lifecycle[instrument] = {
+                'first_data_date': first_date.isoformat(),
+                'last_data_date': last_date.isoformat(),
+                'data_days': data_days,
+                'status': status,
+                'days_since_last': days_since_last
+            }
+
+        except Exception as e:
+            logger.warning(f"Could not derive lifecycle for {instrument}: {e}")
+            lifecycle[instrument] = {
+                'status': 'ERROR',
+                'error': str(e)
+            }
+
+    return lifecycle
+
+
 def generate_dataset_manifest(
     dataset_df: pd.DataFrame,
     instruments_included: dict,
@@ -775,6 +858,17 @@ def generate_dataset_manifest(
     actual_end = pd.Timestamp(all_dates.max()).strftime('%Y-%m-%d')
     total_days = len(all_dates)
 
+    # Derive lifecycle from Vision data coverage
+    lifecycle_data = derive_lifecycle_from_vision_data(dataset_df)
+
+    # Compute lifecycle summary
+    lifecycle_summary = {
+        'active': sum(1 for lc in lifecycle_data.values() if lc.get('status') == 'ACTIVE'),
+        'stale': sum(1 for lc in lifecycle_data.values() if lc.get('status') == 'STALE'),
+        'no_data': sum(1 for lc in lifecycle_data.values() if lc.get('status') == 'NO_DATA'),
+        'error': sum(1 for lc in lifecycle_data.values() if lc.get('status') == 'ERROR'),
+    }
+
     manifest = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "dataset_metadata": {
@@ -792,6 +886,8 @@ def generate_dataset_manifest(
             "included": {},
             "excluded": {}
         },
+        "lifecycle": lifecycle_data,
+        "lifecycle_summary": lifecycle_summary,
         "summary": {
             "total_candidates": len(instruments_included) + len(instruments_excluded),
             "included_count": len(instruments_included),

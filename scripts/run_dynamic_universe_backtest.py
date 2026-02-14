@@ -102,10 +102,17 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
 
     # Load data
     logger.info(f"Loading dataset: {data_path}")
-    # Don't pass config_path to parquet adapter since we're not using config-based candidate filtering
-    # Dynamic universe uses all instruments in dataset as candidates
+
+    # Pass config_path and env_root for registry-aware candidate extraction
+    # Determine env_root (use environment variable or current directory)
+    import os
+    env_root_str = os.environ.get('LIVE_OPS_ENV_ROOT')
+    env_root = Path(env_root_str) if env_root_str else Path.cwd()
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
+        config_path=config_path,
+        env_root=env_root,
         use_dynamic_universe=use_dynamic_universe,
         dynamic_universe_config=dynamic_universe_config,
     )

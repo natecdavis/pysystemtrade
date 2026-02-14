@@ -33,6 +33,47 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def validate_tradable_universe(trade_plan_df, config, log):
+    """
+    Validate trade plan only includes layer_a instruments (Phase 6 hard invariant).
+
+    Args:
+        trade_plan_df: Trade plan DataFrame with 'instrument' column
+        config: System config dict
+        log: Logger instance
+
+    Raises:
+        ValueError: If trade plan includes instruments not in layer_a_instruments
+    """
+    layer_a = config.get('universe', {}).get('layer_a_instruments', [])
+    if not layer_a:
+        log.warning("No layer_a_instruments defined in config - skipping tradable universe validation")
+        return
+
+    max_tradable_set = set(layer_a)
+    planned_instruments = set(trade_plan_df['instrument'])
+
+    non_tradable = planned_instruments - max_tradable_set
+
+    if non_tradable:
+        error_msg = (
+            f"HARD INVARIANT VIOLATION: Trade plan includes {len(non_tradable)} instruments NOT in layer_a:\n"
+            f"  {sorted(non_tradable)}\n\n"
+            f"layer_a_instruments represents the MAX tradable set for production safety.\n"
+            f"Trade plan must be a subset of layer_a.\n\n"
+            f"Possible causes:\n"
+            f"  - top_k > len(layer_a_instruments) - expand layer_a\n"
+            f"  - Config mismatch - verify config matches backtest\n"
+            f"  - Instruments not in layer_a - add to config or remove from backtest\n\n"
+            f"layer_a count: {len(layer_a)}\n"
+            f"Trade plan count: {len(planned_instruments)}\n"
+            f"Non-tradable instruments: {sorted(non_tradable)}"
+        )
+        raise ValueError(error_msg)
+
+    log.info(f"✓ Trade plan validated: all {len(planned_instruments)} instruments in layer_a (max {len(max_tradable_set)})")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Generate trade plan by comparing targets to actual positions',
@@ -184,6 +225,9 @@ Notes:
 
         logger.info(f"Writing trade plan to {trade_plan_path}")
         trade_plan.to_csv(trade_plan_path)
+
+        # Validate hard invariant: trade plan ⊆ layer_a_instruments (Phase 6)
+        validate_tradable_universe(trade_plan, config, logger)
 
         logger.info(f"Writing sanity checks to {sanity_checks_path}")
         with open(sanity_checks_path, 'w') as f:

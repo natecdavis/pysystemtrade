@@ -92,12 +92,77 @@ def run_command(cmd: list, description: str, check: bool = True) -> subprocess.C
         raise
 
 
-def extract_universe_from_config(config_path: Path) -> list:
-    """Extract instrument list from config."""
+def extract_candidate_instruments(config_path: Path, env_root: Path) -> tuple:
+    """
+    Extract candidate instruments with registry support.
+
+    Returns:
+        (candidate_ids, source_description)
+    """
+    from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
+
     with open(config_path) as f:
         config = yaml.safe_load(f)
-    universe = config.get('universe', {}).get('layer_a_instruments', [])
-    return universe
+
+    candidate_ids, source = extract_candidate_instruments_with_registry(config, env_root)
+    logger.info(f"Using {len(candidate_ids)} candidates from: {source}")
+    return candidate_ids, source
+
+
+def refresh_registry_opportunistic(env_root: Path) -> tuple:
+    """
+    Refresh registry with best-effort + cache fallback.
+
+    This is called during advisory workflow to keep the registry fresh.
+    If CoinGecko API fails, falls back to cached registry.
+
+    Returns:
+        (success: bool, registry_hash: Optional[str], changelog: dict)
+    """
+    import hashlib
+
+    registry_path = env_root / 'data/raw/metadata/discovered_candidate_instruments.json'
+
+    try:
+        # Attempt refresh (CoinGecko API call)
+        logger.info("Refreshing registry from CoinGecko...")
+
+        # Import here to avoid circular dependency
+        sys.path.insert(0, str(Path(__file__).parent))
+        from refresh_binance_market_registry import run_refresh
+
+        changelog = run_refresh(env_root, verbose=False, dry_run=False)
+
+        # Compute hash of refreshed registry
+        if registry_path.exists():
+            with open(registry_path, 'rb') as f:
+                registry_hash = hashlib.sha256(f.read()).hexdigest()[:12]
+
+            logger.info(f"✓ Registry refreshed (hash: {registry_hash})")
+            return True, registry_hash, changelog
+        else:
+            logger.error("Registry refresh succeeded but file not found")
+            return False, None, changelog
+
+    except Exception as e:
+        # Fallback to cached registry
+        logger.warning(f"Registry refresh failed: {e}")
+
+        if registry_path.exists():
+            with open(registry_path, 'rb') as f:
+                registry_hash = hashlib.sha256(f.read()).hexdigest()[:12]
+
+            logger.info(f"✓ Using cached registry (hash: {registry_hash})")
+
+            # Return empty changelog for cache fallback
+            changelog = {
+                'cached': True,
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            return False, registry_hash, changelog
+        else:
+            raise RuntimeError("No cached registry available and refresh failed") from e
 
 
 def main():
@@ -196,6 +261,11 @@ Examples:
         help='Skip data update step (use existing raw data, but still rebuild dataset)'
     )
     parser.add_argument(
+        '--skip-dataset-rebuild',
+        action='store_true',
+        help='Skip dataset rebuild (use existing dataset from previous run). Requires --use-dynamic-universe.'
+    )
+    parser.add_argument(
         '--skip-report',
         action='store_true',
         help='Skip advisory report generation (only generate trade plan)'
@@ -256,19 +326,59 @@ Examples:
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Output directory resolved: {output_dir}")
 
-    # Extract universe for dataset building
-    # For dynamic universe, use all instruments from config (will be filtered by cost thresholds at backtest time)
+    # Opportunistic registry refresh (Phase 2)
+    # This ensures the registry is fresh when using auto_discover
+    registry_metadata = None
+    if args.use_dynamic_universe:
+        # Check if config uses auto_discover
+        with open(args.config) as f:
+            config = yaml.safe_load(f)
+
+        if config.get('data_acquisition', {}).get('auto_discover', False):
+            logger.info("Config has auto_discover=true, refreshing registry...")
+            try:
+                refresh_success, registry_hash, changelog = refresh_registry_opportunistic(env.root)
+
+                registry_metadata = {
+                    'hash': registry_hash,
+                    'refresh_success': refresh_success,
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'changelog': changelog
+                }
+
+                if refresh_success:
+                    if changelog.get('new_instruments'):
+                        logger.info(f"  Registry updated: {len(changelog['new_instruments'])} new instruments")
+                    if changelog.get('delisted_instruments'):
+                        logger.info(f"  Registry updated: {len(changelog['delisted_instruments'])} delisted instruments")
+                else:
+                    logger.info(f"  Using cached registry (refresh failed)")
+
+            except Exception as e:
+                logger.warning(f"Registry refresh skipped: {e}")
+                logger.warning("Continuing with existing registry if available")
+                registry_metadata = {
+                    'refresh_skipped': True,
+                    'error': str(e),
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+
+    # Extract candidates for dataset building
+    # For dynamic universe, use candidates from config/registry (will be filtered by cost thresholds at backtest time)
     # For static universe, use explicit tradable instruments
     if args.use_dynamic_universe:
         # For dynamic universe, we want to build dataset with ALL candidate instruments
         # The dynamic universe logic will filter based on cost thresholds
-        # For now, fall back to config extraction (future: use registry)
-        universe = extract_universe_from_config(args.config)
-        logger.info(f"Dynamic universe mode: building dataset with {len(universe)} candidates")
+        candidates, source = extract_candidate_instruments(args.config, env.root)
+        logger.info(f"Dynamic universe mode: building dataset with {len(candidates)} candidates")
+        logger.info(f"  Source: {source}")
         logger.info(f"  (actual tradable universe will be determined by cost filters)")
+        universe = candidates
     else:
-        # Static universe: use explicit list from config
-        universe = extract_universe_from_config(args.config)
+        # Static universe: use explicit list from config (backward compat)
+        with open(args.config) as f:
+            config = yaml.safe_load(f)
+        universe = config.get('universe', {}).get('layer_a_instruments', [])
         logger.info(f"Static universe mode: {len(universe)} instruments")
 
     # Handle expected_as_of_date - SINGLE SOURCE OF TRUTH for all date computations
@@ -355,36 +465,49 @@ Examples:
 
                 run_command(daily_update_cmd, "Update recent tail (daily via API)")
 
-        # STEP 2: Rebuild processed dataset
+        # STEP 2: Rebuild processed dataset (or reuse existing)
         dataset_path = output_dir / 'dataset_latest.parquet'
         build_log_path = output_dir / 'dataset_build_log.txt'
 
-        build_cmd = [
-            sys.executable,
-            'scripts/build_example_dataset.py',
-            '--source', 'real',
-            '--data-dir', str(data_dir),
-            '--start-date', start_date,
-            '--end-date', end_date,
-            '--instruments', *universe,
-            '--output-path', str(dataset_path),
-            '--allow-jagged',
-            '--min-coverage', '0.50'
-        ]
+        if args.skip_dataset_rebuild:
+            if not args.use_dynamic_universe:
+                logger.error("--skip-dataset-rebuild requires --use-dynamic-universe")
+                sys.exit(1)
 
-        # Add V1 flags for daily cadence
-        if args.cadence == 'daily':
-            build_cmd.append('--include-api-cache')
+            if dataset_path.exists():
+                logger.info(f"Skipping dataset rebuild (--skip-dataset-rebuild specified)")
+                logger.info(f"Using existing dataset: {dataset_path}")
+            else:
+                logger.error(f"Dataset not found: {dataset_path}")
+                logger.error("Cannot skip rebuild when dataset doesn't exist")
+                sys.exit(1)
+        else:
+            build_cmd = [
+                sys.executable,
+                'scripts/build_example_dataset.py',
+                '--source', 'real',
+                '--data-dir', str(data_dir),
+                '--start-date', start_date,
+                '--end-date', end_date,
+                '--instruments', *universe,
+                '--output-path', str(dataset_path),
+                '--allow-jagged',
+                '--min-coverage', '0.50'
+            ]
 
-        # Run and capture output to log file
-        logger.info(f"Building dataset from {start_date} to {end_date}")
-        result = run_command(build_cmd, "Rebuild processed dataset")
+            # Add V1 flags for daily cadence
+            if args.cadence == 'daily':
+                build_cmd.append('--include-api-cache')
 
-        # Write build log
-        with open(build_log_path, 'w') as f:
-            f.write(f"Dataset Build Log\n")
-            f.write(f"==================\n\n")
-            f.write(f"Start date: {start_date}\n")
+            # Run and capture output to log file
+            logger.info(f"Building dataset from {start_date} to {end_date}")
+            result = run_command(build_cmd, "Rebuild processed dataset")
+
+            # Write build log
+            with open(build_log_path, 'w') as f:
+                f.write(f"Dataset Build Log\n")
+                f.write(f"==================\n\n")
+                f.write(f"Start date: {start_date}\n")
             f.write(f"End date: {end_date}\n")
             f.write(f"Instruments: {len(universe)}\n")
             f.write(f"Output: {dataset_path}\n\n")
@@ -458,6 +581,28 @@ Examples:
 
         run_command(trade_plan_cmd, "Generate trade plan (target vs actual deltas)")
 
+        # Write advisory metadata (includes registry snapshot)
+        advisory_metadata = {
+            'workflow': 'live_advisory',
+            'version': '1.0',
+            'timestamp': datetime.utcnow().isoformat(),
+            'config': str(args.config),
+            'mode': 'dynamic_universe' if args.use_dynamic_universe else 'static_universe',
+            'cadence': args.cadence,
+            'as_of_date': as_of_date,
+            'candidate_count': len(universe),
+            'environment': str(env.root) if hasattr(env, 'root') else 'unknown',
+        }
+
+        # Add registry snapshot if available
+        if registry_metadata:
+            advisory_metadata['registry_snapshot'] = registry_metadata
+
+        metadata_path = output_dir / f'advisory_metadata_{as_of_date}.json'
+        with open(metadata_path, 'w') as f:
+            json.dump(advisory_metadata, f, indent=2)
+        logger.info(f"✓ Wrote advisory metadata: {metadata_path}")
+
         # STEP 5: Generate advisory report (optional)
         if args.skip_report:
             logger.info("Skipping advisory report (--skip-report specified)")
@@ -489,6 +634,7 @@ Examples:
         logger.info(f"  - trade_plan_{as_of_date}.csv (actionable trades)")
         logger.info(f"  - sanity_checks_{as_of_date}.json (risk validation)")
         logger.info(f"  - audit_bundle_{as_of_date}.json (full provenance)")
+        logger.info(f"  - advisory_metadata_{as_of_date}.json (workflow metadata + registry snapshot)")
         if not args.skip_report and (output_dir / 'advisory_report.txt').exists():
             logger.info(f"  - advisory_report.txt (human-readable summary)")
 

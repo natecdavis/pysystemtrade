@@ -47,6 +47,7 @@ class parquetCryptoPerpsSimData(simData):
     Args:
         dataset_path: Path to parquet dataset file (e.g., 'data/example_crypto_perps_30x6yr_jagged.parquet')
         config_path: Optional path to config YAML (for candidate_instruments or auto_discover)
+        env_root: Optional environment root path (needed for registry lookup when auto_discover=true)
         use_dynamic_universe: Enable walk-forward universe filtering
         dynamic_universe_config: Config dict for dynamic universe (SR thresholds, etc.)
         log: Logger instance
@@ -74,6 +75,7 @@ class parquetCryptoPerpsSimData(simData):
         self,
         dataset_path: str,
         config_path: str = arg_not_supplied,
+        env_root: Path = arg_not_supplied,
         use_dynamic_universe: bool = False,
         dynamic_universe_config: dict = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
@@ -82,6 +84,7 @@ class parquetCryptoPerpsSimData(simData):
 
         self._dataset_path = Path(dataset_path)
         self._config_path = config_path
+        self._env_root = env_root
         self._use_dynamic_universe = use_dynamic_universe
 
         # Load parquet panel
@@ -344,20 +347,51 @@ class parquetCryptoPerpsSimData(simData):
 
     def _determine_candidate_pool(self) -> List[str]:
         """
-        Determine the candidate instrument pool.
+        Determine candidate pool from config (if auto_discover) or dataset.
 
-        For now, uses all instruments in the dataset. Future enhancement could
-        filter based on config (candidate_instruments or auto_discover).
+        Priority:
+        1. If config_path provided and auto_discover=true, use registry
+        2. If config_path provided, use candidate_instruments
+        3. Fallback: all instruments in dataset
 
         Returns:
             List of candidate instrument codes
         """
-        # For dynamic universe, use all instruments from dataset
-        # The dynamic universe logic will filter based on cost thresholds
+        # If config provided and has auto_discover, use registry-aware extraction
+        if self._config_path is not arg_not_supplied:
+            import yaml
+
+            try:
+                with open(self._config_path) as f:
+                    config = yaml.safe_load(f)
+
+                # Check if using registry or explicit candidates
+                data_acq = config.get('data_acquisition', {})
+
+                if 'candidate_instruments' in data_acq or data_acq.get('auto_discover', False):
+                    # Use registry-aware extraction
+                    env_root = self._env_root if self._env_root is not arg_not_supplied else None
+                    candidate_ids, source = extract_candidate_instruments_with_registry(
+                        config, env_root
+                    )
+
+                    # Filter to instruments actually in dataset
+                    available = set(self._prices_df.columns)
+                    filtered = [instr for instr in candidate_ids if instr in available]
+
+                    self.log.info(f"Registry-aware candidates: {len(filtered)}/{len(candidate_ids)} from {source}")
+                    if len(filtered) < len(candidate_ids):
+                        missing = set(candidate_ids) - available
+                        self.log.warning(f"  {len(missing)} candidates not in dataset: {sorted(list(missing))[:5]}...")
+
+                    return filtered
+
+            except Exception as e:
+                self.log.warning(f"Failed to extract candidates from config: {e}, falling back to all dataset instruments")
+
+        # Fallback: all instruments in dataset
         all_instruments = list(self._prices_df.columns)
-        self.log.info(
-            f"Using all {len(all_instruments)} instruments from dataset as candidate pool"
-        )
+        self.log.info(f"Using all {len(all_instruments)} instruments from dataset")
         return all_instruments
 
     def _init_dynamic_universe(self, config: dict):

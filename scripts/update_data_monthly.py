@@ -45,6 +45,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def check_binance_api_connectivity(timeout: int = 5) -> tuple:
+    """
+    Check if Binance Futures REST API is reachable.
+
+    This is required for data updates via REST API. In geo-blocked regions (e.g., MA),
+    VPN is required to access Binance APIs.
+
+    Args:
+        timeout: Request timeout in seconds
+
+    Returns:
+        (is_reachable: bool, error_message: str or None)
+    """
+    import requests
+
+    try:
+        response = requests.get(
+            'https://fapi.binance.com/fapi/v1/ping',
+            timeout=timeout
+        )
+
+        if response.status_code == 200:
+            return True, None
+        else:
+            return False, f"API returned status {response.status_code}"
+
+    except requests.exceptions.Timeout:
+        return False, "Request timeout - API unreachable"
+    except requests.exceptions.ConnectionError:
+        return False, "Connection error - check network/VPN"
+    except Exception as e:
+        return False, f"Unexpected error: {e}"
+
+
 def load_config(config_path: Path) -> dict:
     """Load system config and extract universe."""
     with open(config_path) as f:
@@ -123,6 +157,31 @@ def update_raw_data(
     # Extract universe (with registry support)
     symbols = extract_universe_symbols(config, env_root)
     logger.info(f"Universe: {len(symbols)} instruments")
+
+    # VPN Preflight Check (Phase 4)
+    # CRITICAL: Binance REST API is geo-blocked in some regions (e.g., MA)
+    # Must have VPN connectivity for data updates
+    if not dry_run:
+        logger.info("Checking Binance API connectivity...")
+        is_reachable, error = check_binance_api_connectivity()
+
+        if not is_reachable:
+            logger.error("="*70)
+            logger.error("FAIL FAST: Binance REST API unreachable")
+            logger.error("="*70)
+            logger.error(f"Error: {error}")
+            logger.error("")
+            logger.error("VPN required for data updates in geo-blocked regions.")
+            logger.error("Cannot produce advisory with stale data.")
+            logger.error("")
+            logger.error("Resolution steps:")
+            logger.error("  1. Ensure VPN is connected and active")
+            logger.error("  2. Test manually: curl https://fapi.binance.com/fapi/v1/ping")
+            logger.error("  3. Re-run this script after VPN is working")
+            logger.error("="*70)
+            sys.exit(1)
+
+        logger.info("✓ Binance REST API reachable (VPN working)")
 
     # Normalize symbols
     normalized_symbols = []

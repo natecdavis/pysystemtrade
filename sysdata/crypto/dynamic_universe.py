@@ -317,3 +317,96 @@ def get_equal_weights(instruments: List[str]) -> Dict[str, float]:
 
     weight = 1.0 / len(instruments)
     return {instr: weight for instr in instruments}
+
+
+def load_lifecycle_from_manifest(manifest_path) -> dict:
+    """
+    Load lifecycle metadata from dataset manifest.
+
+    Args:
+        manifest_path: Path to dataset manifest JSON file (can be Path or str)
+
+    Returns:
+        Lifecycle dict keyed by instrument ID:
+        {
+            'BTCUSDT_PERP': {
+                'first_data_date': '2019-09-08',
+                'last_data_date': '2026-02-13',
+                'data_days': 2350,
+                'status': 'ACTIVE',
+                'days_since_last': 1
+            },
+            ...
+        }
+
+    Returns empty dict if manifest doesn't exist or has no lifecycle section.
+    """
+    import json
+    from pathlib import Path
+
+    manifest_path = Path(manifest_path)
+
+    if not manifest_path.exists():
+        return {}
+
+    try:
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+
+        lifecycle = manifest.get('lifecycle', {})
+        return lifecycle
+
+    except Exception as e:
+        logger = get_logger("lifecycle")
+        logger.warning(f"Failed to load lifecycle from manifest: {e}")
+        return {}
+
+
+def check_lifecycle_eligibility(
+    instrument_code: str,
+    date: pd.Timestamp,
+    lifecycle_data: dict
+) -> bool:
+    """
+    Check if instrument has data coverage at date based on lifecycle metadata.
+
+    This filters out instruments that either:
+    - Haven't launched yet (date < first_data_date)
+    - Have been delisted (date > last_data_date)
+    - Have no data (status == 'NO_DATA')
+
+    Args:
+        instrument_code: Instrument ID
+        date: Date to check
+        lifecycle_data: Lifecycle dict from load_lifecycle_from_manifest()
+
+    Returns:
+        True if instrument has data coverage at date, False otherwise
+    """
+    if instrument_code not in lifecycle_data:
+        # No lifecycle info = assume active (conservative fallback)
+        return True
+
+    lc = lifecycle_data[instrument_code]
+
+    # Check status
+    if lc.get('status') == 'NO_DATA':
+        return False
+
+    if lc.get('status') == 'ERROR':
+        # Lifecycle derivation failed, assume active (conservative)
+        return True
+
+    # Check if within data coverage window
+    first_date = lc.get('first_data_date')
+    last_date = lc.get('last_data_date')
+
+    if first_date:
+        if date < pd.Timestamp(first_date):
+            return False  # Before data launch
+
+    if last_date:
+        if date > pd.Timestamp(last_date):
+            return False  # After data ends (delisted or stale)
+
+    return True

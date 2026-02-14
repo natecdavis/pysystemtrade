@@ -144,25 +144,73 @@ def build_candidate_list(registry: dict) -> dict:
     }
 
 
+def detect_changes(metadata_dir: Path, new_candidate_ids: List[str]) -> dict:
+    """
+    Detect changes between previous and new registry.
+
+    Returns:
+        Changelog dict with new/delisted instruments.
+    """
+    prev_registry_path = metadata_dir / 'discovered_candidate_instruments.json'
+
+    if prev_registry_path.exists():
+        try:
+            with open(prev_registry_path) as f:
+                prev_data = json.load(f)
+
+            prev_candidates = set(prev_data.get('candidate_instruments', []))
+            new_candidates = set(new_candidate_ids)
+
+            new_instruments = sorted(list(new_candidates - prev_candidates))
+            delisted_instruments = sorted(list(prev_candidates - new_candidates))
+
+            logger.info(f"Registry changes: {len(new_instruments)} new, {len(delisted_instruments)} delisted")
+            return {
+                'new_instruments': new_instruments,
+                'delisted_instruments': delisted_instruments,
+                'total_count': len(new_candidate_ids),
+            }
+        except Exception as e:
+            logger.warning(f"Failed to detect changes: {e}")
+            return {
+                'new_instruments': [],
+                'delisted_instruments': [],
+                'total_count': len(new_candidate_ids),
+                'error': str(e)
+            }
+    else:
+        # First run, no previous registry
+        logger.info("No previous registry found (first run)")
+        return {
+            'new_instruments': [],
+            'delisted_instruments': [],
+            'total_count': len(new_candidate_ids),
+            'first_run': True
+        }
+
+
 def write_artifacts(
     metadata_dir: Path,
     raw_snapshot: dict,
     registry: dict,
     candidate_list: dict,
+    changelog: dict,
     dry_run: bool = False
 ) -> None:
     """
-    Write three artifacts with atomic writes.
+    Write four artifacts with atomic writes.
 
     Files:
     1. coingecko_derivatives_snapshot.json - Full response
     2. binance_perp_registry.json - Normalized registry
     3. discovered_candidate_instruments.json - Candidate list for update_data_monthly.py
+    4. registry_changelog.json - Diff from previous registry
     """
     artifacts = [
         ('coingecko_derivatives_snapshot.json', raw_snapshot),
         ('binance_perp_registry.json', registry),
         ('discovered_candidate_instruments.json', candidate_list),
+        ('registry_changelog.json', changelog),
     ]
 
     for filename, data in artifacts:
@@ -181,6 +229,77 @@ def write_artifacts(
         logger.info(f"✓ Wrote {output_path}")
 
 
+def run_refresh(env_root: Path, verbose: bool = True, dry_run: bool = False) -> dict:
+    """
+    Run registry refresh and return changelog.
+
+    This function can be called both from CLI and from other scripts (e.g., advisory workflow).
+
+    Args:
+        env_root: Environment root path (e.g., Path('envs/dev'))
+        verbose: Enable verbose logging
+        dry_run: Print actions without writing
+
+    Returns:
+        Changelog dict: {'new_instruments': [...], 'delisted_instruments': [...], 'total_count': N}
+
+    Raises:
+        Exception: If CoinGecko API fetch fails
+    """
+    metadata_dir = env_root / 'data/raw/metadata'
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    if verbose:
+        logger.info(f"Metadata directory: {metadata_dir}")
+
+    # Fetch and filter
+    if verbose:
+        logger.info("Fetching derivatives from CoinGecko API (not geo-blocked)...")
+    derivatives = fetch_coingecko_derivatives()
+
+    if verbose:
+        logger.info("Filtering to Binance USDT perpetuals...")
+    binance_perpetuals = filter_binance_usdt_perpetuals(derivatives)
+
+    # Build artifacts
+    if verbose:
+        logger.info("Building artifacts...")
+    raw_snapshot = {
+        'fetched_at': datetime.now(timezone.utc).isoformat(),
+        'source': 'https://api.coingecko.com/api/v3/derivatives',
+        'total_derivatives': len(derivatives),
+        'binance_perpetuals': len(binance_perpetuals),
+        'raw_derivatives': derivatives,
+    }
+
+    registry = build_registry(binance_perpetuals)
+    candidate_list = build_candidate_list(registry)
+
+    # Detect changes
+    changelog = detect_changes(metadata_dir, candidate_list['candidate_instruments'])
+    changelog['timestamp'] = datetime.now(timezone.utc).isoformat()
+
+    # Write artifacts
+    if verbose:
+        logger.info(f"Writing artifacts to {metadata_dir}...")
+    write_artifacts(metadata_dir, raw_snapshot, registry, candidate_list, changelog, dry_run)
+
+    # Summary
+    if verbose:
+        logger.info("="*80)
+        logger.info("Registry refresh complete!")
+        logger.info(f"  Total derivatives fetched: {raw_snapshot['total_derivatives']}")
+        logger.info(f"  Binance USDT perpetuals: {raw_snapshot['binance_perpetuals']}")
+        logger.info(f"  Candidate instruments: {candidate_list['count']}")
+        if changelog.get('new_instruments'):
+            logger.info(f"  New instruments: {len(changelog['new_instruments'])}")
+        if changelog.get('delisted_instruments'):
+            logger.info(f"  Delisted instruments: {len(changelog['delisted_instruments'])}")
+        logger.info("="*80)
+
+    return changelog
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -197,47 +316,35 @@ def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
-    # Resolve metadata directory
+    # Resolve env root
     if args.env_root:
-        metadata_dir = args.env_root / 'data/raw/metadata'
+        env_root = args.env_root
     else:
-        metadata_dir = Path(f'envs/{args.env}/data/raw/metadata')
+        env_root = Path(f'envs/{args.env}')
 
-    metadata_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Metadata directory: {metadata_dir}")
+    # Run refresh
+    try:
+        changelog = run_refresh(env_root, verbose=True, dry_run=args.dry_run)
 
-    # Fetch and filter
-    logger.info("Fetching derivatives from CoinGecko API (not geo-blocked)...")
-    derivatives = fetch_coingecko_derivatives()
+        # Display changes if any
+        if not args.dry_run:
+            if changelog.get('new_instruments'):
+                print(f"\nNew instruments ({len(changelog['new_instruments'])}):")
+                for instr in changelog['new_instruments'][:10]:
+                    print(f"  + {instr}")
+                if len(changelog['new_instruments']) > 10:
+                    print(f"  ... and {len(changelog['new_instruments']) - 10} more")
 
-    logger.info("Filtering to Binance USDT perpetuals...")
-    binance_perpetuals = filter_binance_usdt_perpetuals(derivatives)
+            if changelog.get('delisted_instruments'):
+                print(f"\nDelisted instruments ({len(changelog['delisted_instruments'])}):")
+                for instr in changelog['delisted_instruments'][:10]:
+                    print(f"  - {instr}")
+                if len(changelog['delisted_instruments']) > 10:
+                    print(f"  ... and {len(changelog['delisted_instruments']) - 10} more")
 
-    # Build artifacts
-    logger.info("Building artifacts...")
-    raw_snapshot = {
-        'fetched_at': datetime.now(timezone.utc).isoformat(),
-        'source': 'https://api.coingecko.com/api/v3/derivatives',
-        'total_derivatives': len(derivatives),
-        'binance_perpetuals': len(binance_perpetuals),
-        'raw_derivatives': derivatives,
-    }
-
-    registry = build_registry(binance_perpetuals)
-    candidate_list = build_candidate_list(registry)
-
-    # Write artifacts
-    logger.info(f"Writing artifacts to {metadata_dir}...")
-    write_artifacts(metadata_dir, raw_snapshot, registry, candidate_list, args.dry_run)
-
-    # Summary
-    logger.info("="*80)
-    logger.info("Registry refresh complete!")
-    logger.info(f"  Total derivatives fetched: {raw_snapshot['total_derivatives']}")
-    logger.info(f"  Binance USDT perpetuals: {raw_snapshot['binance_perpetuals']}")
-    logger.info(f"  TRADING instruments: {registry['summary']['total_instruments']}")
-    logger.info(f"  Candidate instruments: {candidate_list['count']}")
-    logger.info("="*80)
+    except Exception as e:
+        logger.error(f"Registry refresh failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':
