@@ -1,0 +1,225 @@
+{
+  "timestamp_utc": "2026-02-14T17:48:30Z",
+  "system_version": "research_v1",
+  "as_of_date": "2026-01-23",
+  "last_complete_bar_date": "2026-01-23",
+  "data_lag_days": 22,
+  "advisory_cadence": "monthly",
+  "backtest_metadata": {
+    "backtest_dir": "envs/dev/advisory/20260214/backtest_latest",
+    "config_hash": "unknown",
+    "dataset_fingerprint": "unknown",
+    "git_commit": "unknown",
+    "dataset_path": "unknown",
+    "dataset_date_range": [
+      null,
+      null
+    ]
+  },
+  "actual_positions": {
+    "source_file": "envs/dev/live/current_positions.csv",
+    "timestamp": "2026-02-14T17:42:47.518011",
+    "prices_snapshot": {
+      "AAVEUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "ADAUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "ATOMUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "AVAXUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "AXSUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "BCHUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "BNBUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "BTCUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "DOGEUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "DOTUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "ETCUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "ETHUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "FILUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "ICPUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "LINKUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "LTCUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "MANAUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "SANDUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "SOLUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "THETAUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "TRXUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "UNIUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "VETUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "XLMUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      },
+      "XRPUSDT_PERP": {
+        "mark_price": 0.0,
+        "contracts": 0.0,
+        "notional": 0.0
+      }
+    }
+  },
+  "equity_info": {
+    "current_equity_usd": 5000.0,
+    "initial_capital_usd": 5000.0,
+    "total_pnl_pct": 0.0,
+    "source": "manual_input"
+  },
+  "forecasts_snapshot": {},
+  "constraints_snapshot": {
+    "note": "IDM from target portfolio model, not actual positions"
+  },
+  "target_portfolio": {
+    "target_weights": {
+      "AAVEUSDT_PERP": -0.0076,
+      "ADAUSDT_PERP": -3.5787,
+      "ATOMUSDT_PERP": -0.1837,
+      "AVAXUSDT_PERP": -0.0604,
+      "AXSUSDT_PERP": 0.1098,
+      "BCHUSDT_PERP": 0.0009,
+      "BNBUSDT_PERP": -0.0003,
+      "BTCUSDT_PERP": -0.0,
+      "DOGEUSDT_PERP": -8.5169,
+      "DOTUSDT_PERP": -0.3045,
+      "ETCUSDT_PERP": -0.0959,
+      "ETHUSDT_PERP": -0.0003,
+      "FILUSDT_PERP": -0.2606,
+      "ICPUSDT_PERP": -0.0284,
+      "LINKUSDT_PERP": -0.0956,
+      "LTCUSDT_PERP": -0.0276,
+      "MANAUSDT_PERP": -2.1731,
+      "SANDUSDT_PERP": -1.3014,
+      "SOLUSDT_PERP": -0.0085,
+      "THETAUSDT_PERP": -2.0493,
+      "TRXUSDT_PERP": 3.6531,
+      "UNIUSDT_PERP": -0.1578,
+      "VETUSDT_PERP": -93.6743,
+      "XLMUSDT_PERP": -6.2031,
+      "XRPUSDT_PERP": -0.4919
+    },
+    "target_notionals": {
+      "AAVEUSDT_PERP": -38.0,
+      "ADAUSDT_PERP": -17893.6,
+      "ATOMUSDT_PERP": -918.5,
+      "AVAXUSDT_PERP": -301.96,
+      "AXSUSDT_PERP": 549.07,
+      "BCHUSDT_PERP": 4.57,
+      "BNBUSDT_PERP": -1.49,
+      "BTCUSDT_PERP": -0.09,
+      "DOGEUSDT_PERP": -42584.25,
+      "DOTUSDT_PERP": -1522.3,
+      "ETCUSDT_PERP": -479.59,
+      "ETHUSDT_PERP": -1.4,
+      "FILUSDT_PERP": -1302.76,
+      "ICPUSDT_PERP": -141.87,
+      "LINKUSDT_PERP": -478.23,
+      "LTCUSDT_PERP": -138.15,
+      "MANAUSDT_PERP": -10865.53,
+      "SANDUSDT_PERP": -6506.95,
+      "SOLUSDT_PERP": -42.5,
+      "THETAUSDT_PERP": -10246.52,
+      "TRXUSDT_PERP": 18265.5,
+      "UNIUSDT_PERP": -789.1,
+      "VETUSDT_PERP": -468371.44,
+      "XLMUSDT_PERP": -31015.58,
+      "XRPUSDT_PERP": -2459.4
+    }
+  },
+  "warnings": [
+    "Advisory based on data through 2026-01-23 (22 day lag)",
+    "Estimated costs - check live spreads",
+    "Monthly cadence advisory - not for intraday decisions"
+  ],
+  "staleness_overlay": {
+    "applied": false,
+    "reason": "no_data_status_file"
+  }
+}

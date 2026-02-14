@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-02-14T03:03:21.721905Z",
+  "dataset_metadata": {
+    "requested_start_date": "2025-01-01",
+    "requested_end_date": "2026-02-13",
+    "actual_start_date": "2025-01-01",
+    "actual_end_date": "2026-02-13"
+  },
+  "date_range": {
+    "start": "2025-01-01",
+    "end": "2026-02-13",
+    "total_days": 409
+  },
+  "instruments": {
+    "included": {
+      "BTCUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-01",
+          "end": "2026-02-13"
+        },
+        "coverage_days": 409,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 0.8924205378973105,
+        "schema_compliant": true
+      },
+      "ETHUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-01",
+          "end": "2026-02-13"
+        },
+        "coverage_days": 409,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 0.8924205378973105,
+        "schema_compliant": true
+      },
+      "BNBUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-01",
+          "end": "2026-02-13"
+        },
+        "coverage_days": 409,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 0.8924205378973105,
+        "schema_compliant": true
+      },
+      "SOLUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-01",
+          "end": "2026-02-13"
+        },
+        "coverage_days": 409,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 0.8924205378973105,
+        "schema_compliant": true
+      },
+      "XRPUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-01",
+          "end": "2026-02-13"
+        },
+        "coverage_days": 409,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 0.8924205378973105,
+        "schema_compliant": true
+      }
+    },
+    "excluded": {}
+  },
+  "summary": {
+    "total_candidates": 5,
+    "included_count": 5,
+    "excluded_count": 0,
+    "exclusion_breakdown": {}
+  }
+}

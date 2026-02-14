@@ -517,11 +517,11 @@ def generate_trade_plan(
     logger.info("Running sanity checks...")
 
     # Gross leverage check
-    gross_leverage_cap = system_config.get('gross_leverage_cap', 2.0)
+    gross_leverage_cap = config.get('gross_leverage_cap', 2.0)
     gross_lev_check = check_gross_leverage(actuals, deltas, current_equity, gross_leverage_cap)
 
     # Min position size check
-    min_position_frac = system_config.get('min_position_frac', 0.03)
+    min_position_frac = config.get('min_position_frac', 0.03)
     min_size_check = check_min_position_sizes(deltas, current_equity, min_position_frac)
 
     # Banned instruments
@@ -557,11 +557,11 @@ def generate_trade_plan(
     deltas['warnings'] = warnings
 
     # 10. Build sanity checks dict
-    initial_capital = system_config.get('capital', 5000.0)
+    initial_capital = config.get('capital', 5000.0)
     equity_pnl_pct = (current_equity - initial_capital) / initial_capital if initial_capital > 0 else 0.0
 
     # IDM from diagnostics (target portfolio only, cannot compute from actual)
-    idm_cap = system_config.get('idm_cap', 2.5)
+    idm_cap = config.get('idm_cap', 2.5)
     if 'idm' in diagnostics.columns:
         idm_target = diagnostics['idm'].iloc[0] if len(diagnostics) > 0 else None
     else:

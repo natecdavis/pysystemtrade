@@ -51,7 +51,16 @@ def validate_tradable_universe(trade_plan_df, config, log):
         return
 
     max_tradable_set = set(layer_a)
-    planned_instruments = set(trade_plan_df['instrument'])
+
+    # Get instruments from either index or column
+    if 'instrument' in trade_plan_df.columns:
+        planned_instruments = set(trade_plan_df['instrument'])
+    elif trade_plan_df.index.name == 'instrument' or (hasattr(trade_plan_df.index, 'name') and trade_plan_df.index.name is None):
+        # Instrument is the index
+        planned_instruments = set(trade_plan_df.index)
+    else:
+        # Try to get from index anyway
+        planned_instruments = set(trade_plan_df.index)
 
     non_tradable = planned_instruments - max_tradable_set
 

@@ -337,7 +337,7 @@ Examples:
         if config.get('data_acquisition', {}).get('auto_discover', False):
             logger.info("Config has auto_discover=true, refreshing registry...")
             try:
-                refresh_success, registry_hash, changelog = refresh_registry_opportunistic(env.root)
+                refresh_success, registry_hash, changelog = refresh_registry_opportunistic(env.env_root)
 
                 registry_metadata = {
                     'hash': registry_hash,
@@ -369,7 +369,7 @@ Examples:
     if args.use_dynamic_universe:
         # For dynamic universe, we want to build dataset with ALL candidate instruments
         # The dynamic universe logic will filter based on cost thresholds
-        candidates, source = extract_candidate_instruments(args.config, env.root)
+        candidates, source = extract_candidate_instruments(args.config, env.env_root)
         logger.info(f"Dynamic universe mode: building dataset with {len(candidates)} candidates")
         logger.info(f"  Source: {source}")
         logger.info(f"  (actual tradable universe will be determined by cost filters)")
@@ -508,13 +508,13 @@ Examples:
                 f.write(f"Dataset Build Log\n")
                 f.write(f"==================\n\n")
                 f.write(f"Start date: {start_date}\n")
-            f.write(f"End date: {end_date}\n")
-            f.write(f"Instruments: {len(universe)}\n")
-            f.write(f"Output: {dataset_path}\n\n")
-            f.write(f"Command:\n{' '.join(build_cmd)}\n\n")
-            f.write(f"Output:\n{result.stdout}\n")
-            if result.stderr:
-                f.write(f"\nWarnings/Errors:\n{result.stderr}\n")
+                f.write(f"End date: {end_date}\n")
+                f.write(f"Instruments: {len(universe)}\n")
+                f.write(f"Output: {dataset_path}\n\n")
+                f.write(f"Command:\n{' '.join(build_cmd)}\n\n")
+                f.write(f"Output:\n{result.stdout}\n")
+                if result.stderr:
+                    f.write(f"\nWarnings/Errors:\n{result.stderr}\n")
 
         # Verify dataset was created
         if not dataset_path.exists():
@@ -591,7 +591,7 @@ Examples:
             'cadence': args.cadence,
             'as_of_date': as_of_date,
             'candidate_count': len(universe),
-            'environment': str(env.root) if hasattr(env, 'root') else 'unknown',
+            'environment': str(env.env_root) if hasattr(env, 'root') else 'unknown',
         }
 
         # Add registry snapshot if available

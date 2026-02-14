@@ -1,0 +1,5106 @@
+{
+  "generated_at": "2026-02-14T17:48:26.401431+00:00",
+  "source": "coingecko_derivatives_snapshot.json",
+  "version": "1.0",
+  "filter_criteria": {
+    "market": "Binance (Futures)",
+    "contract_type": "perpetual",
+    "symbol_contains": "USDT",
+    "expired_at": "null"
+  },
+  "instruments": {
+    "BTCUSDT": {
+      "symbol": "BTCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BTC",
+      "quote_asset": "USDT",
+      "volume_24h": 8668023487.9259,
+      "open_interest": 5530480403.75,
+      "funding_rate": 0.000278,
+      "last_traded_at": 1771090773
+    },
+    "ETHUSDT": {
+      "symbol": "ETHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ETH",
+      "quote_asset": "USDT",
+      "volume_24h": 5821309907.3651,
+      "open_interest": 3702340916.6,
+      "funding_rate": -0.0008179999999999999,
+      "last_traded_at": 1771090844
+    },
+    "SOLUSDT": {
+      "symbol": "SOLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SOL",
+      "quote_asset": "USDT",
+      "volume_24h": 1711471677.3024,
+      "open_interest": 847989674.34,
+      "funding_rate": -0.007674,
+      "last_traded_at": 1771090845
+    },
+    "XRPUSDT": {
+      "symbol": "XRPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XRP",
+      "quote_asset": "USDT",
+      "volume_24h": 796428222.88281,
+      "open_interest": 381123270.43,
+      "funding_rate": -0.007008,
+      "last_traded_at": 1771090844
+    },
+    "BNBUSDT": {
+      "symbol": "BNBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BNB",
+      "quote_asset": "USDT",
+      "volume_24h": 391623660.882,
+      "open_interest": 331205698.57,
+      "funding_rate": 0.0,
+      "last_traded_at": 1771090774
+    },
+    "BCHUSDT": {
+      "symbol": "BCHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BCH",
+      "quote_asset": "USDT",
+      "volume_24h": 239033078.96818,
+      "open_interest": 221747281.42,
+      "funding_rate": 0.004276999999999999,
+      "last_traded_at": 1771090773
+    },
+    "HYPEUSDT": {
+      "symbol": "HYPEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HYPE",
+      "quote_asset": "USDT",
+      "volume_24h": 270609683.7340263,
+      "open_interest": 176825832.2,
+      "funding_rate": -0.008093999999999999,
+      "last_traded_at": 1771091088
+    },
+    "DOGEUSDT": {
+      "symbol": "DOGEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DOGE",
+      "quote_asset": "USDT",
+      "volume_24h": 515149938.1405,
+      "open_interest": 162445739.4,
+      "funding_rate": 0.00675,
+      "last_traded_at": 1771090844
+    },
+    "PAXGUSDT": {
+      "symbol": "PAXGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PAXG",
+      "quote_asset": "USDT",
+      "volume_24h": 64800518.70468031,
+      "open_interest": 154492793.9,
+      "funding_rate": 0.004246,
+      "last_traded_at": 1771091047
+    },
+    "ZECUSDT": {
+      "symbol": "ZECUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZEC",
+      "quote_asset": "USDT",
+      "volume_24h": 673696148.6173227,
+      "open_interest": 132683841.9,
+      "funding_rate": -0.01016,
+      "last_traded_at": 1771090774
+    },
+    "TRXUSDT": {
+      "symbol": "TRXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRX",
+      "quote_asset": "USDT",
+      "volume_24h": 40048792.75982,
+      "open_interest": 101703554.67,
+      "funding_rate": -0.00797,
+      "last_traded_at": 1771090773
+    },
+    "SUIUSDT": {
+      "symbol": "SUIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SUI",
+      "quote_asset": "USDT",
+      "volume_24h": 188487565.3584,
+      "open_interest": 99750289.72,
+      "funding_rate": -0.001756,
+      "last_traded_at": 1771090856
+    },
+    "ASTERUSDT": {
+      "symbol": "ASTERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ASTER",
+      "quote_asset": "USDT",
+      "volume_24h": 125339747.68684429,
+      "open_interest": 97030094.16,
+      "funding_rate": 0.004696,
+      "last_traded_at": 1771090687
+    },
+    "PIPPINUSDT": {
+      "symbol": "PIPPINUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PIPPIN",
+      "quote_asset": "USDT",
+      "volume_24h": 678663396.9919192,
+      "open_interest": 80376843.84,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090931
+    },
+    "LINKUSDT": {
+      "symbol": "LINKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LINK",
+      "quote_asset": "USDT",
+      "volume_24h": 106641593.17104,
+      "open_interest": 78667731.41,
+      "funding_rate": 0.005493,
+      "last_traded_at": 1771090773
+    },
+    "PUMPUSDT": {
+      "symbol": "PUMPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PUMP",
+      "quote_asset": "USDT",
+      "volume_24h": 85550942.78947227,
+      "open_interest": 74257436.35,
+      "funding_rate": 0.002932,
+      "last_traded_at": 1771091047
+    },
+    "ADAUSDT": {
+      "symbol": "ADAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ADA",
+      "quote_asset": "USDT",
+      "volume_24h": 158172934.6374,
+      "open_interest": 73940101.17,
+      "funding_rate": 0.006273000000000001,
+      "last_traded_at": 1771090773
+    },
+    "AVAXUSDT": {
+      "symbol": "AVAXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AVAX",
+      "quote_asset": "USDT",
+      "volume_24h": 101256098.04,
+      "open_interest": 73124405.22,
+      "funding_rate": 0.007300999999999999,
+      "last_traded_at": 1771090845
+    },
+    "UNIUSDT": {
+      "symbol": "UNIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "UNI",
+      "quote_asset": "USDT",
+      "volume_24h": 110186854.296,
+      "open_interest": 71835682.63,
+      "funding_rate": 0.006666999999999999,
+      "last_traded_at": 1771090845
+    },
+    "LTCUSDT": {
+      "symbol": "LTCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LTC",
+      "quote_asset": "USDT",
+      "volume_24h": 88193516.1468,
+      "open_interest": 71545591.86,
+      "funding_rate": 0.000301,
+      "last_traded_at": 1771090773
+    },
+    "ENAUSDT": {
+      "symbol": "ENAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ENA",
+      "quote_asset": "USDT",
+      "volume_24h": 65963489.12289881,
+      "open_interest": 69897707.38,
+      "funding_rate": 0.002994,
+      "last_traded_at": 1771090777
+    },
+    "WLFIUSDT": {
+      "symbol": "WLFIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WLFI",
+      "quote_asset": "USDT",
+      "volume_24h": 64948634.06296625,
+      "open_interest": 52950925.61,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "AAVEUSDT": {
+      "symbol": "AAVEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AAVE",
+      "quote_asset": "USDT",
+      "volume_24h": 95044649.512,
+      "open_interest": 49233257.73,
+      "funding_rate": 0.007194000000000001,
+      "last_traded_at": 1771090845
+    },
+    "NEARUSDT": {
+      "symbol": "NEARUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NEAR",
+      "quote_asset": "USDT",
+      "volume_24h": 66524021.72,
+      "open_interest": 47319675.9,
+      "funding_rate": 0.004971,
+      "last_traded_at": 1771090845
+    },
+    "KITEUSDT": {
+      "symbol": "KITEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KITE",
+      "quote_asset": "USDT",
+      "volume_24h": 88173541.83993363,
+      "open_interest": 42945985.24,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "WLDUSDT": {
+      "symbol": "WLDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WLD",
+      "quote_asset": "USDT",
+      "volume_24h": 58177602.4506,
+      "open_interest": 42365451.74,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771091043
+    },
+    "TRUMPUSDT": {
+      "symbol": "TRUMPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRUMP",
+      "quote_asset": "USDT",
+      "volume_24h": 35156659.98646315,
+      "open_interest": 41317024.71,
+      "funding_rate": -0.008067,
+      "last_traded_at": 1771090931
+    },
+    "XPLUSDT": {
+      "symbol": "XPLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XPL",
+      "quote_asset": "USDT",
+      "volume_24h": 54470451.9094163,
+      "open_interest": 40437245.41,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "ARCUSDT": {
+      "symbol": "ARCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ARC",
+      "quote_asset": "USDT",
+      "volume_24h": 78990104.31940505,
+      "open_interest": 40087154.75,
+      "funding_rate": 0.02258899999999999,
+      "last_traded_at": 1771090930
+    },
+    "TAOUSDT": {
+      "symbol": "TAOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TAO",
+      "quote_asset": "USDT",
+      "volume_24h": 329426036.871429,
+      "open_interest": 39376944.71,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090778
+    },
+    "ZROUSDT": {
+      "symbol": "ZROUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZRO",
+      "quote_asset": "USDT",
+      "volume_24h": 99661392.04285768,
+      "open_interest": 36650244.08,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090780
+    },
+    "FILUSDT": {
+      "symbol": "FILUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FIL",
+      "quote_asset": "USDT",
+      "volume_24h": 82094238.3033,
+      "open_interest": 35648716.55,
+      "funding_rate": 0.002154,
+      "last_traded_at": 1771090845
+    },
+    "TONUSDT": {
+      "symbol": "TONUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TON",
+      "quote_asset": "USDT",
+      "volume_24h": 24731147.15817825,
+      "open_interest": 32510312.94,
+      "funding_rate": 0.004724,
+      "last_traded_at": 1771090777
+    },
+    "DOTUSDT": {
+      "symbol": "DOTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DOT",
+      "quote_asset": "USDT",
+      "volume_24h": 58334352.3484,
+      "open_interest": 32350505.32,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090844
+    },
+    "APTUSDT": {
+      "symbol": "APTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "APT",
+      "quote_asset": "USDT",
+      "volume_24h": 32926804.4815,
+      "open_interest": 31015349.95,
+      "funding_rate": -0.000359,
+      "last_traded_at": 1771090853
+    },
+    "HBARUSDT": {
+      "symbol": "HBARUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HBAR",
+      "quote_asset": "USDT",
+      "volume_24h": 84366060.14414667,
+      "open_interest": 30350807.64,
+      "funding_rate": -0.003851,
+      "last_traded_at": 1771090848
+    },
+    "BERAUSDT": {
+      "symbol": "BERAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BERA",
+      "quote_asset": "USDT",
+      "volume_24h": 165451866.51153696,
+      "open_interest": 30277740.37,
+      "funding_rate": -0.179298,
+      "last_traded_at": 1771090930
+    },
+    "RIVERUSDT": {
+      "symbol": "RIVERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RIVER",
+      "quote_asset": "USDT",
+      "volume_24h": 446871270.4051435,
+      "open_interest": 30098977.74,
+      "funding_rate": -0.8538199999999999,
+      "last_traded_at": 1771090788
+    },
+    "MONUSDT": {
+      "symbol": "MONUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MON",
+      "quote_asset": "USDT",
+      "volume_24h": 44237436.17112203,
+      "open_interest": 28398880.12,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "AXSUSDT": {
+      "symbol": "AXSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AXS",
+      "quote_asset": "USDT",
+      "volume_24h": 116362942.9130532,
+      "open_interest": 27866053.19,
+      "funding_rate": -0.2037209999999999,
+      "last_traded_at": 1771090845
+    },
+    "XMRUSDT": {
+      "symbol": "XMRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XMR",
+      "quote_asset": "USDT",
+      "volume_24h": 41060829.36300919,
+      "open_interest": 27453602.39,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090773
+    },
+    "ATOMUSDT": {
+      "symbol": "ATOMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ATOM",
+      "quote_asset": "USDT",
+      "volume_24h": 17207827.1356,
+      "open_interest": 27453186.62,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090774
+    },
+    "XLMUSDT": {
+      "symbol": "XLMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XLM",
+      "quote_asset": "USDT",
+      "volume_24h": 40360283.79552,
+      "open_interest": 26875214.38,
+      "funding_rate": 0.004256,
+      "last_traded_at": 1771090773
+    },
+    "ICPUSDT": {
+      "symbol": "ICPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ICP",
+      "quote_asset": "USDT",
+      "volume_24h": 26273025.980450403,
+      "open_interest": 26451495.69,
+      "funding_rate": -0.036272,
+      "last_traded_at": 1771090849
+    },
+    "ARBUSDT": {
+      "symbol": "ARBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ARB",
+      "quote_asset": "USDT",
+      "volume_24h": 32692737.895192273,
+      "open_interest": 25644938.54,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "FARTCOINUSDT": {
+      "symbol": "FARTCOINUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FARTCOIN",
+      "quote_asset": "USDT",
+      "volume_24h": 49660358.12549382,
+      "open_interest": 24130772.8,
+      "funding_rate": 0.015369,
+      "last_traded_at": 1771090786
+    },
+    "DASHUSDT": {
+      "symbol": "DASHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DASH",
+      "quote_asset": "USDT",
+      "volume_24h": 95661219.50029618,
+      "open_interest": 23110345.26,
+      "funding_rate": -0.013086,
+      "last_traded_at": 1771090774
+    },
+    "WIFUSDT": {
+      "symbol": "WIFUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WIF",
+      "quote_asset": "USDT",
+      "volume_24h": 56947937.30262,
+      "open_interest": 22950291.25,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090774
+    },
+    "PENGUUSDT": {
+      "symbol": "PENGUUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PENGU",
+      "quote_asset": "USDT",
+      "volume_24h": 67398607.31002276,
+      "open_interest": 21281198.92,
+      "funding_rate": -0.001505,
+      "last_traded_at": 1771090785
+    },
+    "FETUSDT": {
+      "symbol": "FETUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FET",
+      "quote_asset": "USDT",
+      "volume_24h": 20269124.342405792,
+      "open_interest": 21050670.35,
+      "funding_rate": -0.004644,
+      "last_traded_at": 1771090853
+    },
+    "CRVUSDT": {
+      "symbol": "CRVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CRV",
+      "quote_asset": "USDT",
+      "volume_24h": 43112289.48635281,
+      "open_interest": 20467168.93,
+      "funding_rate": 0.006444,
+      "last_traded_at": 1771090845
+    },
+    "FFUSDT": {
+      "symbol": "FFUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FF",
+      "quote_asset": "USDT",
+      "volume_24h": 4009133.702042004,
+      "open_interest": 20315782.44,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "POLUSDT": {
+      "symbol": "POLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "POL",
+      "quote_asset": "USDT",
+      "volume_24h": 37509032.703568585,
+      "open_interest": 19407121.42,
+      "funding_rate": -0.014453,
+      "last_traded_at": 1771090781
+    },
+    "BARDUSDT": {
+      "symbol": "BARDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BARD",
+      "quote_asset": "USDT",
+      "volume_24h": 4171133.6656387635,
+      "open_interest": 19155523.78,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "CHZUSDT": {
+      "symbol": "CHZUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CHZ",
+      "quote_asset": "USDT",
+      "volume_24h": 16268071.150359128,
+      "open_interest": 19067925.86,
+      "funding_rate": 0.004389,
+      "last_traded_at": 1771090845
+    },
+    "IPUSDT": {
+      "symbol": "IPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IP",
+      "quote_asset": "USDT",
+      "volume_24h": 27250120.53097895,
+      "open_interest": 19024074.46,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "ETCUSDT": {
+      "symbol": "ETCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ETC",
+      "quote_asset": "USDT",
+      "volume_24h": 28868438.71923,
+      "open_interest": 18851299.43,
+      "funding_rate": 0.005945,
+      "last_traded_at": 1771090773
+    },
+    "OPUSDT": {
+      "symbol": "OPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "OP",
+      "quote_asset": "USDT",
+      "volume_24h": 24453248.91093,
+      "open_interest": 18159275.53,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090852
+    },
+    "VIRTUALUSDT": {
+      "symbol": "VIRTUALUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VIRTUAL",
+      "quote_asset": "USDT",
+      "volume_24h": 90984724.05664067,
+      "open_interest": 17832512.15,
+      "funding_rate": -0.027248,
+      "last_traded_at": 1771090785
+    },
+    "PARTIUSDT": {
+      "symbol": "PARTIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PARTI",
+      "quote_asset": "USDT",
+      "volume_24h": 5581171.036759189,
+      "open_interest": 17513426.69,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "SENTUSDT": {
+      "symbol": "SENTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SENT",
+      "quote_asset": "USDT",
+      "volume_24h": 23351633.398450967,
+      "open_interest": 16338435.72,
+      "funding_rate": -0.066115,
+      "last_traded_at": 1771090789
+    },
+    "ONDOUSDT": {
+      "symbol": "ONDOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ONDO",
+      "quote_asset": "USDT",
+      "volume_24h": 27553056.735493694,
+      "open_interest": 16018518.02,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "BTCDOMUSDT": {
+      "symbol": "BTCDOMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BTCDOM",
+      "quote_asset": "USDT",
+      "volume_24h": 3935805.0672167866,
+      "open_interest": 15924911.58,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090849
+    },
+    "JUPUSDT": {
+      "symbol": "JUPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "JUP",
+      "quote_asset": "USDT",
+      "volume_24h": 17711562.771614365,
+      "open_interest": 15384045.33,
+      "funding_rate": 0.000566,
+      "last_traded_at": 1771090774
+    },
+    "ZKUSDT": {
+      "symbol": "ZKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZK",
+      "quote_asset": "USDT",
+      "volume_24h": 9446190.000681238,
+      "open_interest": 14794269.57,
+      "funding_rate": -0.000749,
+      "last_traded_at": 1771090780
+    },
+    "SEIUSDT": {
+      "symbol": "SEIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SEI",
+      "quote_asset": "USDT",
+      "volume_24h": 15903661.013961734,
+      "open_interest": 14760553.97,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771091043
+    },
+    "ZAMAUSDT": {
+      "symbol": "ZAMAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZAMA",
+      "quote_asset": "USDT",
+      "volume_24h": 79863332.84130824,
+      "open_interest": 14344132.42,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090790
+    },
+    "TIAUSDT": {
+      "symbol": "TIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TIA",
+      "quote_asset": "USDT",
+      "volume_24h": 40937933.83862327,
+      "open_interest": 14314704.34,
+      "funding_rate": 0.001671999999999999,
+      "last_traded_at": 1771091043
+    },
+    "SPACEUSDT": {
+      "symbol": "SPACEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SPACE",
+      "quote_asset": "USDT",
+      "volume_24h": 710869767.3373886,
+      "open_interest": 14087794.37,
+      "funding_rate": 0.037568,
+      "last_traded_at": 1771090856
+    },
+    "BTRUSDT": {
+      "symbol": "BTRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BTR",
+      "quote_asset": "USDT",
+      "volume_24h": 128409995.36500919,
+      "open_interest": 13917984.08,
+      "funding_rate": -0.000206,
+      "last_traded_at": 1771091093
+    },
+    "ETHFIUSDT": {
+      "symbol": "ETHFIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ETHFI",
+      "quote_asset": "USDT",
+      "volume_24h": 9877564.857325986,
+      "open_interest": 13151589.86,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090777
+    },
+    "BANUSDT": {
+      "symbol": "BANUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BAN",
+      "quote_asset": "USDT",
+      "volume_24h": 4413987.026145864,
+      "open_interest": 11632740.26,
+      "funding_rate": 0.01455,
+      "last_traded_at": 1771090784
+    },
+    "PENDLEUSDT": {
+      "symbol": "PENDLEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PENDLE",
+      "quote_asset": "USDT",
+      "volume_24h": 34287157.90768741,
+      "open_interest": 11609656.27,
+      "funding_rate": 0.009476,
+      "last_traded_at": 1771090930
+    },
+    "CCUSDT": {
+      "symbol": "CCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CC",
+      "quote_asset": "USDT",
+      "volume_24h": 10933544.470356349,
+      "open_interest": 11481817.37,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "ALCHUSDT": {
+      "symbol": "ALCHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ALCH",
+      "quote_asset": "USDT",
+      "volume_24h": 4545838.135883074,
+      "open_interest": 11383006.71,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "LDOUSDT": {
+      "symbol": "LDOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LDO",
+      "quote_asset": "USDT",
+      "volume_24h": 12381526.596489828,
+      "open_interest": 11344696.52,
+      "funding_rate": 0.007687999999999999,
+      "last_traded_at": 1771090853
+    },
+    "INJUSDT": {
+      "symbol": "INJUSDT",
+      "status": "ACTIVE",
+      "base_asset": "INJ",
+      "quote_asset": "USDT",
+      "volume_24h": 15391547.929415554,
+      "open_interest": 10920318.99,
+      "funding_rate": 0.000673,
+      "last_traded_at": 1771090852
+    },
+    "UBUSDT": {
+      "symbol": "UBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "UB",
+      "quote_asset": "USDT",
+      "volume_24h": 2337102.0904683843,
+      "open_interest": 10867187.62,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "RENDERUSDT": {
+      "symbol": "RENDERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RENDER",
+      "quote_asset": "USDT",
+      "volume_24h": 25539504.45634904,
+      "open_interest": 10807027.09,
+      "funding_rate": 0.004764,
+      "last_traded_at": 1771090781
+    },
+    "SKYUSDT": {
+      "symbol": "SKYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SKY",
+      "quote_asset": "USDT",
+      "volume_24h": 3364421.756214912,
+      "open_interest": 10751553.94,
+      "funding_rate": 0.004395,
+      "last_traded_at": 1771090687
+    },
+    "OMUSDT": {
+      "symbol": "OMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "OM",
+      "quote_asset": "USDT",
+      "volume_24h": 156774848.3269814,
+      "open_interest": 10565372.58,
+      "funding_rate": -0.1292229999999999,
+      "last_traded_at": 1771090776
+    },
+    "ATUSDT": {
+      "symbol": "ATUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AT",
+      "quote_asset": "USDT",
+      "volume_24h": 3549364.3287164955,
+      "open_interest": 9980656.75,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "BANANAS31USDT": {
+      "symbol": "BANANAS31USDT",
+      "status": "ACTIVE",
+      "base_asset": "BANANAS31",
+      "quote_asset": "USDT",
+      "volume_24h": 12424256.208932925,
+      "open_interest": 9961413.88,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "ENSOUSDT": {
+      "symbol": "ENSOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ENSO",
+      "quote_asset": "USDT",
+      "volume_24h": 16475709.857244214,
+      "open_interest": 9844949.68,
+      "funding_rate": -0.06910799999999999,
+      "last_traded_at": 1771090788
+    },
+    "KAITOUSDT": {
+      "symbol": "KAITOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KAITO",
+      "quote_asset": "USDT",
+      "volume_24h": 4791210.2652310245,
+      "open_interest": 9649923.07,
+      "funding_rate": 0.002483,
+      "last_traded_at": 1771090930
+    },
+    "PYTHUSDT": {
+      "symbol": "PYTHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PYTH",
+      "quote_asset": "USDT",
+      "volume_24h": 69262808.44657919,
+      "open_interest": 9631899.93,
+      "funding_rate": -0.104573,
+      "last_traded_at": 1771091044
+    },
+    "CYSUSDT": {
+      "symbol": "CYSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CYS",
+      "quote_asset": "USDT",
+      "volume_24h": 7584545.46788697,
+      "open_interest": 9629273.61,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "STABLEUSDT": {
+      "symbol": "STABLEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STABLE",
+      "quote_asset": "USDT",
+      "volume_24h": 16768196.688223198,
+      "open_interest": 9500477.93,
+      "funding_rate": -0.015372,
+      "last_traded_at": 1771090788
+    },
+    "SANDUSDT": {
+      "symbol": "SANDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SAND",
+      "quote_asset": "USDT",
+      "volume_24h": 17022604.2545,
+      "open_interest": 9481973.48,
+      "funding_rate": -0.01455899999999999,
+      "last_traded_at": 1771090845
+    },
+    "OGUSDT": {
+      "symbol": "OGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "OG",
+      "quote_asset": "USDT",
+      "volume_24h": 4843545.008573644,
+      "open_interest": 9459088.13,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091050
+    },
+    "GIGGLEUSDT": {
+      "symbol": "GIGGLEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GIGGLE",
+      "quote_asset": "USDT",
+      "volume_24h": 12305652.432724897,
+      "open_interest": 9188353.17,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "POWERUSDT": {
+      "symbol": "POWERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "POWER",
+      "quote_asset": "USDT",
+      "volume_24h": 199570716.07016876,
+      "open_interest": 9122313.82,
+      "funding_rate": 0.086105,
+      "last_traded_at": 1771090789
+    },
+    "NIGHTUSDT": {
+      "symbol": "NIGHTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NIGHT",
+      "quote_asset": "USDT",
+      "volume_24h": 8671043.109028492,
+      "open_interest": 9061458.13,
+      "funding_rate": -0.011792,
+      "last_traded_at": 1771090934
+    },
+    "STRKUSDT": {
+      "symbol": "STRKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STRK",
+      "quote_asset": "USDT",
+      "volume_24h": 9535053.357834078,
+      "open_interest": 9000017.44,
+      "funding_rate": 0.004934,
+      "last_traded_at": 1771090776
+    },
+    "DUSKUSDT": {
+      "symbol": "DUSKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DUSK",
+      "quote_asset": "USDT",
+      "volume_24h": 25203463.285369094,
+      "open_interest": 8982340.24,
+      "funding_rate": -0.070088,
+      "last_traded_at": 1771090852
+    },
+    "ROSEUSDT": {
+      "symbol": "ROSEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ROSE",
+      "quote_asset": "USDT",
+      "volume_24h": 17254893.15582803,
+      "open_interest": 8931323.74,
+      "funding_rate": -0.034367,
+      "last_traded_at": 1771090852
+    },
+    "AWEUSDT": {
+      "symbol": "AWEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AWE",
+      "quote_asset": "USDT",
+      "volume_24h": 9913100.03235666,
+      "open_interest": 8743143.21,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091088
+    },
+    "COMPUSDT": {
+      "symbol": "COMPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "COMP",
+      "quote_asset": "USDT",
+      "volume_24h": 156307766.91631675,
+      "open_interest": 8711689.84,
+      "funding_rate": -0.54215,
+      "last_traded_at": 1771090844
+    },
+    "HOMEUSDT": {
+      "symbol": "HOMEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HOME",
+      "quote_asset": "USDT",
+      "volume_24h": 3299080.0243111714,
+      "open_interest": 8351104.07,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "SKYAIUSDT": {
+      "symbol": "SKYAIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SKYAI",
+      "quote_asset": "USDT",
+      "volume_24h": 629661.1094354561,
+      "open_interest": 8284210.81,
+      "funding_rate": 0.008878,
+      "last_traded_at": 1771091051
+    },
+    "HANAUSDT": {
+      "symbol": "HANAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HANA",
+      "quote_asset": "USDT",
+      "volume_24h": 2380558.556745831,
+      "open_interest": 8193155.57,
+      "funding_rate": 0.040061,
+      "last_traded_at": 1771090689
+    },
+    "CAKEUSDT": {
+      "symbol": "CAKEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CAKE",
+      "quote_asset": "USDT",
+      "volume_24h": 9215970.178463802,
+      "open_interest": 8102844.83,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "TRADOORUSDT": {
+      "symbol": "TRADOORUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRADOOR",
+      "quote_asset": "USDT",
+      "volume_24h": 6936537.495510328,
+      "open_interest": 7932815.48,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090687
+    },
+    "METUSDT": {
+      "symbol": "METUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MET",
+      "quote_asset": "USDT",
+      "volume_24h": 4653635.470111737,
+      "open_interest": 7861212.34,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "USDCUSDT": {
+      "symbol": "USDCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "USDC",
+      "quote_asset": "USDT",
+      "volume_24h": 2639498.902842777,
+      "open_interest": 7700199.06,
+      "funding_rate": 0.001527,
+      "last_traded_at": 1771090856
+    },
+    "GPSUSDT": {
+      "symbol": "GPSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GPS",
+      "quote_asset": "USDT",
+      "volume_24h": 17840457.575687,
+      "open_interest": 7642589.35,
+      "funding_rate": -0.01547,
+      "last_traded_at": 1771090930
+    },
+    "PIEVERSEUSDT": {
+      "symbol": "PIEVERSEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PIEVERSE",
+      "quote_asset": "USDT",
+      "volume_24h": 4202889.657752347,
+      "open_interest": 7475764.85,
+      "funding_rate": 0.01841199999999999,
+      "last_traded_at": 1771090789
+    },
+    "MYXUSDT": {
+      "symbol": "MYXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MYX",
+      "quote_asset": "USDT",
+      "volume_24h": 24033862.106275376,
+      "open_interest": 7450227.1,
+      "funding_rate": -0.002343999999999999,
+      "last_traded_at": 1771091089
+    },
+    "AVNTUSDT": {
+      "symbol": "AVNTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AVNT",
+      "quote_asset": "USDT",
+      "volume_24h": 11019930.05384842,
+      "open_interest": 7392964.26,
+      "funding_rate": -0.072355,
+      "last_traded_at": 1771090686
+    },
+    "ALGOUSDT": {
+      "symbol": "ALGOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ALGO",
+      "quote_asset": "USDT",
+      "volume_24h": 12310342.4228,
+      "open_interest": 7327493.98,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090844
+    },
+    "ZILUSDT": {
+      "symbol": "ZILUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZIL",
+      "quote_asset": "USDT",
+      "volume_24h": 9324036.210613143,
+      "open_interest": 7321171.14,
+      "funding_rate": -0.1050589999999999,
+      "last_traded_at": 1771090774
+    },
+    "GALAUSDT": {
+      "symbol": "GALAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GALA",
+      "quote_asset": "USDT",
+      "volume_24h": 17896264.900287803,
+      "open_interest": 7296682.28,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090849
+    },
+    "LYNUSDT": {
+      "symbol": "LYNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LYN",
+      "quote_asset": "USDT",
+      "volume_24h": 9873652.070062803,
+      "open_interest": 7226271.53,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "SIRENUSDT": {
+      "symbol": "SIRENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SIREN",
+      "quote_asset": "USDT",
+      "volume_24h": 112161449.3361472,
+      "open_interest": 7020978.3,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "LINEAUSDT": {
+      "symbol": "LINEAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LINEA",
+      "quote_asset": "USDT",
+      "volume_24h": 21930648.679073736,
+      "open_interest": 6982659.5,
+      "funding_rate": -0.012326,
+      "last_traded_at": 1771091093
+    },
+    "AUCTIONUSDT": {
+      "symbol": "AUCTIONUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AUCTION",
+      "quote_asset": "USDT",
+      "volume_24h": 11603220.954148268,
+      "open_interest": 6832327.51,
+      "funding_rate": -0.075415,
+      "last_traded_at": 1771090686
+    },
+    "MORPHOUSDT": {
+      "symbol": "MORPHOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MORPHO",
+      "quote_asset": "USDT",
+      "volume_24h": 32989859.649858575,
+      "open_interest": 6673311.12,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "ENSUSDT": {
+      "symbol": "ENSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ENS",
+      "quote_asset": "USDT",
+      "volume_24h": 41688088.618,
+      "open_interest": 6460010.1,
+      "funding_rate": -0.005221,
+      "last_traded_at": 1771090852
+    },
+    "GUNUSDT": {
+      "symbol": "GUNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GUN",
+      "quote_asset": "USDT",
+      "volume_24h": 11112334.602614885,
+      "open_interest": 6433500.9,
+      "funding_rate": -0.02082599999999999,
+      "last_traded_at": 1771091047
+    },
+    "B2USDT": {
+      "symbol": "B2USDT",
+      "status": "ACTIVE",
+      "base_asset": "B2",
+      "quote_asset": "USDT",
+      "volume_24h": 2041880.576314537,
+      "open_interest": 6330720.55,
+      "funding_rate": 0.01487799999999999,
+      "last_traded_at": 1771091048
+    },
+    "EIGENUSDT": {
+      "symbol": "EIGENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "EIGEN",
+      "quote_asset": "USDT",
+      "volume_24h": 8943866.237469232,
+      "open_interest": 6321258.11,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "ESPUSDT": {
+      "symbol": "ESPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ESP",
+      "quote_asset": "USDT",
+      "volume_24h": 50256688.048788175,
+      "open_interest": 6246354.99,
+      "funding_rate": -0.260526,
+      "last_traded_at": 1771091093
+    },
+    "TAKEUSDT": {
+      "symbol": "TAKEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TAKE",
+      "quote_asset": "USDT",
+      "volume_24h": 219207352.82407618,
+      "open_interest": 6138864.86,
+      "funding_rate": 0.036986,
+      "last_traded_at": 1771090686
+    },
+    "MEUSDT": {
+      "symbol": "MEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ME",
+      "quote_asset": "USDT",
+      "volume_24h": 32930630.413874358,
+      "open_interest": 6126139.79,
+      "funding_rate": -0.005312,
+      "last_traded_at": 1771090785
+    },
+    "VETUSDT": {
+      "symbol": "VETUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VET",
+      "quote_asset": "USDT",
+      "volume_24h": 8617867.680049447,
+      "open_interest": 6050126.39,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090774
+    },
+    "AEROUSDT": {
+      "symbol": "AEROUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AERO",
+      "quote_asset": "USDT",
+      "volume_24h": 6393741.59969507,
+      "open_interest": 6009641.17,
+      "funding_rate": -0.002783,
+      "last_traded_at": 1771090785
+    },
+    "XTZUSDT": {
+      "symbol": "XTZUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XTZ",
+      "quote_asset": "USDT",
+      "volume_24h": 4297223.222203007,
+      "open_interest": 5976964.17,
+      "funding_rate": 0.004591,
+      "last_traded_at": 1771090774
+    },
+    "XPINUSDT": {
+      "symbol": "XPINUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XPIN",
+      "quote_asset": "USDT",
+      "volume_24h": 15008970.427428145,
+      "open_interest": 5971334.18,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "BEAMXUSDT": {
+      "symbol": "BEAMXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BEAMX",
+      "quote_asset": "USDT",
+      "volume_24h": 1311347.9147188573,
+      "open_interest": 5963001.21,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "BIRBUSDT": {
+      "symbol": "BIRBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BIRB",
+      "quote_asset": "USDT",
+      "volume_24h": 10229923.755294632,
+      "open_interest": 5957456.6,
+      "funding_rate": -0.03164099999999999,
+      "last_traded_at": 1771090857
+    },
+    "LAUSDT": {
+      "symbol": "LAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LA",
+      "quote_asset": "USDT",
+      "volume_24h": 7934547.187847081,
+      "open_interest": 5954412.92,
+      "funding_rate": -0.1810729999999999,
+      "last_traded_at": 1771091088
+    },
+    "DYDXUSDT": {
+      "symbol": "DYDXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DYDX",
+      "quote_asset": "USDT",
+      "volume_24h": 11136044.009947788,
+      "open_interest": 5939955.08,
+      "funding_rate": 0.005237,
+      "last_traded_at": 1771090849
+    },
+    "ZKPUSDT": {
+      "symbol": "ZKPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZKP",
+      "quote_asset": "USDT",
+      "volume_24h": 9994039.754857337,
+      "open_interest": 5910340.36,
+      "funding_rate": -0.03040799999999999,
+      "last_traded_at": 1771090934
+    },
+    "SYRUPUSDT": {
+      "symbol": "SYRUPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SYRUP",
+      "quote_asset": "USDT",
+      "volume_24h": 4582672.811101416,
+      "open_interest": 5891873.55,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091049
+    },
+    "HUMAUSDT": {
+      "symbol": "HUMAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HUMA",
+      "quote_asset": "USDT",
+      "volume_24h": 3184837.373212455,
+      "open_interest": 5782854.95,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091088
+    },
+    "FORMUSDT": {
+      "symbol": "FORMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FORM",
+      "quote_asset": "USDT",
+      "volume_24h": 3318549.752653346,
+      "open_interest": 5773212.1,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091045
+    },
+    "VVVUSDT": {
+      "symbol": "VVVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VVV",
+      "quote_asset": "USDT",
+      "volume_24h": 239266058.51141945,
+      "open_interest": 5730219.46,
+      "funding_rate": -0.171863,
+      "last_traded_at": 1771090930
+    },
+    "COLLECTUSDT": {
+      "symbol": "COLLECTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "COLLECT",
+      "quote_asset": "USDT",
+      "volume_24h": 11944137.218286414,
+      "open_interest": 5714727.81,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090789
+    },
+    "MOVEUSDT": {
+      "symbol": "MOVEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MOVE",
+      "quote_asset": "USDT",
+      "volume_24h": 11146539.168226574,
+      "open_interest": 5683183.55,
+      "funding_rate": -0.015655,
+      "last_traded_at": 1771090785
+    },
+    "LPTUSDT": {
+      "symbol": "LPTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LPT",
+      "quote_asset": "USDT",
+      "volume_24h": 13710404.09114422,
+      "open_interest": 5608587.94,
+      "funding_rate": -0.071723,
+      "last_traded_at": 1771090852
+    },
+    "RESOLVUSDT": {
+      "symbol": "RESOLVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RESOLV",
+      "quote_asset": "USDT",
+      "volume_24h": 5869743.690259613,
+      "open_interest": 5587319.28,
+      "funding_rate": -0.051764,
+      "last_traded_at": 1771091089
+    },
+    "BEATUSDT": {
+      "symbol": "BEATUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BEAT",
+      "quote_asset": "USDT",
+      "volume_24h": 19317944.571132116,
+      "open_interest": 5559352.1,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090789
+    },
+    "MOODENGUSDT": {
+      "symbol": "MOODENGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MOODENG",
+      "quote_asset": "USDT",
+      "volume_24h": 71026731.89400087,
+      "open_interest": 5505607.35,
+      "funding_rate": -0.09217700000000001,
+      "last_traded_at": 1771090782
+    },
+    "COWUSDT": {
+      "symbol": "COWUSDT",
+      "status": "ACTIVE",
+      "base_asset": "COW",
+      "quote_asset": "USDT",
+      "volume_24h": 77399395.5207781,
+      "open_interest": 5315414.82,
+      "funding_rate": -0.595256,
+      "last_traded_at": 1771090783
+    },
+    "BULLAUSDT": {
+      "symbol": "BULLAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BULLA",
+      "quote_asset": "USDT",
+      "volume_24h": 6400984.250680779,
+      "open_interest": 5309169.97,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "JELLYJELLYUSDT": {
+      "symbol": "JELLYJELLYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "JELLYJELLY",
+      "quote_asset": "USDT",
+      "volume_24h": 2050116.0526357945,
+      "open_interest": 5304734.59,
+      "funding_rate": 0.015724,
+      "last_traded_at": 1771091047
+    },
+    "RAVEUSDT": {
+      "symbol": "RAVEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RAVE",
+      "quote_asset": "USDT",
+      "volume_24h": 1526420.6481635238,
+      "open_interest": 5223751.61,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "AIAUSDT": {
+      "symbol": "AIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AIA",
+      "quote_asset": "USDT",
+      "volume_24h": 32380751.271142337,
+      "open_interest": 5215546.0,
+      "funding_rate": 0.048743,
+      "last_traded_at": 1771090856
+    },
+    "LRCUSDT": {
+      "symbol": "LRCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LRC",
+      "quote_asset": "USDT",
+      "volume_24h": 11656647.231562808,
+      "open_interest": 5149235.99,
+      "funding_rate": -0.486128,
+      "last_traded_at": 1771090845
+    },
+    "FOGOUSDT": {
+      "symbol": "FOGOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FOGO",
+      "quote_asset": "USDT",
+      "volume_24h": 12058819.82431192,
+      "open_interest": 5039612.52,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090791
+    },
+    "NXPCUSDT": {
+      "symbol": "NXPCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NXPC",
+      "quote_asset": "USDT",
+      "volume_24h": 3156915.78934941,
+      "open_interest": 5015192.2,
+      "funding_rate": 0.000728,
+      "last_traded_at": 1771091051
+    },
+    "SOMIUSDT": {
+      "symbol": "SOMIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SOMI",
+      "quote_asset": "USDT",
+      "volume_24h": 8898783.137243293,
+      "open_interest": 5008157.62,
+      "funding_rate": -0.00363,
+      "last_traded_at": 1771091093
+    },
+    "GUAUSDT": {
+      "symbol": "GUAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GUA",
+      "quote_asset": "USDT",
+      "volume_24h": 734349.2314265933,
+      "open_interest": 4988438.2,
+      "funding_rate": 0.037724,
+      "last_traded_at": 1771090934
+    },
+    "STXUSDT": {
+      "symbol": "STXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STX",
+      "quote_asset": "USDT",
+      "volume_24h": 8459106.86514598,
+      "open_interest": 4943283.04,
+      "funding_rate": 0.008045,
+      "last_traded_at": 1771090856
+    },
+    "COAIUSDT": {
+      "symbol": "COAIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "COAI",
+      "quote_asset": "USDT",
+      "volume_24h": 52040560.63724999,
+      "open_interest": 4920636.0,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090687
+    },
+    "ATHUSDT": {
+      "symbol": "ATHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ATH",
+      "quote_asset": "USDT",
+      "volume_24h": 18786711.422930118,
+      "open_interest": 4881217.45,
+      "funding_rate": -0.06952599999999999,
+      "last_traded_at": 1771091047
+    },
+    "LITUSDT": {
+      "symbol": "LITUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LIT",
+      "quote_asset": "USDT",
+      "volume_24h": 32601578.903769,
+      "open_interest": 4859089.53,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090846
+    },
+    "STGUSDT": {
+      "symbol": "STGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STG",
+      "quote_asset": "USDT",
+      "volume_24h": 16158162.69736494,
+      "open_interest": 4856630.94,
+      "funding_rate": -0.01036299999999999,
+      "last_traded_at": 1771090853
+    },
+    "ESPORTSUSDT": {
+      "symbol": "ESPORTSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ESPORTS",
+      "quote_asset": "USDT",
+      "volume_24h": 1217782.952115268,
+      "open_interest": 4830375.57,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "FHEUSDT": {
+      "symbol": "FHEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FHE",
+      "quote_asset": "USDT",
+      "volume_24h": 19654486.152287707,
+      "open_interest": 4830367.44,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "BIOUSDT": {
+      "symbol": "BIOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BIO",
+      "quote_asset": "USDT",
+      "volume_24h": 5122526.986254103,
+      "open_interest": 4798349.97,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "JTOUSDT": {
+      "symbol": "JTOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "JTO",
+      "quote_asset": "USDT",
+      "volume_24h": 6694392.457685928,
+      "open_interest": 4793233.94,
+      "funding_rate": -0.004103,
+      "last_traded_at": 1771091044
+    },
+    "PNUTUSDT": {
+      "symbol": "PNUTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PNUT",
+      "quote_asset": "USDT",
+      "volume_24h": 9354170.719159003,
+      "open_interest": 4735419.75,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090784
+    },
+    "ALLOUSDT": {
+      "symbol": "ALLOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ALLO",
+      "quote_asset": "USDT",
+      "volume_24h": 6334856.554963719,
+      "open_interest": 4721928.63,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "MERLUSDT": {
+      "symbol": "MERLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MERL",
+      "quote_asset": "USDT",
+      "volume_24h": 15367613.632806687,
+      "open_interest": 4684103.68,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091088
+    },
+    "VANAUSDT": {
+      "symbol": "VANAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VANA",
+      "quote_asset": "USDT",
+      "volume_24h": 6356412.6580409575,
+      "open_interest": 4671857.38,
+      "funding_rate": -0.01021399999999999,
+      "last_traded_at": 1771090785
+    },
+    "CLOUSDT": {
+      "symbol": "CLOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CLO",
+      "quote_asset": "USDT",
+      "volume_24h": 101608266.55416518,
+      "open_interest": 4667449.25,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "SPXUSDT": {
+      "symbol": "SPXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SPX",
+      "quote_asset": "USDT",
+      "volume_24h": 20562515.74835096,
+      "open_interest": 4663661.04,
+      "funding_rate": 0.001747999999999999,
+      "last_traded_at": 1771090785
+    },
+    "TRBUSDT": {
+      "symbol": "TRBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRB",
+      "quote_asset": "USDT",
+      "volume_24h": 22761322.314152382,
+      "open_interest": 4651500.98,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090845
+    },
+    "PLUMEUSDT": {
+      "symbol": "PLUMEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PLUME",
+      "quote_asset": "USDT",
+      "volume_24h": 2656683.005651698,
+      "open_interest": 4620500.13,
+      "funding_rate": -0.005289999999999999,
+      "last_traded_at": 1771091047
+    },
+    "BANKUSDT": {
+      "symbol": "BANKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BANK",
+      "quote_asset": "USDT",
+      "volume_24h": 19132498.23294956,
+      "open_interest": 4613894.14,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "NEOUSDT": {
+      "symbol": "NEOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NEO",
+      "quote_asset": "USDT",
+      "volume_24h": 2439965.100237889,
+      "open_interest": 4582123.14,
+      "funding_rate": 0.009881,
+      "last_traded_at": 1771090844
+    },
+    "TRIAUSDT": {
+      "symbol": "TRIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRIA",
+      "quote_asset": "USDT",
+      "volume_24h": 36591851.93483308,
+      "open_interest": 4579865.72,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091093
+    },
+    "WCTUSDT": {
+      "symbol": "WCTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WCT",
+      "quote_asset": "USDT",
+      "volume_24h": 2958923.9559280537,
+      "open_interest": 4470208.0,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "ARUSDT": {
+      "symbol": "ARUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AR",
+      "quote_asset": "USDT",
+      "volume_24h": 8129972.616682158,
+      "open_interest": 4445811.36,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090852
+    },
+    "XNYUSDT": {
+      "symbol": "XNYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XNY",
+      "quote_asset": "USDT",
+      "volume_24h": 3304594.172308245,
+      "open_interest": 4443494.13,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "ORDIUSDT": {
+      "symbol": "ORDIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ORDI",
+      "quote_asset": "USDT",
+      "volume_24h": 7450075.84503666,
+      "open_interest": 4436760.42,
+      "funding_rate": -0.00392,
+      "last_traded_at": 1771091044
+    },
+    "API3USDT": {
+      "symbol": "API3USDT",
+      "status": "ACTIVE",
+      "base_asset": "API3",
+      "quote_asset": "USDT",
+      "volume_24h": 3509845.586351234,
+      "open_interest": 4375318.32,
+      "funding_rate": 0.000655,
+      "last_traded_at": 1771090852
+    },
+    "NMRUSDT": {
+      "symbol": "NMRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NMR",
+      "quote_asset": "USDT",
+      "volume_24h": 3119075.7497494556,
+      "open_interest": 4266646.28,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090856
+    },
+    "EDUUSDT": {
+      "symbol": "EDUUSDT",
+      "status": "ACTIVE",
+      "base_asset": "EDU",
+      "quote_asset": "USDT",
+      "volume_24h": 2792555.8175970493,
+      "open_interest": 4264630.51,
+      "funding_rate": 0.007923,
+      "last_traded_at": 1771090856
+    },
+    "JASMYUSDT": {
+      "symbol": "JASMYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "JASMY",
+      "quote_asset": "USDT",
+      "volume_24h": 5600893.259147992,
+      "open_interest": 4191177.15,
+      "funding_rate": -0.013054,
+      "last_traded_at": 1771090852
+    },
+    "CFXUSDT": {
+      "symbol": "CFXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CFX",
+      "quote_asset": "USDT",
+      "volume_24h": 11733191.040649038,
+      "open_interest": 4163641.03,
+      "funding_rate": 0.005038,
+      "last_traded_at": 1771090856
+    },
+    "QNTUSDT": {
+      "symbol": "QNTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "QNT",
+      "quote_asset": "USDT",
+      "volume_24h": 7222690.82513135,
+      "open_interest": 4083546.1,
+      "funding_rate": 0.003745,
+      "last_traded_at": 1771090853
+    },
+    "XVGUSDT": {
+      "symbol": "XVGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XVG",
+      "quote_asset": "USDT",
+      "volume_24h": 5990087.857025627,
+      "open_interest": 4068977.18,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "FLOWUSDT": {
+      "symbol": "FLOWUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FLOW",
+      "quote_asset": "USDT",
+      "volume_24h": 7814549.502097661,
+      "open_interest": 4061114.3,
+      "funding_rate": -0.000164,
+      "last_traded_at": 1771090852
+    },
+    "MANAUSDT": {
+      "symbol": "MANAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MANA",
+      "quote_asset": "USDT",
+      "volume_24h": 5494594.165454755,
+      "open_interest": 4010681.68,
+      "funding_rate": -0.001518,
+      "last_traded_at": 1771090848
+    },
+    "GWEIUSDT": {
+      "symbol": "GWEIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GWEI",
+      "quote_asset": "USDT",
+      "volume_24h": 4262037.866258251,
+      "open_interest": 3899043.48,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090857
+    },
+    "MUBARAKUSDT": {
+      "symbol": "MUBARAKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MUBARAK",
+      "quote_asset": "USDT",
+      "volume_24h": 43487747.88894048,
+      "open_interest": 3885436.12,
+      "funding_rate": -0.00319,
+      "last_traded_at": 1771091044
+    },
+    "EULUSDT": {
+      "symbol": "EULUSDT",
+      "status": "ACTIVE",
+      "base_asset": "EUL",
+      "quote_asset": "USDT",
+      "volume_24h": 50122153.46706638,
+      "open_interest": 3863098.95,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090787
+    },
+    "LIGHTUSDT": {
+      "symbol": "LIGHTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LIGHT",
+      "quote_asset": "USDT",
+      "volume_24h": 5137966.654320517,
+      "open_interest": 3735248.91,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090689
+    },
+    "ZKCUSDT": {
+      "symbol": "ZKCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZKC",
+      "quote_asset": "USDT",
+      "volume_24h": 16714841.743299944,
+      "open_interest": 3730013.98,
+      "funding_rate": -0.059838,
+      "last_traded_at": 1771090686
+    },
+    "APEUSDT": {
+      "symbol": "APEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "APE",
+      "quote_asset": "USDT",
+      "volume_24h": 5770687.5448301565,
+      "open_interest": 3610059.57,
+      "funding_rate": 0.009985,
+      "last_traded_at": 1771090852
+    },
+    "BREVUSDT": {
+      "symbol": "BREVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BREV",
+      "quote_asset": "USDT",
+      "volume_24h": 4506382.938976399,
+      "open_interest": 3575229.51,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090789
+    },
+    "UAIUSDT": {
+      "symbol": "UAIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "UAI",
+      "quote_asset": "USDT",
+      "volume_24h": 3218416.4311907967,
+      "open_interest": 3564146.02,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "AZTECUSDT": {
+      "symbol": "AZTECUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AZTEC",
+      "quote_asset": "USDT",
+      "volume_24h": 97392328.85279736,
+      "open_interest": 3556491.94,
+      "funding_rate": -0.031071,
+      "last_traded_at": 1771091093
+    },
+    "KAIAUSDT": {
+      "symbol": "KAIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KAIA",
+      "quote_asset": "USDT",
+      "volume_24h": 3649493.990595001,
+      "open_interest": 3543222.71,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "IRYSUSDT": {
+      "symbol": "IRYSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IRYS",
+      "quote_asset": "USDT",
+      "volume_24h": 1941156.3770271768,
+      "open_interest": 3536872.79,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "GRTUSDT": {
+      "symbol": "GRTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GRT",
+      "quote_asset": "USDT",
+      "volume_24h": 4152104.6860571145,
+      "open_interest": 3498931.06,
+      "funding_rate": 0.005568999999999999,
+      "last_traded_at": 1771090845
+    },
+    "NEIROUSDT": {
+      "symbol": "NEIROUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NEIRO",
+      "quote_asset": "USDT",
+      "volume_24h": 10988707.214646526,
+      "open_interest": 3488893.71,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "THETAUSDT": {
+      "symbol": "THETAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "THETA",
+      "quote_asset": "USDT",
+      "volume_24h": 3762139.8479692126,
+      "open_interest": 3451062.87,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090844
+    },
+    "TAGUSDT": {
+      "symbol": "TAGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TAG",
+      "quote_asset": "USDT",
+      "volume_24h": 581371.4690688814,
+      "open_interest": 3446948.76,
+      "funding_rate": 0.02966499999999999,
+      "last_traded_at": 1771091089
+    },
+    "TAUSDT": {
+      "symbol": "TAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TA",
+      "quote_asset": "USDT",
+      "volume_24h": 672444.8564328237,
+      "open_interest": 3437481.83,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "ACTUSDT": {
+      "symbol": "ACTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ACT",
+      "quote_asset": "USDT",
+      "volume_24h": 5514149.956448666,
+      "open_interest": 3427016.65,
+      "funding_rate": -0.05208199999999999,
+      "last_traded_at": 1771090784
+    },
+    "IOTAUSDT": {
+      "symbol": "IOTAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IOTA",
+      "quote_asset": "USDT",
+      "volume_24h": 5320039.399836179,
+      "open_interest": 3415575.43,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090774
+    },
+    "IMXUSDT": {
+      "symbol": "IMXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IMX",
+      "quote_asset": "USDT",
+      "volume_24h": 2861361.778719085,
+      "open_interest": 3385247.07,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090852
+    },
+    "ZORAUSDT": {
+      "symbol": "ZORAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZORA",
+      "quote_asset": "USDT",
+      "volume_24h": 3252549.6587753254,
+      "open_interest": 3367239.38,
+      "funding_rate": -0.000915,
+      "last_traded_at": 1771091089
+    },
+    "TSTUSDT": {
+      "symbol": "TSTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TST",
+      "quote_asset": "USDT",
+      "volume_24h": 5224738.0112282,
+      "open_interest": 3348262.79,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "MMTUSDT": {
+      "symbol": "MMTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MMT",
+      "quote_asset": "USDT",
+      "volume_24h": 3770941.434864342,
+      "open_interest": 3347009.47,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "TNSRUSDT": {
+      "symbol": "TNSRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TNSR",
+      "quote_asset": "USDT",
+      "volume_24h": 14064345.841875574,
+      "open_interest": 3329645.37,
+      "funding_rate": -0.00513,
+      "last_traded_at": 1771090778
+    },
+    "C98USDT": {
+      "symbol": "C98USDT",
+      "status": "ACTIVE",
+      "base_asset": "C98",
+      "quote_asset": "USDT",
+      "volume_24h": 10539956.315297622,
+      "open_interest": 3317501.66,
+      "funding_rate": -0.03307699999999999,
+      "last_traded_at": 1771090849
+    },
+    "JSTUSDT": {
+      "symbol": "JSTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "JST",
+      "quote_asset": "USDT",
+      "volume_24h": 1804477.0687870593,
+      "open_interest": 3316905.12,
+      "funding_rate": -0.00113,
+      "last_traded_at": 1771091048
+    },
+    "EGLDUSDT": {
+      "symbol": "EGLDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "EGLD",
+      "quote_asset": "USDT",
+      "volume_24h": 12263647.989335347,
+      "open_interest": 3301020.19,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "ZRXUSDT": {
+      "symbol": "ZRXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZRX",
+      "quote_asset": "USDT",
+      "volume_24h": 2086545.5805772436,
+      "open_interest": 3283386.79,
+      "funding_rate": -0.005649,
+      "last_traded_at": 1771090774
+    },
+    "SFPUSDT": {
+      "symbol": "SFPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SFP",
+      "quote_asset": "USDT",
+      "volume_24h": 1668079.9066305424,
+      "open_interest": 3282872.9,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090848
+    },
+    "SPKUSDT": {
+      "symbol": "SPKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SPK",
+      "quote_asset": "USDT",
+      "volume_24h": 1293048.7197730276,
+      "open_interest": 3274287.71,
+      "funding_rate": 0.004174,
+      "last_traded_at": 1771091089
+    },
+    "AGTUSDT": {
+      "symbol": "AGTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AGT",
+      "quote_asset": "USDT",
+      "volume_24h": 755692.7056652678,
+      "open_interest": 3204730.4,
+      "funding_rate": 0.009471,
+      "last_traded_at": 1771091051
+    },
+    "RUNEUSDT": {
+      "symbol": "RUNEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RUNE",
+      "quote_asset": "USDT",
+      "volume_24h": 4992718.951061701,
+      "open_interest": 3194160.37,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "SKRUSDT": {
+      "symbol": "SKRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SKR",
+      "quote_asset": "USDT",
+      "volume_24h": 7986244.172386376,
+      "open_interest": 3172626.96,
+      "funding_rate": -0.021775,
+      "last_traded_at": 1771090856
+    },
+    "FRAXUSDT": {
+      "symbol": "FRAXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FRAX",
+      "quote_asset": "USDT",
+      "volume_24h": 4790033.728183531,
+      "open_interest": 3147197.48,
+      "funding_rate": -0.004863,
+      "last_traded_at": 1771090791
+    },
+    "GRASSUSDT": {
+      "symbol": "GRASSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GRASS",
+      "quote_asset": "USDT",
+      "volume_24h": 2252971.3693544357,
+      "open_interest": 3126291.0,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090784
+    },
+    "AXLUSDT": {
+      "symbol": "AXLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AXL",
+      "quote_asset": "USDT",
+      "volume_24h": 3630107.755354441,
+      "open_interest": 3090484.17,
+      "funding_rate": -0.007982000000000001,
+      "last_traded_at": 1771091044
+    },
+    "ANIMEUSDT": {
+      "symbol": "ANIMEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ANIME",
+      "quote_asset": "USDT",
+      "volume_24h": 2274908.173149258,
+      "open_interest": 3064220.95,
+      "funding_rate": -0.016247,
+      "last_traded_at": 1771090930
+    },
+    "MEGAUSDT": {
+      "symbol": "MEGAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MEGA",
+      "quote_asset": "USDT",
+      "volume_24h": 1323582.6233254897,
+      "open_interest": 2999039.86,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091093
+    },
+    "FOLKSUSDT": {
+      "symbol": "FOLKSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FOLKS",
+      "quote_asset": "USDT",
+      "volume_24h": 4150287.3253925093,
+      "open_interest": 2985597.31,
+      "funding_rate": 0.044516,
+      "last_traded_at": 1771090788
+    },
+    "NOMUSDT": {
+      "symbol": "NOMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NOM",
+      "quote_asset": "USDT",
+      "volume_24h": 7449571.470963047,
+      "open_interest": 2977628.77,
+      "funding_rate": -0.091036,
+      "last_traded_at": 1771090690
+    },
+    "SNXUSDT": {
+      "symbol": "SNXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SNX",
+      "quote_asset": "USDT",
+      "volume_24h": 6516940.872255243,
+      "open_interest": 2974179.3,
+      "funding_rate": -0.022296,
+      "last_traded_at": 1771090844
+    },
+    "BSVUSDT": {
+      "symbol": "BSVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BSV",
+      "quote_asset": "USDT",
+      "volume_24h": 11470159.795682117,
+      "open_interest": 2968136.06,
+      "funding_rate": -0.026582,
+      "last_traded_at": 1771091043
+    },
+    "PROVEUSDT": {
+      "symbol": "PROVEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PROVE",
+      "quote_asset": "USDT",
+      "volume_24h": 1860748.6985505787,
+      "open_interest": 2967092.3,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "YFIUSDT": {
+      "symbol": "YFIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "YFI",
+      "quote_asset": "USDT",
+      "volume_24h": 5885494.004135794,
+      "open_interest": 2954848.28,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090844
+    },
+    "MANTAUSDT": {
+      "symbol": "MANTAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MANTA",
+      "quote_asset": "USDT",
+      "volume_24h": 4725355.147709289,
+      "open_interest": 2938927.32,
+      "funding_rate": -0.003054,
+      "last_traded_at": 1771090774
+    },
+    "PEOPLEUSDT": {
+      "symbol": "PEOPLEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PEOPLE",
+      "quote_asset": "USDT",
+      "volume_24h": 4392612.593374251,
+      "open_interest": 2914128.68,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090852
+    },
+    "NILUSDT": {
+      "symbol": "NILUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NIL",
+      "quote_asset": "USDT",
+      "volume_24h": 4697126.70612577,
+      "open_interest": 2911630.47,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "POPCATUSDT": {
+      "symbol": "POPCATUSDT",
+      "status": "ACTIVE",
+      "base_asset": "POPCAT",
+      "quote_asset": "USDT",
+      "volume_24h": 5759601.634859841,
+      "open_interest": 2900867.46,
+      "funding_rate": -0.009195,
+      "last_traded_at": 1771090781
+    },
+    "ARKMUSDT": {
+      "symbol": "ARKMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ARKM",
+      "quote_asset": "USDT",
+      "volume_24h": 8593421.296576262,
+      "open_interest": 2898424.94,
+      "funding_rate": -0.0009500000000000001,
+      "last_traded_at": 1771090930
+    },
+    "TWTUSDT": {
+      "symbol": "TWTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TWT",
+      "quote_asset": "USDT",
+      "volume_24h": 3390781.3356778845,
+      "open_interest": 2890782.12,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "MINAUSDT": {
+      "symbol": "MINAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MINA",
+      "quote_asset": "USDT",
+      "volume_24h": 3576996.875768001,
+      "open_interest": 2882642.38,
+      "funding_rate": -0.02074,
+      "last_traded_at": 1771090853
+    },
+    "PTBUSDT": {
+      "symbol": "PTBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PTB",
+      "quote_asset": "USDT",
+      "volume_24h": 4553663.984419603,
+      "open_interest": 2880637.79,
+      "funding_rate": 0.108613,
+      "last_traded_at": 1771090686
+    },
+    "FIGHTUSDT": {
+      "symbol": "FIGHTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FIGHT",
+      "quote_asset": "USDT",
+      "volume_24h": 9460390.336112186,
+      "open_interest": 2874641.65,
+      "funding_rate": 0.023737,
+      "last_traded_at": 1771090857
+    },
+    "KASUSDT": {
+      "symbol": "KASUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KAS",
+      "quote_asset": "USDT",
+      "volume_24h": 3807445.771008086,
+      "open_interest": 2868936.77,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "NAORISUSDT": {
+      "symbol": "NAORISUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NAORIS",
+      "quote_asset": "USDT",
+      "volume_24h": 152246573.98063368,
+      "open_interest": 2865436.83,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "YBUSDT": {
+      "symbol": "YBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "YB",
+      "quote_asset": "USDT",
+      "volume_24h": 2822872.974517643,
+      "open_interest": 2865318.87,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "TUTUSDT": {
+      "symbol": "TUTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TUT",
+      "quote_asset": "USDT",
+      "volume_24h": 2995812.580235794,
+      "open_interest": 2837668.22,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "ACHUSDT": {
+      "symbol": "ACHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ACH",
+      "quote_asset": "USDT",
+      "volume_24h": 4422425.949476718,
+      "open_interest": 2792812.42,
+      "funding_rate": -0.00214,
+      "last_traded_at": 1771090856
+    },
+    "GASUSDT": {
+      "symbol": "GASUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GAS",
+      "quote_asset": "USDT",
+      "volume_24h": 2912977.109825195,
+      "open_interest": 2779080.38,
+      "funding_rate": -0.009294,
+      "last_traded_at": 1771091043
+    },
+    "KGENUSDT": {
+      "symbol": "KGENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KGEN",
+      "quote_asset": "USDT",
+      "volume_24h": 1421790.0719067848,
+      "open_interest": 2761792.03,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "TURBOUSDT": {
+      "symbol": "TURBOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TURBO",
+      "quote_asset": "USDT",
+      "volume_24h": 6602982.918951618,
+      "open_interest": 2747261.74,
+      "funding_rate": 0.000181,
+      "last_traded_at": 1771090780
+    },
+    "BLUAIUSDT": {
+      "symbol": "BLUAIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BLUAI",
+      "quote_asset": "USDT",
+      "volume_24h": 2761514.5690975236,
+      "open_interest": 2746946.96,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "GMTUSDT": {
+      "symbol": "GMTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GMT",
+      "quote_asset": "USDT",
+      "volume_24h": 3096231.9311606665,
+      "open_interest": 2741620.4,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090852
+    },
+    "SIGNUSDT": {
+      "symbol": "SIGNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SIGN",
+      "quote_asset": "USDT",
+      "volume_24h": 1131159.9791228846,
+      "open_interest": 2723925.16,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "BATUSDT": {
+      "symbol": "BATUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BAT",
+      "quote_asset": "USDT",
+      "volume_24h": 2631830.255472975,
+      "open_interest": 2690718.82,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090774
+    },
+    "SOPHUSDT": {
+      "symbol": "SOPHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SOPH",
+      "quote_asset": "USDT",
+      "volume_24h": 2095642.0494106512,
+      "open_interest": 2678577.27,
+      "funding_rate": -0.139321,
+      "last_traded_at": 1771090934
+    },
+    "BOMEUSDT": {
+      "symbol": "BOMEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BOME",
+      "quote_asset": "USDT",
+      "volume_24h": 5265697.493885025,
+      "open_interest": 2655523.16,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090777
+    },
+    "SAHARAUSDT": {
+      "symbol": "SAHARAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SAHARA",
+      "quote_asset": "USDT",
+      "volume_24h": 2080629.7328200063,
+      "open_interest": 2652009.67,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "ICNTUSDT": {
+      "symbol": "ICNTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ICNT",
+      "quote_asset": "USDT",
+      "volume_24h": 2071547.8550957718,
+      "open_interest": 2637742.29,
+      "funding_rate": -0.269374,
+      "last_traded_at": 1771091089
+    },
+    "CYBERUSDT": {
+      "symbol": "CYBERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CYBER",
+      "quote_asset": "USDT",
+      "volume_24h": 2131835.711058104,
+      "open_interest": 2624956.8,
+      "funding_rate": -0.01079999999999999,
+      "last_traded_at": 1771091043
+    },
+    "AVAAIUSDT": {
+      "symbol": "AVAAIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AVAAI",
+      "quote_asset": "USDT",
+      "volume_24h": 823732.7305718216,
+      "open_interest": 2624405.48,
+      "funding_rate": 0.028791,
+      "last_traded_at": 1771090930
+    },
+    "MAGICUSDT": {
+      "symbol": "MAGICUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MAGIC",
+      "quote_asset": "USDT",
+      "volume_24h": 2436125.1496005855,
+      "open_interest": 2563219.18,
+      "funding_rate": -0.01061,
+      "last_traded_at": 1771091043
+    },
+    "SWARMSUSDT": {
+      "symbol": "SWARMSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SWARMS",
+      "quote_asset": "USDT",
+      "volume_24h": 2037375.2121257237,
+      "open_interest": 2543142.21,
+      "funding_rate": 0.035037,
+      "last_traded_at": 1771090930
+    },
+    "DEEPUSDT": {
+      "symbol": "DEEPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DEEP",
+      "quote_asset": "USDT",
+      "volume_24h": 21256888.07615671,
+      "open_interest": 2534516.54,
+      "funding_rate": -0.071388,
+      "last_traded_at": 1771091048
+    },
+    "LAYERUSDT": {
+      "symbol": "LAYERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LAYER",
+      "quote_asset": "USDT",
+      "volume_24h": 4920594.902944478,
+      "open_interest": 2533220.14,
+      "funding_rate": -0.007412999999999999,
+      "last_traded_at": 1771090931
+    },
+    "OPENUSDT": {
+      "symbol": "OPENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "OPEN",
+      "quote_asset": "USDT",
+      "volume_24h": 6489243.761008109,
+      "open_interest": 2521860.14,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "BASUSDT": {
+      "symbol": "BASUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BAS",
+      "quote_asset": "USDT",
+      "volume_24h": 7766184.988621543,
+      "open_interest": 2512670.96,
+      "funding_rate": 0.020283,
+      "last_traded_at": 1771091093
+    },
+    "SONICUSDT": {
+      "symbol": "SONICUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SONIC",
+      "quote_asset": "USDT",
+      "volume_24h": 2979783.7476716745,
+      "open_interest": 2490731.6,
+      "funding_rate": 0.000132,
+      "last_traded_at": 1771090930
+    },
+    "MEMEUSDT": {
+      "symbol": "MEMEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MEME",
+      "quote_asset": "USDT",
+      "volume_24h": 8015982.1862109145,
+      "open_interest": 2461467.06,
+      "funding_rate": -0.009564999999999999,
+      "last_traded_at": 1771091044
+    },
+    "ZBTUSDT": {
+      "symbol": "ZBTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZBT",
+      "quote_asset": "USDT",
+      "volume_24h": 5675652.948531881,
+      "open_interest": 2446104.15,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "TRUTHUSDT": {
+      "symbol": "TRUTHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRUTH",
+      "quote_asset": "USDT",
+      "volume_24h": 3227516.1651229253,
+      "open_interest": 2428194.06,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "SOONUSDT": {
+      "symbol": "SOONUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SOON",
+      "quote_asset": "USDT",
+      "volume_24h": 4024209.7814981164,
+      "open_interest": 2418819.92,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "BABYUSDT": {
+      "symbol": "BABYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BABY",
+      "quote_asset": "USDT",
+      "volume_24h": 922751.7196473202,
+      "open_interest": 2408674.42,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "CATIUSDT": {
+      "symbol": "CATIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CATI",
+      "quote_asset": "USDT",
+      "volume_24h": 733012.7199001733,
+      "open_interest": 2406945.76,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "BLURUSDT": {
+      "symbol": "BLURUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BLUR",
+      "quote_asset": "USDT",
+      "volume_24h": 2461010.1120177163,
+      "open_interest": 2384310.1,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "SANTOSUSDT": {
+      "symbol": "SANTOSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SANTOS",
+      "quote_asset": "USDT",
+      "volume_24h": 891402.289809636,
+      "open_interest": 2374365.28,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090783
+    },
+    "IOUSDT": {
+      "symbol": "IOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IO",
+      "quote_asset": "USDT",
+      "volume_24h": 3289536.92674015,
+      "open_interest": 2371829.84,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090780
+    },
+    "AKEUSDT": {
+      "symbol": "AKEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AKE",
+      "quote_asset": "USDT",
+      "volume_24h": 7679745.105316409,
+      "open_interest": 2346563.9,
+      "funding_rate": 0.010454,
+      "last_traded_at": 1771090689
+    },
+    "CELOUSDT": {
+      "symbol": "CELOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CELO",
+      "quote_asset": "USDT",
+      "volume_24h": 2263284.9917893456,
+      "open_interest": 2330782.2,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090852
+    },
+    "YGGUSDT": {
+      "symbol": "YGGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "YGG",
+      "quote_asset": "USDT",
+      "volume_24h": 2100145.273118124,
+      "open_interest": 2329667.43,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090685
+    },
+    "SUSHIUSDT": {
+      "symbol": "SUSHIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SUSHI",
+      "quote_asset": "USDT",
+      "volume_24h": 3109164.551152801,
+      "open_interest": 2328089.52,
+      "funding_rate": 0.006522,
+      "last_traded_at": 1771090845
+    },
+    "AIOUSDT": {
+      "symbol": "AIOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AIO",
+      "quote_asset": "USDT",
+      "volume_24h": 5578594.517382739,
+      "open_interest": 2316993.7,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "SUPERUSDT": {
+      "symbol": "SUPERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SUPER",
+      "quote_asset": "USDT",
+      "volume_24h": 3360852.640637396,
+      "open_interest": 2307319.94,
+      "funding_rate": -0.003804,
+      "last_traded_at": 1771091044
+    },
+    "LUNA2USDT": {
+      "symbol": "LUNA2USDT",
+      "status": "ACTIVE",
+      "base_asset": "LUNA2",
+      "quote_asset": "USDT",
+      "volume_24h": 2758110.4491173597,
+      "open_interest": 2284953.85,
+      "funding_rate": 0.000483,
+      "last_traded_at": 1771090853
+    },
+    "ONTUSDT": {
+      "symbol": "ONTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ONT",
+      "quote_asset": "USDT",
+      "volume_24h": 1358166.2906816544,
+      "open_interest": 2269196.29,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090774
+    },
+    "THEUSDT": {
+      "symbol": "THEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "THE",
+      "quote_asset": "USDT",
+      "volume_24h": 1742717.6431601753,
+      "open_interest": 2250039.87,
+      "funding_rate": -0.023818,
+      "last_traded_at": 1771090785
+    },
+    "TOSHIUSDT": {
+      "symbol": "TOSHIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TOSHI",
+      "quote_asset": "USDT",
+      "volume_24h": 26762300.68097681,
+      "open_interest": 2242435.9,
+      "funding_rate": -0.07942199999999999,
+      "last_traded_at": 1771090686
+    },
+    "INUSDT": {
+      "symbol": "INUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IN",
+      "quote_asset": "USDT",
+      "volume_24h": 2446933.6153153684,
+      "open_interest": 2213445.55,
+      "funding_rate": -0.01193599999999999,
+      "last_traded_at": 1771091092
+    },
+    "ALTUSDT": {
+      "symbol": "ALTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ALT",
+      "quote_asset": "USDT",
+      "volume_24h": 1609892.0985008548,
+      "open_interest": 2184855.9,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090774
+    },
+    "BROCCOLI714USDT": {
+      "symbol": "BROCCOLI714USDT",
+      "status": "ACTIVE",
+      "base_asset": "BROCCOLI714",
+      "quote_asset": "USDT",
+      "volume_24h": 10028273.834055986,
+      "open_interest": 2176259.87,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "SOLVUSDT": {
+      "symbol": "SOLVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SOLV",
+      "quote_asset": "USDT",
+      "volume_24h": 2357560.8566279686,
+      "open_interest": 2171011.07,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "IDOLUSDT": {
+      "symbol": "IDOLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IDOL",
+      "quote_asset": "USDT",
+      "volume_24h": 1366775.9491925347,
+      "open_interest": 2166716.56,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "CTSIUSDT": {
+      "symbol": "CTSIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CTSI",
+      "quote_asset": "USDT",
+      "volume_24h": 775068.8840843504,
+      "open_interest": 2165323.22,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090852
+    },
+    "STOUSDT": {
+      "symbol": "STOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STO",
+      "quote_asset": "USDT",
+      "volume_24h": 1493982.5295525226,
+      "open_interest": 2155097.14,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "GLMUSDT": {
+      "symbol": "GLMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GLM",
+      "quote_asset": "USDT",
+      "volume_24h": 2178831.1296519483,
+      "open_interest": 2152248.46,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090777
+    },
+    "SYNUSDT": {
+      "symbol": "SYNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SYN",
+      "quote_asset": "USDT",
+      "volume_24h": 3430567.6438099113,
+      "open_interest": 2151946.56,
+      "funding_rate": -0.00244,
+      "last_traded_at": 1771090781
+    },
+    "SUNUSDT": {
+      "symbol": "SUNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SUN",
+      "quote_asset": "USDT",
+      "volume_24h": 1174426.821082788,
+      "open_interest": 2132844.41,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "VELODROMEUSDT": {
+      "symbol": "VELODROMEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VELODROME",
+      "quote_asset": "USDT",
+      "volume_24h": 437051.57929589855,
+      "open_interest": 2105562.43,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "DYMUSDT": {
+      "symbol": "DYMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DYM",
+      "quote_asset": "USDT",
+      "volume_24h": 3114716.4434643104,
+      "open_interest": 2090316.49,
+      "funding_rate": -0.014079,
+      "last_traded_at": 1771090776
+    },
+    "MASKUSDT": {
+      "symbol": "MASKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MASK",
+      "quote_asset": "USDT",
+      "volume_24h": 2586556.9685506467,
+      "open_interest": 2077712.21,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090849
+    },
+    "IDUSDT": {
+      "symbol": "IDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ID",
+      "quote_asset": "USDT",
+      "volume_24h": 1618243.4106196996,
+      "open_interest": 2070918.7,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "AIXBTUSDT": {
+      "symbol": "AIXBTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AIXBT",
+      "quote_asset": "USDT",
+      "volume_24h": 5299969.458344471,
+      "open_interest": 2070745.0,
+      "funding_rate": -0.00921,
+      "last_traded_at": 1771090786
+    },
+    "ZEREBROUSDT": {
+      "symbol": "ZEREBROUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZEREBRO",
+      "quote_asset": "USDT",
+      "volume_24h": 1429351.8578006339,
+      "open_interest": 2064504.41,
+      "funding_rate": 0.016245,
+      "last_traded_at": 1771090930
+    },
+    "WALUSDT": {
+      "symbol": "WALUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WAL",
+      "quote_asset": "USDT",
+      "volume_24h": 2704933.948917691,
+      "open_interest": 2057208.6,
+      "funding_rate": -0.008964,
+      "last_traded_at": 1771091047
+    },
+    "SKLUSDT": {
+      "symbol": "SKLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SKL",
+      "quote_asset": "USDT",
+      "volume_24h": 12588846.677314976,
+      "open_interest": 2049817.89,
+      "funding_rate": -0.031798,
+      "last_traded_at": 1771090845
+    },
+    "ASRUSDT": {
+      "symbol": "ASRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ASR",
+      "quote_asset": "USDT",
+      "volume_24h": 736968.2163292362,
+      "open_interest": 2047028.05,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "INITUSDT": {
+      "symbol": "INITUSDT",
+      "status": "ACTIVE",
+      "base_asset": "INIT",
+      "quote_asset": "USDT",
+      "volume_24h": 1910369.280468892,
+      "open_interest": 2033961.39,
+      "funding_rate": -0.027247,
+      "last_traded_at": 1771091048
+    },
+    "HYPERUSDT": {
+      "symbol": "HYPERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HYPER",
+      "quote_asset": "USDT",
+      "volume_24h": 2476945.9879788016,
+      "open_interest": 2029493.73,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "QTUMUSDT": {
+      "symbol": "QTUMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "QTUM",
+      "quote_asset": "USDT",
+      "volume_24h": 1406182.7652491538,
+      "open_interest": 2024804.23,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090774
+    },
+    "KERNELUSDT": {
+      "symbol": "KERNELUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KERNEL",
+      "quote_asset": "USDT",
+      "volume_24h": 2160775.563029963,
+      "open_interest": 2020238.22,
+      "funding_rate": 0.00255,
+      "last_traded_at": 1771091047
+    },
+    "RAREUSDT": {
+      "symbol": "RAREUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RARE",
+      "quote_asset": "USDT",
+      "volume_24h": 1632214.8024053571,
+      "open_interest": 2017679.3,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "ERAUSDT": {
+      "symbol": "ERAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ERA",
+      "quote_asset": "USDT",
+      "volume_24h": 2707672.7681677365,
+      "open_interest": 2016227.49,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "ONUSDT": {
+      "symbol": "ONUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ON",
+      "quote_asset": "USDT",
+      "volume_24h": 2635634.783484079,
+      "open_interest": 2014375.84,
+      "funding_rate": 0.02288,
+      "last_traded_at": 1771090788
+    },
+    "MELANIAUSDT": {
+      "symbol": "MELANIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MELANIA",
+      "quote_asset": "USDT",
+      "volume_24h": 1749247.6104491213,
+      "open_interest": 2000834.26,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "STBLUSDT": {
+      "symbol": "STBLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STBL",
+      "quote_asset": "USDT",
+      "volume_24h": 2556939.8302015625,
+      "open_interest": 1998883.65,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "USELESSUSDT": {
+      "symbol": "USELESSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "USELESS",
+      "quote_asset": "USDT",
+      "volume_24h": 8739304.8885503,
+      "open_interest": 1997134.74,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "CVXUSDT": {
+      "symbol": "CVXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CVX",
+      "quote_asset": "USDT",
+      "volume_24h": 1063714.4363581233,
+      "open_interest": 1989969.15,
+      "funding_rate": -0.020234,
+      "last_traded_at": 1771091089
+    },
+    "ANKRUSDT": {
+      "symbol": "ANKRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ANKR",
+      "quote_asset": "USDT",
+      "volume_24h": 1941685.7262126454,
+      "open_interest": 1986871.7,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "KAVAUSDT": {
+      "symbol": "KAVAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KAVA",
+      "quote_asset": "USDT",
+      "volume_24h": 1216228.1081995622,
+      "open_interest": 1958848.14,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090844
+    },
+    "BANANAUSDT": {
+      "symbol": "BANANAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BANANA",
+      "quote_asset": "USDT",
+      "volume_24h": 1461531.3299398695,
+      "open_interest": 1952076.64,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "EDENUSDT": {
+      "symbol": "EDENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "EDEN",
+      "quote_asset": "USDT",
+      "volume_24h": 2592749.068483909,
+      "open_interest": 1948542.28,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "AINUSDT": {
+      "symbol": "AINUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AIN",
+      "quote_asset": "USDT",
+      "volume_24h": 500456.39675960224,
+      "open_interest": 1940344.33,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "VELVETUSDT": {
+      "symbol": "VELVETUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VELVET",
+      "quote_asset": "USDT",
+      "volume_24h": 1807602.4348206788,
+      "open_interest": 1938007.04,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "DEXEUSDT": {
+      "symbol": "DEXEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DEXE",
+      "quote_asset": "USDT",
+      "volume_24h": 2135733.102522751,
+      "open_interest": 1930388.58,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090856
+    },
+    "ORCAUSDT": {
+      "symbol": "ORCAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ORCA",
+      "quote_asset": "USDT",
+      "volume_24h": 1061380.7145031558,
+      "open_interest": 1927027.56,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "LISTAUSDT": {
+      "symbol": "LISTAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LISTA",
+      "quote_asset": "USDT",
+      "volume_24h": 1193120.9765895745,
+      "open_interest": 1921505.16,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090780
+    },
+    "HEMIUSDT": {
+      "symbol": "HEMIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HEMI",
+      "quote_asset": "USDT",
+      "volume_24h": 4985759.988536216,
+      "open_interest": 1920772.93,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091093
+    },
+    "ARPAUSDT": {
+      "symbol": "ARPAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ARPA",
+      "quote_asset": "USDT",
+      "volume_24h": 1791711.513525976,
+      "open_interest": 1920458.64,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090852
+    },
+    "NOTUSDT": {
+      "symbol": "NOTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NOT",
+      "quote_asset": "USDT",
+      "volume_24h": 2179649.303541102,
+      "open_interest": 1915590.64,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090779
+    },
+    "KMNOUSDT": {
+      "symbol": "KMNOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KMNO",
+      "quote_asset": "USDT",
+      "volume_24h": 1465322.7156076566,
+      "open_interest": 1912620.65,
+      "funding_rate": -0.010037,
+      "last_traded_at": 1771090786
+    },
+    "SAPIENUSDT": {
+      "symbol": "SAPIENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SAPIEN",
+      "quote_asset": "USDT",
+      "volume_24h": 4409236.488169546,
+      "open_interest": 1907249.95,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "RSRUSDT": {
+      "symbol": "RSRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RSR",
+      "quote_asset": "USDT",
+      "volume_24h": 2768623.159092363,
+      "open_interest": 1892091.86,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "RAYSOLUSDT": {
+      "symbol": "RAYSOLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RAYSOL",
+      "quote_asset": "USDT",
+      "volume_24h": 2523425.102794896,
+      "open_interest": 1885587.38,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "POLYXUSDT": {
+      "symbol": "POLYXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "POLYX",
+      "quote_asset": "USDT",
+      "volume_24h": 957250.1513687614,
+      "open_interest": 1885023.48,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091043
+    },
+    "KSMUSDT": {
+      "symbol": "KSMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KSM",
+      "quote_asset": "USDT",
+      "volume_24h": 5660296.436272213,
+      "open_interest": 1873196.77,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "GMXUSDT": {
+      "symbol": "GMXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GMX",
+      "quote_asset": "USDT",
+      "volume_24h": 1157936.865917189,
+      "open_interest": 1852672.88,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090855
+    },
+    "DEGOUSDT": {
+      "symbol": "DEGOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DEGO",
+      "quote_asset": "USDT",
+      "volume_24h": 478446.2660455684,
+      "open_interest": 1851551.23,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "ELSAUSDT": {
+      "symbol": "ELSAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ELSA",
+      "quote_asset": "USDT",
+      "volume_24h": 2629428.157090892,
+      "open_interest": 1836122.8,
+      "funding_rate": -0.043379,
+      "last_traded_at": 1771090856
+    },
+    "RVNUSDT": {
+      "symbol": "RVNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RVN",
+      "quote_asset": "USDT",
+      "volume_24h": 1095919.9217560564,
+      "open_interest": 1833179.89,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090848
+    },
+    "KOMAUSDT": {
+      "symbol": "KOMAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KOMA",
+      "quote_asset": "USDT",
+      "volume_24h": 1077531.8950810656,
+      "open_interest": 1827683.25,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "XVSUSDT": {
+      "symbol": "XVSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XVS",
+      "quote_asset": "USDT",
+      "volume_24h": 1038456.3933992612,
+      "open_interest": 1820107.2,
+      "funding_rate": -0.01362,
+      "last_traded_at": 1771090856
+    },
+    "SSVUSDT": {
+      "symbol": "SSVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SSV",
+      "quote_asset": "USDT",
+      "volume_24h": 2902170.156427926,
+      "open_interest": 1812670.1,
+      "funding_rate": 0.007115,
+      "last_traded_at": 1771090856
+    },
+    "LSKUSDT": {
+      "symbol": "LSKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LSK",
+      "quote_asset": "USDT",
+      "volume_24h": 1708958.36286402,
+      "open_interest": 1781049.73,
+      "funding_rate": 0.002343999999999999,
+      "last_traded_at": 1771090774
+    },
+    "KNCUSDT": {
+      "symbol": "KNCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "KNC",
+      "quote_asset": "USDT",
+      "volume_24h": 1954229.6284105654,
+      "open_interest": 1754493.6,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090774
+    },
+    "DRIFTUSDT": {
+      "symbol": "DRIFTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DRIFT",
+      "quote_asset": "USDT",
+      "volume_24h": 2769468.902088287,
+      "open_interest": 1746530.45,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090784
+    },
+    "PLAYUSDT": {
+      "symbol": "PLAYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PLAY",
+      "quote_asset": "USDT",
+      "volume_24h": 11427657.391218452,
+      "open_interest": 1712026.92,
+      "funding_rate": -0.090757,
+      "last_traded_at": 1771091092
+    },
+    "UMAUSDT": {
+      "symbol": "UMAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "UMA",
+      "quote_asset": "USDT",
+      "volume_24h": 1113942.0717939823,
+      "open_interest": 1709998.76,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090856
+    },
+    "STORJUSDT": {
+      "symbol": "STORJUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STORJ",
+      "quote_asset": "USDT",
+      "volume_24h": 2025998.6508106042,
+      "open_interest": 1708675.95,
+      "funding_rate": 0.000962,
+      "last_traded_at": 1771090845
+    },
+    "APRUSDT": {
+      "symbol": "APRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "APR",
+      "quote_asset": "USDT",
+      "volume_24h": 7979390.327902289,
+      "open_interest": 1702619.06,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "RECALLUSDT": {
+      "symbol": "RECALLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RECALL",
+      "quote_asset": "USDT",
+      "volume_24h": 15878143.598386602,
+      "open_interest": 1697307.8,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "HIPPOUSDT": {
+      "symbol": "HIPPOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HIPPO",
+      "quote_asset": "USDT",
+      "volume_24h": 1507022.0571165567,
+      "open_interest": 1670476.67,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090784
+    },
+    "BLESSUSDT": {
+      "symbol": "BLESSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BLESS",
+      "quote_asset": "USDT",
+      "volume_24h": 2755066.9155006995,
+      "open_interest": 1669016.06,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090687
+    },
+    "VINEUSDT": {
+      "symbol": "VINEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VINE",
+      "quote_asset": "USDT",
+      "volume_24h": 5596664.261466562,
+      "open_interest": 1665585.44,
+      "funding_rate": 0.005577,
+      "last_traded_at": 1771090930
+    },
+    "HOLOUSDT": {
+      "symbol": "HOLOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HOLO",
+      "quote_asset": "USDT",
+      "volume_24h": 1889604.8700666116,
+      "open_interest": 1660925.2,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "FLUIDUSDT": {
+      "symbol": "FLUIDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FLUID",
+      "quote_asset": "USDT",
+      "volume_24h": 1735028.6535688944,
+      "open_interest": 1653116.51,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090787
+    },
+    "MAVUSDT": {
+      "symbol": "MAVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MAV",
+      "quote_asset": "USDT",
+      "volume_24h": 815516.2728625184,
+      "open_interest": 1649721.42,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "SAGAUSDT": {
+      "symbol": "SAGAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SAGA",
+      "quote_asset": "USDT",
+      "volume_24h": 2416826.3449708596,
+      "open_interest": 1648401.96,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090778
+    },
+    "ASTRUSDT": {
+      "symbol": "ASTRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ASTR",
+      "quote_asset": "USDT",
+      "volume_24h": 1137444.111137489,
+      "open_interest": 1644267.1,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090853
+    },
+    "IOTXUSDT": {
+      "symbol": "IOTXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IOTX",
+      "quote_asset": "USDT",
+      "volume_24h": 1389370.8835828977,
+      "open_interest": 1638663.72,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090849
+    },
+    "MIRAUSDT": {
+      "symbol": "MIRAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MIRA",
+      "quote_asset": "USDT",
+      "volume_24h": 3156089.040330487,
+      "open_interest": 1638370.14,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090689
+    },
+    "ALLUSDT": {
+      "symbol": "ALLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ALL",
+      "quote_asset": "USDT",
+      "volume_24h": 830839.2018055397,
+      "open_interest": 1634303.27,
+      "funding_rate": -0.053823,
+      "last_traded_at": 1771091092
+    },
+    "HEIUSDT": {
+      "symbol": "HEIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HEI",
+      "quote_asset": "USDT",
+      "volume_24h": 491118.6127913765,
+      "open_interest": 1624536.79,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "CROSSUSDT": {
+      "symbol": "CROSSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CROSS",
+      "quote_asset": "USDT",
+      "volume_24h": 381370.9935365407,
+      "open_interest": 1599391.5,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "NEWTUSDT": {
+      "symbol": "NEWTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NEWT",
+      "quote_asset": "USDT",
+      "volume_24h": 2946324.6103801983,
+      "open_interest": 1584299.41,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "DOLOUSDT": {
+      "symbol": "DOLOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DOLO",
+      "quote_asset": "USDT",
+      "volume_24h": 3567321.514658257,
+      "open_interest": 1583416.81,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "LQTYUSDT": {
+      "symbol": "LQTYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LQTY",
+      "quote_asset": "USDT",
+      "volume_24h": 2474534.8953616153,
+      "open_interest": 1579778.61,
+      "funding_rate": -0.013451,
+      "last_traded_at": 1771090856
+    },
+    "VANRYUSDT": {
+      "symbol": "VANRYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VANRY",
+      "quote_asset": "USDT",
+      "volume_24h": 1544156.5770662057,
+      "open_interest": 1573646.1,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090777
+    },
+    "SXTUSDT": {
+      "symbol": "SXTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SXT",
+      "quote_asset": "USDT",
+      "volume_24h": 1182996.4159975809,
+      "open_interest": 1572210.92,
+      "funding_rate": -0.003363,
+      "last_traded_at": 1771091048
+    },
+    "BBUSDT": {
+      "symbol": "BBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BB",
+      "quote_asset": "USDT",
+      "volume_24h": 1431984.9718975455,
+      "open_interest": 1571208.87,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090779
+    },
+    "ONEUSDT": {
+      "symbol": "ONEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ONE",
+      "quote_asset": "USDT",
+      "volume_24h": 1732181.6031274449,
+      "open_interest": 1570741.6,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090848
+    },
+    "AEVOUSDT": {
+      "symbol": "AEVOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AEVO",
+      "quote_asset": "USDT",
+      "volume_24h": 2725062.116458006,
+      "open_interest": 1558051.07,
+      "funding_rate": -0.0095,
+      "last_traded_at": 1771090777
+    },
+    "USUALUSDT": {
+      "symbol": "USUALUSDT",
+      "status": "ACTIVE",
+      "base_asset": "USUAL",
+      "quote_asset": "USDT",
+      "volume_24h": 1074296.3469554102,
+      "open_interest": 1555497.82,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "BIGTIMEUSDT": {
+      "symbol": "BIGTIMEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BIGTIME",
+      "quote_asset": "USDT",
+      "volume_24h": 1909855.7473842108,
+      "open_interest": 1553447.36,
+      "funding_rate": -0.009293000000000001,
+      "last_traded_at": 1771091043
+    },
+    "MEWUSDT": {
+      "symbol": "MEWUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MEW",
+      "quote_asset": "USDT",
+      "volume_24h": 4467456.55211139,
+      "open_interest": 1552392.0,
+      "funding_rate": 0.001738,
+      "last_traded_at": 1771090780
+    },
+    "ALICEUSDT": {
+      "symbol": "ALICEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ALICE",
+      "quote_asset": "USDT",
+      "volume_24h": 2513011.7501537153,
+      "open_interest": 1543848.46,
+      "funding_rate": -0.094681,
+      "last_traded_at": 1771090848
+    },
+    "DOGSUSDT": {
+      "symbol": "DOGSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DOGS",
+      "quote_asset": "USDT",
+      "volume_24h": 760562.3097151121,
+      "open_interest": 1541723.68,
+      "funding_rate": 0.001426,
+      "last_traded_at": 1771090781
+    },
+    "FUNUSDT": {
+      "symbol": "FUNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FUN",
+      "quote_asset": "USDT",
+      "volume_24h": 1690226.2879309286,
+      "open_interest": 1538018.4,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "METISUSDT": {
+      "symbol": "METISUSDT",
+      "status": "ACTIVE",
+      "base_asset": "METIS",
+      "quote_asset": "USDT",
+      "volume_24h": 1285499.3540400479,
+      "open_interest": 1531493.17,
+      "funding_rate": -0.002825,
+      "last_traded_at": 1771090777
+    },
+    "RDNTUSDT": {
+      "symbol": "RDNTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RDNT",
+      "quote_asset": "USDT",
+      "volume_24h": 1109261.5101549982,
+      "open_interest": 1520174.82,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "GTCUSDT": {
+      "symbol": "GTCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GTC",
+      "quote_asset": "USDT",
+      "volume_24h": 904626.5263577709,
+      "open_interest": 1519584.04,
+      "funding_rate": -0.33431,
+      "last_traded_at": 1771090849
+    },
+    "BANDUSDT": {
+      "symbol": "BANDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BAND",
+      "quote_asset": "USDT",
+      "volume_24h": 1308807.859855002,
+      "open_interest": 1509790.63,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090844
+    },
+    "ICXUSDT": {
+      "symbol": "ICXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ICX",
+      "quote_asset": "USDT",
+      "volume_24h": 1718050.7735369015,
+      "open_interest": 1503922.16,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "HMSTRUSDT": {
+      "symbol": "HMSTRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HMSTR",
+      "quote_asset": "USDT",
+      "volume_24h": 1142201.58123025,
+      "open_interest": 1501289.46,
+      "funding_rate": -0.005312,
+      "last_traded_at": 1771090781
+    },
+    "ENJUSDT": {
+      "symbol": "ENJUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ENJ",
+      "quote_asset": "USDT",
+      "volume_24h": 1522519.596724816,
+      "open_interest": 1498353.0,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "MITOUSDT": {
+      "symbol": "MITOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MITO",
+      "quote_asset": "USDT",
+      "volume_24h": 724029.4678886941,
+      "open_interest": 1488708.52,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "EPICUSDT": {
+      "symbol": "EPICUSDT",
+      "status": "ACTIVE",
+      "base_asset": "EPIC",
+      "quote_asset": "USDT",
+      "volume_24h": 2623116.2367667984,
+      "open_interest": 1482342.6,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "EVAAUSDT": {
+      "symbol": "EVAAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "EVAA",
+      "quote_asset": "USDT",
+      "volume_24h": 1223126.4977362743,
+      "open_interest": 1481029.79,
+      "funding_rate": 0.05391,
+      "last_traded_at": 1771090690
+    },
+    "TREEUSDT": {
+      "symbol": "TREEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TREE",
+      "quote_asset": "USDT",
+      "volume_24h": 3513737.3479867172,
+      "open_interest": 1477048.49,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "WOOUSDT": {
+      "symbol": "WOOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WOO",
+      "quote_asset": "USDT",
+      "volume_24h": 1869485.8690992233,
+      "open_interest": 1472441.1,
+      "funding_rate": 0.009609,
+      "last_traded_at": 1771090852
+    },
+    "PROMUSDT": {
+      "symbol": "PROMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PROM",
+      "quote_asset": "USDT",
+      "volume_24h": 2218343.752908638,
+      "open_interest": 1450931.69,
+      "funding_rate": -0.003181,
+      "last_traded_at": 1771090931
+    },
+    "DAMUSDT": {
+      "symbol": "DAMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DAM",
+      "quote_asset": "USDT",
+      "volume_24h": 589990.451013342,
+      "open_interest": 1442520.38,
+      "funding_rate": 0.01374,
+      "last_traded_at": 1771091092
+    },
+    "RONINUSDT": {
+      "symbol": "RONINUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RONIN",
+      "quote_asset": "USDT",
+      "volume_24h": 1537073.0190915358,
+      "open_interest": 1421486.68,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090776
+    },
+    "CKBUSDT": {
+      "symbol": "CKBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CKB",
+      "quote_asset": "USDT",
+      "volume_24h": 1016272.9489902363,
+      "open_interest": 1413572.98,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "SCRUSDT": {
+      "symbol": "SCRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SCR",
+      "quote_asset": "USDT",
+      "volume_24h": 636146.0300816996,
+      "open_interest": 1409542.75,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090782
+    },
+    "CVCUSDT": {
+      "symbol": "CVCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CVC",
+      "quote_asset": "USDT",
+      "volume_24h": 841444.3983673658,
+      "open_interest": 1408966.35,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091051
+    },
+    "RLCUSDT": {
+      "symbol": "RLCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RLC",
+      "quote_asset": "USDT",
+      "volume_24h": 1319413.5432419193,
+      "open_interest": 1408357.97,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090844
+    },
+    "TURTLEUSDT": {
+      "symbol": "TURTLEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TURTLE",
+      "quote_asset": "USDT",
+      "volume_24h": 1235454.1258013805,
+      "open_interest": 1404456.4,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "AGLDUSDT": {
+      "symbol": "AGLDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AGLD",
+      "quote_asset": "USDT",
+      "volume_24h": 714282.1477530824,
+      "open_interest": 1395671.47,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771091043
+    },
+    "ACEUSDT": {
+      "symbol": "ACEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ACE",
+      "quote_asset": "USDT",
+      "volume_24h": 2615540.6066858685,
+      "open_interest": 1395617.13,
+      "funding_rate": -0.048137,
+      "last_traded_at": 1771090686
+    },
+    "GRIFFAINUSDT": {
+      "symbol": "GRIFFAINUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GRIFFAIN",
+      "quote_asset": "USDT",
+      "volume_24h": 1065999.1244053026,
+      "open_interest": 1393025.23,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "LABUSDT": {
+      "symbol": "LABUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LAB",
+      "quote_asset": "USDT",
+      "volume_24h": 2285650.2448148956,
+      "open_interest": 1383274.99,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "CHRUSDT": {
+      "symbol": "CHRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CHR",
+      "quote_asset": "USDT",
+      "volume_24h": 948510.3800828225,
+      "open_interest": 1382966.95,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090848
+    },
+    "WETUSDT": {
+      "symbol": "WETUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WET",
+      "quote_asset": "USDT",
+      "volume_24h": 2257892.9790859935,
+      "open_interest": 1377034.18,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "CLANKERUSDT": {
+      "symbol": "CLANKERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CLANKER",
+      "quote_asset": "USDT",
+      "volume_24h": 4849424.02689018,
+      "open_interest": 1373170.19,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090789
+    },
+    "ARKUSDT": {
+      "symbol": "ARKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ARK",
+      "quote_asset": "USDT",
+      "volume_24h": 1754820.8513946636,
+      "open_interest": 1371564.22,
+      "funding_rate": -0.000197,
+      "last_traded_at": 1771091043
+    },
+    "PROMPTUSDT": {
+      "symbol": "PROMPTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PROMPT",
+      "quote_asset": "USDT",
+      "volume_24h": 1731023.3769020285,
+      "open_interest": 1369888.91,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "HAEDALUSDT": {
+      "symbol": "HAEDALUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HAEDAL",
+      "quote_asset": "USDT",
+      "volume_24h": 1382246.3884392902,
+      "open_interest": 1369277.26,
+      "funding_rate": 0.002467,
+      "last_traded_at": 1771091048
+    },
+    "REZUSDT": {
+      "symbol": "REZUSDT",
+      "status": "ACTIVE",
+      "base_asset": "REZ",
+      "quote_asset": "USDT",
+      "volume_24h": 1184344.800050447,
+      "open_interest": 1368656.64,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090778
+    },
+    "REDUSDT": {
+      "symbol": "REDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RED",
+      "quote_asset": "USDT",
+      "volume_24h": 1353438.1027407732,
+      "open_interest": 1364143.09,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "COTIUSDT": {
+      "symbol": "COTIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "COTI",
+      "quote_asset": "USDT",
+      "volume_24h": 1429019.398997706,
+      "open_interest": 1360164.13,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090848
+    },
+    "MOVRUSDT": {
+      "symbol": "MOVRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MOVR",
+      "quote_asset": "USDT",
+      "volume_24h": 1390732.9452563173,
+      "open_interest": 1344612.76,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "DENTUSDT": {
+      "symbol": "DENTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DENT",
+      "quote_asset": "USDT",
+      "volume_24h": 898264.8106917216,
+      "open_interest": 1340928.84,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090848
+    },
+    "CARVUSDT": {
+      "symbol": "CARVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CARV",
+      "quote_asset": "USDT",
+      "volume_24h": 995126.3142770492,
+      "open_interest": 1340673.8,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "WAXPUSDT": {
+      "symbol": "WAXPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "WAXP",
+      "quote_asset": "USDT",
+      "volume_24h": 714090.32871562,
+      "open_interest": 1339662.16,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091043
+    },
+    "HOTUSDT": {
+      "symbol": "HOTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HOT",
+      "quote_asset": "USDT",
+      "volume_24h": 1379940.1101290274,
+      "open_interest": 1339327.26,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090849
+    },
+    "ACXUSDT": {
+      "symbol": "ACXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ACX",
+      "quote_asset": "USDT",
+      "volume_24h": 513583.947475341,
+      "open_interest": 1335120.44,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "FIOUSDT": {
+      "symbol": "FIOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FIO",
+      "quote_asset": "USDT",
+      "volume_24h": 665928.7722259029,
+      "open_interest": 1326842.06,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "TACUSDT": {
+      "symbol": "TACUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TAC",
+      "quote_asset": "USDT",
+      "volume_24h": 472045.18393285875,
+      "open_interest": 1318093.51,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "ACUUSDT": {
+      "symbol": "ACUUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ACU",
+      "quote_asset": "USDT",
+      "volume_24h": 7288544.592522262,
+      "open_interest": 1315610.31,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090856
+    },
+    "SCRTUSDT": {
+      "symbol": "SCRTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SCRT",
+      "quote_asset": "USDT",
+      "volume_24h": 1017058.4459908025,
+      "open_interest": 1314375.74,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090784
+    },
+    "ARIAUSDT": {
+      "symbol": "ARIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ARIA",
+      "quote_asset": "USDT",
+      "volume_24h": 609278.8827527121,
+      "open_interest": 1312761.87,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "NFPUSDT": {
+      "symbol": "NFPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NFP",
+      "quote_asset": "USDT",
+      "volume_24h": 579551.8616534427,
+      "open_interest": 1309070.56,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090685
+    },
+    "BELUSDT": {
+      "symbol": "BELUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BEL",
+      "quote_asset": "USDT",
+      "volume_24h": 741180.9628534936,
+      "open_interest": 1307309.92,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "NTRNUSDT": {
+      "symbol": "NTRNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "NTRN",
+      "quote_asset": "USDT",
+      "volume_24h": 904319.8776220045,
+      "open_interest": 1306098.7,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "RIFUSDT": {
+      "symbol": "RIFUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RIF",
+      "quote_asset": "USDT",
+      "volume_24h": 1826635.9927666427,
+      "open_interest": 1300073.36,
+      "funding_rate": -0.011606,
+      "last_traded_at": 1771091043
+    },
+    "TRUUSDT": {
+      "symbol": "TRUUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRU",
+      "quote_asset": "USDT",
+      "volume_24h": 1027689.1258769942,
+      "open_interest": 1286977.05,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "FIDAUSDT": {
+      "symbol": "FIDAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FIDA",
+      "quote_asset": "USDT",
+      "volume_24h": 1155848.0740266119,
+      "open_interest": 1277049.55,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "COOKIEUSDT": {
+      "symbol": "COOKIEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "COOKIE",
+      "quote_asset": "USDT",
+      "volume_24h": 1083889.4468874119,
+      "open_interest": 1275900.84,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "XAIUSDT": {
+      "symbol": "XAIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XAI",
+      "quote_asset": "USDT",
+      "volume_24h": 1355555.1297377488,
+      "open_interest": 1260647.91,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "GOATUSDT": {
+      "symbol": "GOATUSDT",
+      "status": "ACTIVE",
+      "base_asset": "GOAT",
+      "quote_asset": "USDT",
+      "volume_24h": 2823651.136667625,
+      "open_interest": 1257786.86,
+      "funding_rate": -0.002287,
+      "last_traded_at": 1771090782
+    },
+    "HFTUSDT": {
+      "symbol": "HFTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HFT",
+      "quote_asset": "USDT",
+      "volume_24h": 1028622.4938103171,
+      "open_interest": 1243124.52,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "ALPINEUSDT": {
+      "symbol": "ALPINEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ALPINE",
+      "quote_asset": "USDT",
+      "volume_24h": 619807.2929158207,
+      "open_interest": 1239339.8,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "A2ZUSDT": {
+      "symbol": "A2ZUSDT",
+      "status": "ACTIVE",
+      "base_asset": "A2Z",
+      "quote_asset": "USDT",
+      "volume_24h": 666344.664910847,
+      "open_interest": 1233916.35,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "IOSTUSDT": {
+      "symbol": "IOSTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IOST",
+      "quote_asset": "USDT",
+      "volume_24h": 701389.250137405,
+      "open_interest": 1231471.44,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090774
+    },
+    "VICUSDT": {
+      "symbol": "VICUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VIC",
+      "quote_asset": "USDT",
+      "volume_24h": 737326.7518669089,
+      "open_interest": 1228985.74,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "HOOKUSDT": {
+      "symbol": "HOOKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HOOK",
+      "quote_asset": "USDT",
+      "volume_24h": 777463.1124161492,
+      "open_interest": 1224761.29,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090853
+    },
+    "AIOTUSDT": {
+      "symbol": "AIOTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AIOT",
+      "quote_asset": "USDT",
+      "volume_24h": 1457944.2934658795,
+      "open_interest": 1222652.73,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "IRUSDT": {
+      "symbol": "IRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "IR",
+      "quote_asset": "USDT",
+      "volume_24h": 1094546.0034677857,
+      "open_interest": 1203269.6,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090789
+    },
+    "BRETTUSDT": {
+      "symbol": "BRETTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BRETT",
+      "quote_asset": "USDT",
+      "volume_24h": 3258444.5034951293,
+      "open_interest": 1193384.3,
+      "funding_rate": -0.007012,
+      "last_traded_at": 1771090781
+    },
+    "SHELLUSDT": {
+      "symbol": "SHELLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SHELL",
+      "quote_asset": "USDT",
+      "volume_24h": 1810633.0660966646,
+      "open_interest": 1182856.63,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "BDXNUSDT": {
+      "symbol": "BDXNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BDXN",
+      "quote_asset": "USDT",
+      "volume_24h": 683935.5636123108,
+      "open_interest": 1178063.24,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091088
+    },
+    "PHBUSDT": {
+      "symbol": "PHBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PHB",
+      "quote_asset": "USDT",
+      "volume_24h": 768371.2721286066,
+      "open_interest": 1173314.44,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090855
+    },
+    "SAFEUSDT": {
+      "symbol": "SAFEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SAFE",
+      "quote_asset": "USDT",
+      "volume_24h": 4812871.532948196,
+      "open_interest": 1170264.79,
+      "funding_rate": -0.023111,
+      "last_traded_at": 1771090782
+    },
+    "CHILLGUYUSDT": {
+      "symbol": "CHILLGUYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CHILLGUY",
+      "quote_asset": "USDT",
+      "volume_24h": 3272627.145636041,
+      "open_interest": 1158119.01,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "BICOUSDT": {
+      "symbol": "BICOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BICO",
+      "quote_asset": "USDT",
+      "volume_24h": 805668.1602537202,
+      "open_interest": 1157516.66,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771091043
+    },
+    "CETUSUSDT": {
+      "symbol": "CETUSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CETUS",
+      "quote_asset": "USDT",
+      "volume_24h": 2175912.3289908445,
+      "open_interest": 1154762.83,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090783
+    },
+    "SLPUSDT": {
+      "symbol": "SLPUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SLP",
+      "quote_asset": "USDT",
+      "volume_24h": 5643602.041876319,
+      "open_interest": 1153499.22,
+      "funding_rate": -0.014552,
+      "last_traded_at": 1771091089
+    },
+    "FLOCKUSDT": {
+      "symbol": "FLOCKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FLOCK",
+      "quote_asset": "USDT",
+      "volume_24h": 1135978.0482150987,
+      "open_interest": 1140453.0,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090686
+    },
+    "BROCCOLIF3BUSDT": {
+      "symbol": "BROCCOLIF3BUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BROCCOLIF3B",
+      "quote_asset": "USDT",
+      "volume_24h": 423640.8071961882,
+      "open_interest": 1133459.45,
+      "funding_rate": 0.129962,
+      "last_traded_at": 1771091047
+    },
+    "ORDERUSDT": {
+      "symbol": "ORDERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ORDER",
+      "quote_asset": "USDT",
+      "volume_24h": 901481.2671933415,
+      "open_interest": 1131603.49,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090689
+    },
+    "SPELLUSDT": {
+      "symbol": "SPELLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SPELL",
+      "quote_asset": "USDT",
+      "volume_24h": 646718.0619230624,
+      "open_interest": 1131550.85,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090853
+    },
+    "INXUSDT": {
+      "symbol": "INXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "INX",
+      "quote_asset": "USDT",
+      "volume_24h": 4238049.297001821,
+      "open_interest": 1129519.71,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091093
+    },
+    "TOWNSUSDT": {
+      "symbol": "TOWNSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TOWNS",
+      "quote_asset": "USDT",
+      "volume_24h": 1064077.2261723022,
+      "open_interest": 1116522.78,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091092
+    },
+    "MLNUSDT": {
+      "symbol": "MLNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MLN",
+      "quote_asset": "USDT",
+      "volume_24h": 1290015.371248365,
+      "open_interest": 1113976.52,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "ZENUSDT": {
+      "symbol": "ZENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZEN",
+      "quote_asset": "USDT",
+      "volume_24h": 24824959.671853848,
+      "open_interest": 1101579.65,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090845
+    },
+    "DOODUSDT": {
+      "symbol": "DOODUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DOOD",
+      "quote_asset": "USDT",
+      "volume_24h": 2622494.5966939223,
+      "open_interest": 1099866.9,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090787
+    },
+    "VTHOUSDT": {
+      "symbol": "VTHOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VTHO",
+      "quote_asset": "USDT",
+      "volume_24h": 1153655.7023229103,
+      "open_interest": 1089920.59,
+      "funding_rate": -0.003498,
+      "last_traded_at": 1771090930
+    },
+    "USTCUSDT": {
+      "symbol": "USTCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "USTC",
+      "quote_asset": "USDT",
+      "volume_24h": 1315914.9941384257,
+      "open_interest": 1079259.96,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "HIGHUSDT": {
+      "symbol": "HIGHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HIGH",
+      "quote_asset": "USDT",
+      "volume_24h": 683564.8337095391,
+      "open_interest": 1078280.9,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090853
+    },
+    "BNTUSDT": {
+      "symbol": "BNTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BNT",
+      "quote_asset": "USDT",
+      "volume_24h": 688261.5497147023,
+      "open_interest": 1068686.27,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090930
+    },
+    "PUNDIXUSDT": {
+      "symbol": "PUNDIXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PUNDIX",
+      "quote_asset": "USDT",
+      "volume_24h": 603563.8221114033,
+      "open_interest": 1065159.4,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "AIUSDT": {
+      "symbol": "AIUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AI",
+      "quote_asset": "USDT",
+      "volume_24h": 1017153.7526228942,
+      "open_interest": 1063836.18,
+      "funding_rate": 0.002376,
+      "last_traded_at": 1771090686
+    },
+    "ILVUSDT": {
+      "symbol": "ILVUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ILV",
+      "quote_asset": "USDT",
+      "volume_24h": 876179.3131174943,
+      "open_interest": 1059035.95,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "ZETAUSDT": {
+      "symbol": "ZETAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZETA",
+      "quote_asset": "USDT",
+      "volume_24h": 669475.4275321125,
+      "open_interest": 1027418.62,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090776
+    },
+    "MOCAUSDT": {
+      "symbol": "MOCAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MOCA",
+      "quote_asset": "USDT",
+      "volume_24h": 858956.0113652358,
+      "open_interest": 1013468.21,
+      "funding_rate": -0.002641,
+      "last_traded_at": 1771090785
+    },
+    "RLSUSDT": {
+      "symbol": "RLSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RLS",
+      "quote_asset": "USDT",
+      "volume_24h": 1626933.4864975412,
+      "open_interest": 995314.48,
+      "funding_rate": 0.008653,
+      "last_traded_at": 1771090934
+    },
+    "XANUSDT": {
+      "symbol": "XANUSDT",
+      "status": "ACTIVE",
+      "base_asset": "XAN",
+      "quote_asset": "USDT",
+      "volume_24h": 1209011.9114273097,
+      "open_interest": 994933.5,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090690
+    },
+    "PORTALUSDT": {
+      "symbol": "PORTALUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PORTAL",
+      "quote_asset": "USDT",
+      "volume_24h": 607800.9445574373,
+      "open_interest": 986538.6,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090777
+    },
+    "AKTUSDT": {
+      "symbol": "AKTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AKT",
+      "quote_asset": "USDT",
+      "volume_24h": 1489495.9821987804,
+      "open_interest": 986509.48,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090784
+    },
+    "BMTUSDT": {
+      "symbol": "BMTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BMT",
+      "quote_asset": "USDT",
+      "volume_24h": 534910.8773490264,
+      "open_interest": 972594.0,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "BOBUSDT": {
+      "symbol": "BOBUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BOB",
+      "quote_asset": "USDT",
+      "volume_24h": 774277.8829782391,
+      "open_interest": 972303.18,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "OGNUSDT": {
+      "symbol": "OGNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "OGN",
+      "quote_asset": "USDT",
+      "volume_24h": 1167461.1198218153,
+      "open_interest": 963399.0,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090849
+    },
+    "FORTHUSDT": {
+      "symbol": "FORTHUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FORTH",
+      "quote_asset": "USDT",
+      "volume_24h": 296880.6190403452,
+      "open_interest": 939845.9,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091047
+    },
+    "JCTUSDT": {
+      "symbol": "JCTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "JCT",
+      "quote_asset": "USDT",
+      "volume_24h": 1354185.13930114,
+      "open_interest": 935610.5,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090788
+    },
+    "JOEUSDT": {
+      "symbol": "JOEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "JOE",
+      "quote_asset": "USDT",
+      "volume_24h": 716422.8128050711,
+      "open_interest": 931773.9,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090856
+    },
+    "ONGUSDT": {
+      "symbol": "ONGUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ONG",
+      "quote_asset": "USDT",
+      "volume_24h": 988009.3037181819,
+      "open_interest": 930564.92,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "STEEMUSDT": {
+      "symbol": "STEEMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "STEEM",
+      "quote_asset": "USDT",
+      "volume_24h": 632066.3495569897,
+      "open_interest": 927432.51,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "HIVEUSDT": {
+      "symbol": "HIVEUSDT",
+      "status": "ACTIVE",
+      "base_asset": "HIVE",
+      "quote_asset": "USDT",
+      "volume_24h": 838374.9671681082,
+      "open_interest": 914404.67,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090787
+    },
+    "CGPTUSDT": {
+      "symbol": "CGPTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CGPT",
+      "quote_asset": "USDT",
+      "volume_24h": 900341.6520809006,
+      "open_interest": 910428.44,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090786
+    },
+    "ATAUSDT": {
+      "symbol": "ATAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ATA",
+      "quote_asset": "USDT",
+      "volume_24h": 1087738.159632709,
+      "open_interest": 910281.02,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090849
+    },
+    "FLUXUSDT": {
+      "symbol": "FLUXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "FLUX",
+      "quote_asset": "USDT",
+      "volume_24h": 680252.8780468974,
+      "open_interest": 909863.3,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "SPORTFUNUSDT": {
+      "symbol": "SPORTFUNUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SPORTFUN",
+      "quote_asset": "USDT",
+      "volume_24h": 2900330.8219245253,
+      "open_interest": 909582.11,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090856
+    },
+    "TRUSTUSDT": {
+      "symbol": "TRUSTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TRUST",
+      "quote_asset": "USDT",
+      "volume_24h": 1059057.408693753,
+      "open_interest": 896318.02,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "PIXELUSDT": {
+      "symbol": "PIXELUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PIXEL",
+      "quote_asset": "USDT",
+      "volume_24h": 958913.765163747,
+      "open_interest": 888981.07,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090776
+    },
+    "MTLUSDT": {
+      "symbol": "MTLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MTL",
+      "quote_asset": "USDT",
+      "volume_24h": 1245293.0775975026,
+      "open_interest": 885799.41,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090849
+    },
+    "AERGOUSDT": {
+      "symbol": "AERGOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AERGO",
+      "quote_asset": "USDT",
+      "volume_24h": 2255906.426717345,
+      "open_interest": 881837.81,
+      "funding_rate": -0.001018,
+      "last_traded_at": 1771090781
+    },
+    "AVAUSDT": {
+      "symbol": "AVAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "AVA",
+      "quote_asset": "USDT",
+      "volume_24h": 467371.0268368927,
+      "open_interest": 878229.04,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "DIAUSDT": {
+      "symbol": "DIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DIA",
+      "quote_asset": "USDT",
+      "volume_24h": 826405.3890861948,
+      "open_interest": 877173.82,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090782
+    },
+    "CELRUSDT": {
+      "symbol": "CELRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CELR",
+      "quote_asset": "USDT",
+      "volume_24h": 829241.2842193319,
+      "open_interest": 876454.22,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771090848
+    },
+    "COSUSDT": {
+      "symbol": "COSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "COS",
+      "quote_asset": "USDT",
+      "volume_24h": 1440070.9615975316,
+      "open_interest": 866727.99,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "LUMIAUSDT": {
+      "symbol": "LUMIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "LUMIA",
+      "quote_asset": "USDT",
+      "volume_24h": 1524426.9051692865,
+      "open_interest": 857451.93,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090785
+    },
+    "POWRUSDT": {
+      "symbol": "POWRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "POWR",
+      "quote_asset": "USDT",
+      "volume_24h": 766179.0048055168,
+      "open_interest": 842028.63,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091043
+    },
+    "SYSUSDT": {
+      "symbol": "SYSUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SYS",
+      "quote_asset": "USDT",
+      "volume_24h": 871940.0225806236,
+      "open_interest": 821680.68,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "PUMPBTCUSDT": {
+      "symbol": "PUMPBTCUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PUMPBTC",
+      "quote_asset": "USDT",
+      "volume_24h": 750854.9118030034,
+      "open_interest": 807845.47,
+      "funding_rate": 0.007326,
+      "last_traded_at": 1771091089
+    },
+    "PHAUSDT": {
+      "symbol": "PHAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PHA",
+      "quote_asset": "USDT",
+      "volume_24h": 652840.4034565703,
+      "open_interest": 798245.84,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "USUSDT": {
+      "symbol": "USUSDT",
+      "status": "ACTIVE",
+      "base_asset": "US",
+      "quote_asset": "USDT",
+      "volume_24h": 902106.9545454873,
+      "open_interest": 797525.93,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090934
+    },
+    "PUFFERUSDT": {
+      "symbol": "PUFFERUSDT",
+      "status": "ACTIVE",
+      "base_asset": "PUFFER",
+      "quote_asset": "USDT",
+      "volume_24h": 443384.79906358506,
+      "open_interest": 765155.08,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091051
+    },
+    "TLMUSDT": {
+      "symbol": "TLMUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TLM",
+      "quote_asset": "USDT",
+      "volume_24h": 857770.2325709418,
+      "open_interest": 759115.8,
+      "funding_rate": -0.00015,
+      "last_traded_at": 1771090856
+    },
+    "MBOXUSDT": {
+      "symbol": "MBOXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MBOX",
+      "quote_asset": "USDT",
+      "volume_24h": 564342.677292994,
+      "open_interest": 748443.87,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090781
+    },
+    "OXTUSDT": {
+      "symbol": "OXTUSDT",
+      "status": "ACTIVE",
+      "base_asset": "OXT",
+      "quote_asset": "USDT",
+      "volume_24h": 465933.4884628782,
+      "open_interest": 725396.42,
+      "funding_rate": 0.01,
+      "last_traded_at": 1771091043
+    },
+    "ZKJUSDT": {
+      "symbol": "ZKJUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ZKJ",
+      "quote_asset": "USDT",
+      "volume_24h": 637841.635631209,
+      "open_interest": 725013.45,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091050
+    },
+    "RPLUSDT": {
+      "symbol": "RPLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "RPL",
+      "quote_asset": "USDT",
+      "volume_24h": 874130.0697131114,
+      "open_interest": 721275.44,
+      "funding_rate": -0.004952,
+      "last_traded_at": 1771090781
+    },
+    "B3USDT": {
+      "symbol": "B3USDT",
+      "status": "ACTIVE",
+      "base_asset": "B3",
+      "quote_asset": "USDT",
+      "volume_24h": 1583216.5650658915,
+      "open_interest": 696880.4,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090930
+    },
+    "SQDUSDT": {
+      "symbol": "SQDUSDT",
+      "status": "ACTIVE",
+      "base_asset": "SQD",
+      "quote_asset": "USDT",
+      "volume_24h": 902770.8537436475,
+      "open_interest": 665392.67,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    },
+    "CTKUSDT": {
+      "symbol": "CTKUSDT",
+      "status": "ACTIVE",
+      "base_asset": "CTK",
+      "quote_asset": "USDT",
+      "volume_24h": 395596.2154243022,
+      "open_interest": 632422.04,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091048
+    },
+    "MAVIAUSDT": {
+      "symbol": "MAVIAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MAVIA",
+      "quote_asset": "USDT",
+      "volume_24h": 1266531.5183942083,
+      "open_interest": 625576.92,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090776
+    },
+    "TAIKOUSDT": {
+      "symbol": "TAIKOUSDT",
+      "status": "ACTIVE",
+      "base_asset": "TAIKO",
+      "quote_asset": "USDT",
+      "volume_24h": 1403294.5384414203,
+      "open_interest": 622649.24,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091051
+    },
+    "VFYUSDT": {
+      "symbol": "VFYUSDT",
+      "status": "ACTIVE",
+      "base_asset": "VFY",
+      "quote_asset": "USDT",
+      "volume_24h": 563913.2874994965,
+      "open_interest": 605983.36,
+      "funding_rate": 0.058356,
+      "last_traded_at": 1771090690
+    },
+    "ETHWUSDT": {
+      "symbol": "ETHWUSDT",
+      "status": "ACTIVE",
+      "base_asset": "ETHW",
+      "quote_asset": "USDT",
+      "volume_24h": 445530.2037279652,
+      "open_interest": 582178.8,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091044
+    },
+    "BRUSDT": {
+      "symbol": "BRUSDT",
+      "status": "ACTIVE",
+      "base_asset": "BR",
+      "quote_asset": "USDT",
+      "volume_24h": 520174.97473296296,
+      "open_interest": 560326.05,
+      "funding_rate": 0.07814299999999999,
+      "last_traded_at": 1771091047
+    },
+    "DEGENUSDT": {
+      "symbol": "DEGENUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DEGEN",
+      "quote_asset": "USDT",
+      "volume_24h": 1111253.828131281,
+      "open_interest": 504333.99,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090784
+    },
+    "DODOXUSDT": {
+      "symbol": "DODOXUSDT",
+      "status": "ACTIVE",
+      "base_asset": "DODOX",
+      "quote_asset": "USDT",
+      "volume_24h": 543491.0446567439,
+      "open_interest": 482741.99,
+      "funding_rate": 0.002139,
+      "last_traded_at": 1771091043
+    },
+    "MAGMAUSDT": {
+      "symbol": "MAGMAUSDT",
+      "status": "ACTIVE",
+      "base_asset": "MAGMA",
+      "quote_asset": "USDT",
+      "volume_24h": 1219175.370615294,
+      "open_interest": 469092.22,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771090789
+    },
+    "OLUSDT": {
+      "symbol": "OLUSDT",
+      "status": "ACTIVE",
+      "base_asset": "OL",
+      "quote_asset": "USDT",
+      "volume_24h": 522181.66978517844,
+      "open_interest": 457964.56,
+      "funding_rate": 0.005,
+      "last_traded_at": 1771091089
+    }
+  },
+  "summary": {
+    "total_instruments": 509
+  }
+}

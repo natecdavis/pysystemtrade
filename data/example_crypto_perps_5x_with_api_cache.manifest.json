@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-02-14T03:02:41.645999Z",
+  "dataset_metadata": {
+    "requested_start_date": "2023-01-01",
+    "requested_end_date": "2024-12-31",
+    "actual_start_date": "2023-01-01",
+    "actual_end_date": "2024-12-31"
+  },
+  "date_range": {
+    "start": "2023-01-01",
+    "end": "2024-12-31",
+    "total_days": 731
+  },
+  "instruments": {
+    "included": {
+      "BTCUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 731,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ETHUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 731,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BNBUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 731,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SOLUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 731,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XRPUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 731,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      }
+    },
+    "excluded": {}
+  },
+  "summary": {
+    "total_candidates": 5,
+    "included_count": 5,
+    "excluded_count": 0,
+    "exclusion_breakdown": {}
+  }
+}

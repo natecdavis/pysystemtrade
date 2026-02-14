@@ -1,0 +1,217 @@
+{
+  "generated_at": "2026-02-14T03:03:44Z",
+  "expected_as_of_date": "2026-02-14",
+  "dataset_as_of_date": "2026-02-13",
+  "lag_policy_days": 1,
+  "cadence": "daily",
+  "instruments": {
+    "BTCUSDT_PERP": {
+      "last_available_date": "2026-02-13",
+      "staleness_days": 1,
+      "data_sources": {
+        "vision_monthly_through": "2025-12",
+        "vision_daily_through": null,
+        "api_cache_through": "2026-02-13"
+      },
+      "status": "lagging",
+      "warnings": [
+        "Lagging by 1 day(s) (eligibility rules will apply)"
+      ],
+      "missing_months": [],
+      "funding_status": {
+        "last_available_date": "2025-12-31",
+        "staleness_days": 44,
+        "coverage_pct": 1.0,
+        "missing_days": 0,
+        "zero_funding_days": 0,
+        "missing_months": []
+      },
+      "data_quality_metrics": {
+        "price_spikes_50pct": 0,
+        "date_gaps_7d": 0
+      },
+      "lifecycle": {
+        "launch_date": null,
+        "delist_date": null,
+        "status": "active",
+        "expected_history_days": 731,
+        "actual_history_days": 731,
+        "coverage_pct": 1.0
+      },
+      "schema_compliant": true,
+      "exclusion_recommendation": null
+    },
+    "ETHUSDT_PERP": {
+      "last_available_date": "2026-02-13",
+      "staleness_days": 1,
+      "data_sources": {
+        "vision_monthly_through": "2025-12",
+        "vision_daily_through": null,
+        "api_cache_through": "2026-02-13"
+      },
+      "status": "lagging",
+      "warnings": [
+        "Lagging by 1 day(s) (eligibility rules will apply)"
+      ],
+      "missing_months": [],
+      "funding_status": {
+        "last_available_date": "2025-12-31",
+        "staleness_days": 44,
+        "coverage_pct": 1.0,
+        "missing_days": 0,
+        "zero_funding_days": 0,
+        "missing_months": []
+      },
+      "data_quality_metrics": {
+        "price_spikes_50pct": 0,
+        "date_gaps_7d": 0
+      },
+      "lifecycle": {
+        "launch_date": null,
+        "delist_date": null,
+        "status": "active",
+        "expected_history_days": 731,
+        "actual_history_days": 731,
+        "coverage_pct": 1.0
+      },
+      "schema_compliant": true,
+      "exclusion_recommendation": null
+    },
+    "BNBUSDT_PERP": {
+      "last_available_date": "2026-02-13",
+      "staleness_days": 1,
+      "data_sources": {
+        "vision_monthly_through": "2025-12",
+        "vision_daily_through": null,
+        "api_cache_through": "2026-02-13"
+      },
+      "status": "lagging",
+      "warnings": [
+        "Lagging by 1 day(s) (eligibility rules will apply)"
+      ],
+      "missing_months": [],
+      "funding_status": {
+        "last_available_date": "2025-12-31",
+        "staleness_days": 44,
+        "coverage_pct": 1.0,
+        "missing_days": 0,
+        "zero_funding_days": 0,
+        "missing_months": []
+      },
+      "data_quality_metrics": {
+        "price_spikes_50pct": 0,
+        "date_gaps_7d": 0
+      },
+      "lifecycle": {
+        "launch_date": null,
+        "delist_date": null,
+        "status": "active",
+        "expected_history_days": 731,
+        "actual_history_days": 691,
+        "coverage_pct": 0.945280437756498
+      },
+      "schema_compliant": true,
+      "exclusion_recommendation": null
+    },
+    "SOLUSDT_PERP": {
+      "last_available_date": "2026-02-13",
+      "staleness_days": 1,
+      "data_sources": {
+        "vision_monthly_through": "2025-12",
+        "vision_daily_through": null,
+        "api_cache_through": "2026-02-13"
+      },
+      "status": "lagging",
+      "warnings": [
+        "Lagging by 1 day(s) (eligibility rules will apply)"
+      ],
+      "missing_months": [
+        "2022-01",
+        "2022-02"
+      ],
+      "funding_status": {
+        "last_available_date": "2025-12-31",
+        "staleness_days": 44,
+        "coverage_pct": 1.0,
+        "missing_days": 0,
+        "zero_funding_days": 0,
+        "missing_months": []
+      },
+      "data_quality_metrics": {
+        "price_spikes_50pct": 0,
+        "date_gaps_7d": 0
+      },
+      "lifecycle": {
+        "launch_date": null,
+        "delist_date": null,
+        "status": "active",
+        "expected_history_days": 821,
+        "actual_history_days": 505,
+        "coverage_pct": 0.6151035322777101
+      },
+      "schema_compliant": true,
+      "exclusion_recommendation": null
+    },
+    "XRPUSDT_PERP": {
+      "last_available_date": "2026-02-13",
+      "staleness_days": 1,
+      "data_sources": {
+        "vision_monthly_through": "2025-12",
+        "vision_daily_through": null,
+        "api_cache_through": "2026-02-13"
+      },
+      "status": "lagging",
+      "warnings": [
+        "Lagging by 1 day(s) (eligibility rules will apply)"
+      ],
+      "missing_months": [
+        "2022-01",
+        "2022-02"
+      ],
+      "funding_status": {
+        "last_available_date": "2025-12-31",
+        "staleness_days": 44,
+        "coverage_pct": 1.0,
+        "missing_days": 0,
+        "zero_funding_days": 0,
+        "missing_months": []
+      },
+      "data_quality_metrics": {
+        "price_spikes_50pct": 0,
+        "date_gaps_7d": 0
+      },
+      "lifecycle": {
+        "launch_date": null,
+        "delist_date": null,
+        "status": "active",
+        "expected_history_days": 821,
+        "actual_history_days": 757,
+        "coverage_pct": 0.9220462850182704
+      },
+      "schema_compliant": true,
+      "exclusion_recommendation": null
+    }
+  },
+  "summary": {
+    "total_instruments": 5,
+    "up_to_date": 0,
+    "lagging": 5,
+    "max_staleness_days": 1,
+    "as_of_date_alignment": "strict_fail",
+    "eligibility_classification": {
+      "eligible": 5,
+      "excluded_staleness": 0,
+      "excluded_missing_funding": 0,
+      "excluded_insufficient_history": 0,
+      "excluded_data_quality": 0,
+      "excluded_delisted": 0
+    },
+    "exclusion_reasons": {
+      "insufficient_history": [],
+      "missing_funding": [],
+      "data_quality": [],
+      "delisted": [],
+      "stale_>7d": []
+    }
+  }
+}
