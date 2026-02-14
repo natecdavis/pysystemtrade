@@ -387,7 +387,7 @@ Examples:
 
         backtest_cmd = [
             sys.executable,
-            'systems/crypto_perps/system.py',
+            '-m', 'systems.crypto_perps.system',
             '--config', str(args.config),
             '--data', str(dataset_path),
             '--outdir', str(backtest_dir)

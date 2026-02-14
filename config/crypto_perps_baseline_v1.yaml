@@ -13,6 +13,7 @@ system:
   gross_leverage_cap: 2.0  # Maximum gross leverage
   idm_cap: 2.5  # Maximum Instrument Diversification Multiplier
   min_position_frac: 0.03  # Minimum position fraction (3%)
+  allow_jagged: true  # Allow jagged panels (instruments with different date ranges)
 
 universe:
   # Static for Phase 1 - top 5 instruments by ADV
