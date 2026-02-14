@@ -492,9 +492,9 @@ def generate_trade_plan(
 
     # 5. Estimate costs
     logger.info("Estimating trade costs...")
-    system_config = config.get('system', {})
-    spread_frac = system_config.get('spread_frac', 0.00025)
-    taker_fee_frac = system_config.get('taker_fee_frac', 0.0004)
+    costs_config = config.get('costs', {})
+    spread_frac = costs_config.get('spread_estimate', 0.0005)
+    taker_fee_frac = costs_config.get('taker_fee_frac', 0.0004)
 
     costs = estimate_trade_costs(deltas, spread_frac, taker_fee_frac)
     deltas['estimated_cost'] = costs
