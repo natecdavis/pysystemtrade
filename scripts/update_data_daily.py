@@ -19,6 +19,8 @@ from pathlib import Path
 from datetime import datetime, date, timedelta
 import yaml
 import logging
+import requests
+import pandas as pd
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -28,12 +30,54 @@ from sysdata.crypto.data_status import (
     get_last_available_month,
     get_expected_last_month
 )
+from sysdata.crypto.config_helpers import (
+    extract_candidate_instruments_with_registry,
+    extract_tradable_instruments,
+    instrument_id_to_symbol
+)
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def check_binance_api_connectivity(timeout_sec: int = 10) -> bool:
+    """
+    Preflight check: verify Binance API is reachable (requires VPN in MA).
+
+    Returns True if API is reachable, False otherwise.
+    """
+    try:
+        # 1. Ping endpoint
+        ping_url = 'https://fapi.binance.com/fapi/v1/ping'
+        resp = requests.get(ping_url, timeout=timeout_sec)
+        if resp.status_code != 200:
+            logger.error(f"✗ Binance ping failed: HTTP {resp.status_code}")
+            return False
+
+        # 2. Fetch 1 kline for BTCUSDT yesterday (minimal test)
+        test_url = 'https://fapi.binance.com/fapi/v1/klines'
+        yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        params = {
+            'symbol': 'BTCUSDT',
+            'interval': '1d',
+            'startTime': int(pd.Timestamp(yesterday).timestamp() * 1000),
+            'limit': 1
+        }
+        resp = requests.get(test_url, params=params, timeout=timeout_sec)
+        if resp.status_code != 200:
+            logger.error(f"✗ Binance klines test failed: HTTP {resp.status_code}")
+            return False
+
+        logger.info("✓ Binance API connectivity verified")
+        return True
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"✗ Binance API unreachable: {e}")
+        logger.error("  Hint: Ensure Proton VPN is connected to US server")
+        return False
 
 
 def load_config(config_path: Path) -> dict:
@@ -43,24 +87,134 @@ def load_config(config_path: Path) -> dict:
     return config
 
 
-def extract_universe_symbols(config: dict) -> list:
+def extract_symbols_by_scope(
+    config: dict,
+    scope: str,
+    env_root: Path = None
+) -> tuple:
     """
-    Extract instrument symbols from config universe.
+    Extract symbols based on scope policy.
 
-    Converts internal instrument IDs (e.g., BTCUSDT_PERP) to Binance symbols
-    (e.g., BTCUSDT) for download.
+    Args:
+        config: System config
+        scope: One of 'prod', 'explicit_candidates', 'registry_all'
+        env_root: Environment root for registry lookup
+
+    Returns:
+        (symbols, strict_mode) where strict_mode=True means all updates must succeed
     """
-    universe_config = config.get('universe', {})
-    layer_a = universe_config.get('layer_a_instruments', [])
+    if scope == 'prod':
+        # PROD-SAFE: Only tradable universe, strict success required
+        inst_ids = extract_tradable_instruments(config)
+        strict_mode = True
 
-    # Convert from instrument IDs to Binance symbols
-    symbols = []
-    for inst_id in layer_a:
-        # Remove _PERP suffix if present
-        symbol = inst_id.replace('_PERP', '')
-        symbols.append(symbol)
+    elif scope == 'explicit_candidates':
+        # Explicit candidate list from config, strict success required
+        data_acq = config.get('data_acquisition', {})
+        if 'candidate_instruments' not in data_acq:
+            raise ValueError("scope=explicit_candidates requires data_acquisition.candidate_instruments in config")
+        inst_ids = data_acq['candidate_instruments']
+        strict_mode = True
 
-    return symbols
+    elif scope == 'registry_all':
+        # Auto-discovered registry, best-effort (failures logged but not fatal)
+        inst_ids, source = extract_candidate_instruments_with_registry(
+            config=config,
+            env_root=env_root
+        )
+        logger.info(f"Registry source: {source}")
+        strict_mode = False
+
+    else:
+        raise ValueError(f"Invalid scope: {scope}")
+
+    # Convert to symbols
+    symbols = [instrument_id_to_symbol(inst_id) for inst_id in inst_ids]
+
+    return symbols, strict_mode
+
+
+def validate_tail_patch_schema(existing_df: pd.DataFrame, new_rows: pd.DataFrame):
+    """
+    Verify new rows match existing dataset schema/dtypes.
+
+    Raises ValueError if schema mismatch detected.
+    """
+    if list(existing_df.columns) != list(new_rows.columns):
+        raise ValueError(f"Column mismatch: existing {list(existing_df.columns)} vs new {list(new_rows.columns)}")
+
+    for col in existing_df.columns:
+        if existing_df[col].dtype != new_rows[col].dtype:
+            raise ValueError(f"Dtype mismatch for {col}: {existing_df[col].dtype} vs {new_rows[col].dtype}")
+
+    logger.debug("✓ Tail patch schema validated")
+
+
+def patch_tail_atomically(
+    data_path: Path,
+    new_rows: pd.DataFrame,
+    tail_days: int
+):
+    """
+    Patch last N days of data file atomically.
+
+    Strategy:
+    1. Read existing data
+    2. Validate schema match
+    3. Drop last N days from existing
+    4. Append new rows
+    5. Write to temp file
+    6. Atomic rename
+
+    Args:
+        data_path: Path to existing data file (Parquet or CSV)
+        new_rows: New rows to append (must match existing schema)
+        tail_days: Number of days to replace (for idempotent updates)
+    """
+    import tempfile
+    import shutil
+    import os
+
+    # Read existing data
+    if data_path.suffix == '.parquet':
+        existing = pd.read_parquet(data_path)
+    elif data_path.suffix == '.csv':
+        existing = pd.read_csv(data_path, parse_dates=['date'])
+    else:
+        raise ValueError(f"Unsupported file type: {data_path}")
+
+    # Validate schema
+    validate_tail_patch_schema(existing, new_rows)
+
+    # Compute cutoff date (tail_days ago from newest row in new data)
+    cutoff_date = new_rows['date'].max() - pd.Timedelta(days=tail_days - 1)
+
+    # Drop tail from existing data
+    pre_tail = existing[existing['date'] < cutoff_date]
+
+    # Merge: pre-tail + new rows
+    updated = pd.concat([pre_tail, new_rows], ignore_index=True)
+    updated = updated.sort_values('date').reset_index(drop=True)
+
+    # Write to temp file
+    temp_fd, temp_path = tempfile.mkstemp(suffix=data_path.suffix, dir=data_path.parent)
+    os.close(temp_fd)
+
+    try:
+        if data_path.suffix == '.parquet':
+            updated.to_parquet(temp_path, index=False)
+        else:
+            updated.to_csv(temp_path, index=False)
+
+        # Atomic rename
+        shutil.move(temp_path, data_path)
+        logger.info(f"✓ Patched {data_path.name} (replaced last {tail_days} days)")
+
+    except Exception as e:
+        # Cleanup temp file on failure
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise e
 
 
 def get_last_available_date_from_vision(data_dir: Path, symbol: str) -> date:
@@ -100,7 +254,9 @@ def update_daily_tail(
     tail_days: int = 3,
     dry_run: bool = False,
     expected_as_of_date: date = None,
-    output_report: Path = None
+    output_report: Path = None,
+    scope: str = 'prod',
+    env_root: Path = None
 ) -> dict:
     """
     Update raw Binance data with recent daily tail via REST API.
@@ -112,6 +268,8 @@ def update_daily_tail(
         dry_run: If True, preview what would be fetched without executing
         expected_as_of_date: Expected date to have data through (default: yesterday UTC)
         output_report: Path to save data status report
+        scope: Update scope ('prod', 'explicit_candidates', 'registry_all')
+        env_root: Environment root for registry lookup
 
     Returns:
         Data status report dict with day-level granularity
@@ -123,9 +281,11 @@ def update_daily_tail(
     logger.info(f"Loading config from {config_path}")
     config = load_config(config_path)
 
-    # Extract universe
-    symbols = extract_universe_symbols(config)
-    logger.info(f"Universe: {len(symbols)} instruments")
+    # Extract symbols by scope
+    symbols, strict_mode = extract_symbols_by_scope(config, scope, env_root)
+    logger.info(f"Scope: {scope}")
+    logger.info(f"Symbols to update: {len(symbols)}")
+    logger.info(f"Error policy: {'strict (all must succeed)' if strict_mode else 'best-effort (failures logged)'}")
 
     # Determine expected as_of_date (yesterday UTC by default)
     if expected_as_of_date is None:
@@ -264,11 +424,20 @@ def update_daily_tail(
             instrument_status[symbol]['staleness_days'] = (expected_as_of_date - end_date).days
 
         except Exception as e:
-            logger.error(f"  Failed: {e}")
+            error_msg = f"{symbol}: {e}"
             total_failed += 1
             fetch_errors.append((symbol, str(e)))
             instrument_status[symbol]['status'] = 'fetch_failed'
             instrument_status[symbol]['warnings'].append(f"API fetch failed: {e}")
+
+            if strict_mode:
+                # STRICT: Fail immediately on first error
+                logger.error(f"\n✗ {error_msg}")
+                logger.error("ERROR: Strict mode - aborting on first failure")
+                raise RuntimeError(f"Strict mode: fetch failed for {symbol}: {e}")
+            else:
+                # BEST-EFFORT: Log and continue
+                logger.warning(f"⚠ {error_msg} (continuing in best-effort mode)")
 
     # Generate updated data status report
     logger.info("\nGenerating data status report...")
@@ -303,8 +472,17 @@ def update_daily_tail(
     logger.info(f"Failed: {total_failed} symbol(s)")
     logger.info("======================\n")
 
-    # Return exit status
-    if total_failed:
+    # Final summary based on mode
+    if fetch_errors and not strict_mode:
+        logger.warning(f"\n⚠ Completed with {len(fetch_errors)} failures:")
+        for symbol, error in fetch_errors:
+            logger.warning(f"  - {symbol}: {error}")
+        logger.info(f"\n✓ {len(symbols) - len(fetch_errors)} of {len(symbols)} symbols updated successfully")
+    elif not fetch_errors:
+        logger.info(f"\n✓ All {len(symbols)} symbols updated successfully")
+
+    # Return exit status (strict mode already raised exception on first failure)
+    if total_failed and strict_mode:
         logger.error(f"{total_failed} fetch(es) failed - check errors above")
         raise RuntimeError(f"{total_failed} fetch(es) failed")
 
@@ -417,6 +595,15 @@ Notes:
         type=Path,
         help='Path to save data status report'
     )
+    parser.add_argument(
+        '--scope',
+        type=str,
+        choices=['prod', 'explicit_candidates', 'registry_all'],
+        default='prod',
+        help='Update scope: prod (layer_a only, strict success), '
+             'explicit_candidates (from config, strict), '
+             'registry_all (auto-discover, best-effort)'
+    )
 
     # Environment isolation
     env_group = parser.add_argument_group('Environment settings')
@@ -445,6 +632,13 @@ Notes:
     logger.info(f"Environment: {env}")
     logger.info(f"Data directory: {data_dir}")
 
+    # Preflight: check VPN connectivity (skip in dry-run mode)
+    if not args.dry_run:
+        if not check_binance_api_connectivity():
+            logger.error("\nERROR: Cannot reach Binance API. Aborting.")
+            logger.error("Action: Connect to Proton VPN (US server) and retry.")
+            sys.exit(1)
+
     # Validate inputs
     if not args.config.exists():
         logger.error(f"Config file not found: {args.config}")
@@ -461,7 +655,9 @@ Notes:
             data_dir,
             args.tail_days,
             args.dry_run,
-            output_report=args.output_report
+            output_report=args.output_report,
+            scope=args.scope,
+            env_root=env.env_root
         )
 
         # Exit with success

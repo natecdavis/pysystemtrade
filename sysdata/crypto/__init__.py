@@ -1,6 +1,6 @@
 """
-Crypto perpetual futures data adapters
-"""
+Crypto perpetual futures data adapters.
+
 Crypto data adapters for pysystemtrade backtesting.
 
 This module provides data adapters for backtesting crypto trading strategies
