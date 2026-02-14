@@ -476,6 +476,53 @@ class csvSpotSimData(simData):
             instrument_code, prices
         )
 
+    def get_universe_eligibility_df(
+        self,
+        instruments: List[str],
+        dates: pd.DatetimeIndex,
+    ) -> pd.DataFrame:
+        """
+        Get eligibility matrix for dynamic universe.
+
+        Returns DataFrame with:
+        - Index: dates (from input)
+        - Columns: instrument codes
+        - Values: boolean (True=eligible for entry)
+
+        Only available when use_dynamic_universe=True.
+
+        Args:
+            instruments: List of instrument codes
+            dates: DatetimeIndex of dates to check
+
+        Returns:
+            pd.DataFrame with dates as index, instruments as columns, boolean values
+        """
+        if not self._use_dynamic_universe:
+            # If not using dynamic universe, all instruments eligible at all dates
+            return pd.DataFrame(True, index=dates, columns=instruments)
+
+        # Build eligibility matrix by getting series for each instrument
+        eligibility_dict = {}
+        for instrument in instruments:
+            try:
+                prices = self._prices_data.get_spot_prices(instrument)
+                eligibility_series = self._universe_manager.get_eligibility_series(
+                    instrument, prices
+                )
+                # Reindex to match requested dates, forward fill
+                eligibility_dict[instrument] = eligibility_series.reindex(
+                    dates, method='ffill'
+                ).fillna(False)
+            except Exception as e:
+                self.log.warning(
+                    f"Could not get eligibility for {instrument}: {str(e)}"
+                )
+                # If error, mark as not eligible
+                eligibility_dict[instrument] = pd.Series(False, index=dates)
+
+        return pd.DataFrame(eligibility_dict, index=dates)
+
     def get_walk_forward_spread(
         self,
         instrument_code: str,

@@ -218,6 +218,12 @@ Examples:
         help='Override expected as_of_date (YYYY-MM-DD). For testing only. Default: yesterday UTC. '
              'Disables cutover time warnings when specified.'
     )
+    parser.add_argument(
+        '--use-dynamic-universe',
+        action='store_true',
+        help='Use dynamic universe with parquet-backed adapter (pysystemtrade framework). '
+             'If not specified, uses research_v1 system (custom implementation).'
+    )
 
     args = parser.parse_args()
 
@@ -251,8 +257,19 @@ Examples:
     logger.info(f"Output directory resolved: {output_dir}")
 
     # Extract universe for dataset building
-    universe = extract_universe_from_config(args.config)
-    logger.info(f"Universe: {len(universe)} instruments")
+    # For dynamic universe, use all instruments from config (will be filtered by cost thresholds at backtest time)
+    # For static universe, use explicit tradable instruments
+    if args.use_dynamic_universe:
+        # For dynamic universe, we want to build dataset with ALL candidate instruments
+        # The dynamic universe logic will filter based on cost thresholds
+        # For now, fall back to config extraction (future: use registry)
+        universe = extract_universe_from_config(args.config)
+        logger.info(f"Dynamic universe mode: building dataset with {len(universe)} candidates")
+        logger.info(f"  (actual tradable universe will be determined by cost filters)")
+    else:
+        # Static universe: use explicit list from config
+        universe = extract_universe_from_config(args.config)
+        logger.info(f"Static universe mode: {len(universe)} instruments")
 
     # Handle expected_as_of_date - SINGLE SOURCE OF TRUTH for all date computations
     if args.expected_date:
@@ -382,18 +399,29 @@ Examples:
 
         logger.info(f"Dataset created: {dataset_path}")
 
-        # STEP 3: Run research_v1 backtest
+        # STEP 3: Run backtest
         backtest_dir = output_dir / 'backtest_latest'
 
-        backtest_cmd = [
-            sys.executable,
-            '-m', 'systems.crypto_perps.system',
-            '--config', str(args.config),
-            '--data', str(dataset_path),
-            '--outdir', str(backtest_dir)
-        ]
-
-        run_command(backtest_cmd, "Run research_v1 backtest for fresh targets")
+        if args.use_dynamic_universe:
+            # Use dynamic universe backtest with parquet adapter
+            backtest_cmd = [
+                sys.executable,
+                'scripts/run_dynamic_universe_backtest.py',
+                '--config', str(args.config),
+                '--data', str(dataset_path),
+                '--outdir', str(backtest_dir)
+            ]
+            run_command(backtest_cmd, "Run dynamic universe backtest (parquet-backed)")
+        else:
+            # Use research_v1 backtest (custom implementation)
+            backtest_cmd = [
+                sys.executable,
+                '-m', 'systems.crypto_perps.system',
+                '--config', str(args.config),
+                '--data', str(dataset_path),
+                '--outdir', str(backtest_dir)
+            ]
+            run_command(backtest_cmd, "Run research_v1 backtest for fresh targets")
 
         # Verify backtest outputs
         required_outputs = ['positions.csv', 'diagnostics.parquet', 'metadata.json']
@@ -451,7 +479,8 @@ Examples:
         logger.info("\n" + "=" * 70)
         logger.info("✓ LIVE ADVISORY WORKFLOW COMPLETED SUCCESSFULLY")
         logger.info("=" * 70)
-        logger.info(f"\nOutput directory: {output_dir}")
+        logger.info(f"\nMode: {'Dynamic Universe' if args.use_dynamic_universe else 'Static Universe (research_v1)'}")
+        logger.info(f"Output directory: {output_dir}")
         logger.info(f"\nGenerated files:")
         logger.info(f"  - raw_data_status.json (data freshness)")
         logger.info(f"  - dataset_latest.parquet (processed dataset)")
@@ -462,6 +491,19 @@ Examples:
         logger.info(f"  - audit_bundle_{as_of_date}.json (full provenance)")
         if not args.skip_report and (output_dir / 'advisory_report.txt').exists():
             logger.info(f"  - advisory_report.txt (human-readable summary)")
+
+        # Log dynamic universe stats if available
+        if args.use_dynamic_universe:
+            metadata_path = backtest_dir / 'metadata.json'
+            if metadata_path.exists():
+                import json
+                with open(metadata_path) as f:
+                    metadata = json.load(f)
+                du_stats = metadata.get('dynamic_universe_stats', {})
+                if du_stats:
+                    logger.info(f"\nDynamic Universe Stats:")
+                    logger.info(f"  Active instruments: min={du_stats['min_active']}, max={du_stats['max_active']}, avg={du_stats['avg_active']:.1f}")
+                    logger.info(f"  vs static universe of {len(universe)} instruments")
 
         logger.info(f"\nNext steps:")
         logger.info(f"  1. Review trade plan: {output_dir / f'trade_plan_{as_of_date}.csv'}")
