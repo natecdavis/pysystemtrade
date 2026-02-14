@@ -28,63 +28,23 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Symbol mapping: internal ID -> Binance Data Vision symbol
-BINANCE_SYMBOL_MAP = {
-    'BTCUSDT_PERP': 'BTCUSDT',
-    'ETHUSDT_PERP': 'ETHUSDT',
-    'BNBUSDT_PERP': 'BNBUSDT',
-    'SOLUSDT_PERP': 'SOLUSDT',
-    'XRPUSDT_PERP': 'XRPUSDT',
-    # Phase 2 symbols (first 15)
-    'LTCUSDT_PERP': 'LTCUSDT',
-    'EOSUSDT_PERP': 'EOSUSDT',
-    'DOTUSDT_PERP': 'DOTUSDT',
-    'LINKUSDT_PERP': 'LINKUSDT',
-    'ADAUSDT_PERP': 'ADAUSDT',
-    'DOGEUSDT_PERP': 'DOGEUSDT',
-    'MATICUSDT_PERP': 'MATICUSDT',
-    'AVAXUSDT_PERP': 'AVAXUSDT',
-    'UNIUSDT_PERP': 'UNIUSDT',
-    'BCHUSDT_PERP': 'BCHUSDT',
-    # Additional 15 symbols (expansion to 30)
-    'ATOMUSDT_PERP': 'ATOMUSDT',
-    'TRXUSDT_PERP': 'TRXUSDT',
-    'ETCUSDT_PERP': 'ETCUSDT',
-    'XLMUSDT_PERP': 'XLMUSDT',
-    'FILUSDT_PERP': 'FILUSDT',
-    'AAVEUSDT_PERP': 'AAVEUSDT',
-    'SANDUSDT_PERP': 'SANDUSDT',
-    'MANAUSDT_PERP': 'MANAUSDT',
-    'AXSUSDT_PERP': 'AXSUSDT',
-    'ICPUSDT_PERP': 'ICPUSDT',
-    'VETUSDT_PERP': 'VETUSDT',
-    'THETAUSDT_PERP': 'THETAUSDT',
-    'FTMUSDT_PERP': 'FTMUSDT',
-    'ALGOUSDT_PERP': 'ALGOUSDT',
-    'NEOUSDT_PERP': 'NEOUSDT',
-    # Tier 4 expansion (22 additional symbols)
-    'NEARUSDT_PERP': 'NEARUSDT',
-    'APTUSDT_PERP': 'APTUSDT',
-    'ARBUSDT_PERP': 'ARBUSDT',
-    'OPUSDT_PERP': 'OPUSDT',
-    'CRVUSDT_PERP': 'CRVUSDT',
-    'SNXUSDT_PERP': 'SNXUSDT',
-    'MKRUSDT_PERP': 'MKRUSDT',
-    'COMPUSDT_PERP': 'COMPUSDT',
-    'LDOUSDT_PERP': 'LDOUSDT',
-    'RUNEUSDT_PERP': 'RUNEUSDT',
-    'SUSHIUSDT_PERP': 'SUSHIUSDT',
-    'GALAUSDT_PERP': 'GALAUSDT',
-    'ENJUSDT_PERP': 'ENJUSDT',
-    'IMXUSDT_PERP': 'IMXUSDT',
-    'GRTUSDT_PERP': 'GRTUSDT',
-    'RENDERUSDT_PERP': 'RENDERUSDT',
-    '1INCHUSDT_PERP': '1INCHUSDT',
-    'APEUSDT_PERP': 'APEUSDT',
-    'CHZUSDT_PERP': 'CHZUSDT',
-    'ZILUSDT_PERP': 'ZILUSDT',
-    'ZRXUSDT_PERP': 'ZRXUSDT',
-    'IOTAUSDT_PERP': 'IOTAUSDT'
-}
+# Use dynamic helper from config_helpers for registry-aware mapping
+
+def get_binance_symbol(instrument_id: str) -> str:
+    """
+    Get Binance symbol from instrument ID.
+
+    Uses canonical mapping from config_helpers to support registry discovery.
+    """
+    # Lazy import to avoid module loading issues
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from sysdata.crypto.config_helpers import instrument_id_to_symbol
+    return instrument_id_to_symbol(instrument_id)
+
+# Legacy hardcoded map (kept for reference, now replaced by dynamic function)
+# BINANCE_SYMBOL_MAP = {...}
 
 
 def inspect_alignment(
@@ -277,7 +237,7 @@ def load_binance_klines(
         - If include_api_cache=True, merges Vision ZIPs + API cache with deduplication
     """
     # Map internal ID to Binance symbol
-    binance_symbol = BINANCE_SYMBOL_MAP[instrument]
+    binance_symbol = get_binance_symbol(instrument)
     klines_dir = data_dir / 'klines' / binance_symbol
 
     # Glob discover all kline ZIP files (daily or monthly)
@@ -515,7 +475,7 @@ def load_binance_funding_rates(instrument: str, data_dir: Path, include_api_cach
         (per default invariant - adjust if inspect_alignment() shows otherwise)
     """
     # Map internal ID to Binance symbol
-    binance_symbol = BINANCE_SYMBOL_MAP[instrument]
+    binance_symbol = get_binance_symbol(instrument)
     funding_dir = data_dir / 'funding_rates' / binance_symbol
 
     # Glob discover all funding ZIP files (daily or monthly)
@@ -1099,7 +1059,7 @@ def build_real_crypto_dataset(
 
     for inst in instruments:
         # Map internal ID to Binance symbol
-        binance_symbol = BINANCE_SYMBOL_MAP[inst]
+        binance_symbol = get_binance_symbol(inst)
 
         logger.info(f"Processing {inst} ({binance_symbol})...")
 

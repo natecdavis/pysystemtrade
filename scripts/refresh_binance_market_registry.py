@@ -57,17 +57,53 @@ def filter_binance_usdt_perpetuals(derivatives: List[dict]) -> List[dict]:
     - market == "Binance (Futures)"
     - contract_type == "perpetual"
     - symbol contains "USDT"
+    - symbol length >= 6 and <= 18 (valid Binance symbol range)
+    - symbol contains only ASCII letters, digits, and starts with a letter
     - expired_at is None (not delisted)
     """
-    filtered = [
-        d for d in derivatives
-        if d.get('market') == 'Binance (Futures)'
-        and d.get('contract_type') == 'perpetual'
-        and 'USDT' in d.get('symbol', '')
-        and d.get('expired_at') is None
-    ]
+    filtered = []
+    rejected_symbols = []
+
+    for d in derivatives:
+        if d.get('market') != 'Binance (Futures)':
+            continue
+        if d.get('contract_type') != 'perpetual':
+            continue
+
+        symbol = d.get('symbol', '')
+        if 'USDT' not in symbol:
+            continue
+        if d.get('expired_at') is not None:
+            continue
+
+        # Validate symbol length (6-18 chars is Binance standard)
+        if len(symbol) < 6 or len(symbol) > 18:
+            rejected_symbols.append((symbol, f'len={len(symbol)}'))
+            continue
+
+        # Validate symbol characters: ASCII letters/digits only, must start with letter
+        if not symbol[0].isalpha():
+            rejected_symbols.append((symbol, 'starts_with_digit'))
+            continue
+
+        # Check for non-ASCII characters
+        try:
+            symbol.encode('ascii')
+        except UnicodeEncodeError:
+            rejected_symbols.append((symbol, 'non_ascii'))
+            continue
+
+        # Check that symbol is alphanumeric (no special chars except implicit in USDT)
+        if not all(c.isalnum() for c in symbol):
+            rejected_symbols.append((symbol, 'special_chars'))
+            continue
+
+        filtered.append(d)
 
     logger.info(f"Filtered: {len(derivatives)} total → {len(filtered)} Binance USDT perpetuals")
+    if rejected_symbols:
+        logger.info(f"Rejected {len(rejected_symbols)} symbols (validation failed): {rejected_symbols[:10]}")
+
     return filtered
 
 
