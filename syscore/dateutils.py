@@ -23,7 +23,9 @@ from syscore.constants import arg_not_supplied
 
 CALENDAR_DAYS_IN_YEAR = 365.25
 
-BUSINESS_DAYS_IN_YEAR = 256.0
+# Crypto perps trade 24/7 including weekends: all daily data is calendar-day,
+# so annualisation uses 365 not the traditional 256 business-day convention.
+BUSINESS_DAYS_IN_YEAR = 365.0
 ROOT_BDAYS_INYEAR = BUSINESS_DAYS_IN_YEAR**0.5
 
 WEEKS_IN_YEAR = CALENDAR_DAYS_IN_YEAR / 7.0

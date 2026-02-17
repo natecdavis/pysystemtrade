@@ -16,6 +16,26 @@ system:
   min_position_frac: 0.03  # Minimum position fraction (3%)
   allow_jagged: true  # REQUIRED for dynamic universe (instruments vary over time)
 
+# pysystemtrade PositionSizing reads these flat keys (not system.* nested keys)
+percentage_vol_target: 25.0   # 25% annualized vol target
+notional_trading_capital: 5000.0  # USD capital
+
+# Walk-forward estimated IDM from instrument return correlations.
+# dm_max: 2.5 cap and ewma_span: 125 smoothing come from defaults.yaml.
+use_instrument_div_mult_estimates: True
+
+# Walk-forward estimated forecast scalars, pooled across all instruments.
+# Targets mean_abs_forecast=10; pool_instruments=True and backfill=True come from defaults.yaml.
+use_forecast_scale_estimates: True
+
+# Gross leverage cap at 2.0x. The other three risk overlay guards are disabled
+# (set to 99999) so only the leverage limit is active.
+risk_overlay:
+  max_risk_leverage: 2.0
+  max_risk_fraction_normal_risk: 99999
+  max_risk_fraction_stdev_risk: 99999
+  max_risk_limit_sum_abs_risk: 99999
+
 # Data acquisition with registry auto-discovery (Phase 1-2)
 data_acquisition:
   auto_discover: true  # Use 541 instruments from CoinGecko registry

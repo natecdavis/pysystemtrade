@@ -250,12 +250,22 @@ class parquetCryptoPerpsSimData(simData):
             latest_spread = 0.0005  # 5 bps
             latest_fee = 0.0004  # 4 bps
 
-        # Create instrumentCosts with spread cost
-        # pysystemtrade expects spread as full round-trip cost
+        # Build instrumentCosts using percentage_cost only (fraction of trade value).
+        #
+        # pysystemtrade's price_slippage is an *absolute price* quantity (e.g. $50/contract
+        # for BTC). We store spread as a *fraction* (e.g. 0.0005 = 5 bps), so setting
+        # price_slippage=fraction would make it negligible for high-price instruments and
+        # catastrophically large for micro-cap instruments with thousands of contracts.
+        #
+        # Instead we fold the half-spread into percentage_cost so all costs scale with
+        # notional trade value:
+        #   one-way cost = half_spread + fee  (e.g. 0.00025 + 0.0004 = 0.00065 = 6.5 bps)
+        #   round-trip   = spread + 2×fee     (e.g. 0.0005  + 0.0008 = 0.0013  = 13 bps)
+        one_way_cost_frac = latest_spread / 2.0 + latest_fee
         return instrumentCosts(
-            price_slippage=latest_spread * 2,  # Half-spread * 2 for round trip
-            value_of_block_commission=0.0,  # Included in percentage_cost
-            percentage_cost=latest_fee,  # One-way fee (applied on both entry and exit)
+            price_slippage=0.0,
+            value_of_block_commission=0.0,
+            percentage_cost=one_way_cost_frac,
         )
 
     # =========================================================================

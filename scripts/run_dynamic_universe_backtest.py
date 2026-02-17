@@ -123,6 +123,97 @@ def _write_universe_snapshot(system, output_path: Path, config_path: str) -> Non
     )
 
 
+def _compute_performance_metrics(
+    system,
+    portfolio_positions: pd.DataFrame,
+    weights: pd.DataFrame,
+    output_path: Path,
+    precomputed_returns: pd.Series = None,
+) -> None:
+    """
+    Compute and write performance_summary.json using existing accounting/metrics modules.
+    Called after positions are computed and written.
+    """
+    from systems.provided.crypto_example.core.portfolio_metrics import (
+        calculate_all_metrics,
+        format_metrics_table,
+    )
+
+    logger.info("\nComputing performance metrics...")
+
+    # 1. Get returns — use pre-computed if available, else try Account stage
+    daily_returns_dec = precomputed_returns
+    if daily_returns_dec is None:
+        try:
+            account = system.accounts.portfolio()
+            pct_obj = account.percent
+            pct_series = pd.Series(
+                np.asarray(pct_obj, dtype=float), index=pct_obj.index
+            )
+            daily_returns_dec = pct_series.dropna() / 100.0
+            logger.info(f"  Account stage: {len(daily_returns_dec)} days of returns")
+        except Exception as e:
+            logger.warning(f"  Account stage failed ({e}) — P&L metrics will be omitted")
+
+    # 2. Portfolio-specific metrics from positions/weights
+    universe_size = (weights > 0).sum(axis=1)
+    avg_active = float(universe_size.mean())
+
+    # Annual turnover: total abs position changes / (2 × avg exposure) / n_years
+    total_exposure = portfolio_positions.abs().sum(axis=1)
+    avg_exposure = float(total_exposure.mean())
+    daily_delta = portfolio_positions.diff().abs().sum(axis=1)
+    n_years = len(portfolio_positions) / 252.0
+    if avg_exposure > 0 and n_years > 0:
+        annual_turnover = float(daily_delta.sum() / (2.0 * avg_exposure) / n_years)
+    else:
+        annual_turnover = float('nan')
+
+    start_date = portfolio_positions.index[0].strftime('%Y-%m-%d')
+    end_date = portfolio_positions.index[-1].strftime('%Y-%m-%d')
+    n_instruments = len(portfolio_positions.columns)
+    n_days = len(portfolio_positions)
+
+    # 3. Compute and display metrics
+    metrics = {}
+    if daily_returns_dec is not None and len(daily_returns_dec) >= 20:
+        metrics = calculate_all_metrics(daily_returns_dec, name="Dynamic Universe")
+        table = format_metrics_table([metrics])
+        print("\nPERFORMANCE SUMMARY")
+        print("=" * 60)
+        print(table)
+    else:
+        logger.warning("  No returns available — performance metrics not computed")
+
+    # 4. Write performance_summary.json
+    def _to_python(v):
+        """Convert numpy scalars to Python native for JSON."""
+        if isinstance(v, (np.integer,)):
+            return int(v)
+        if isinstance(v, (np.floating,)):
+            return float(v)
+        if isinstance(v, (np.bool_,)):
+            return bool(v)
+        return v
+
+    summary = {
+        "metrics": {k: _to_python(v) for k, v in metrics.items() if k != 'name'},
+        "portfolio": {
+            "avg_active_positions": avg_active,
+            "annual_turnover": annual_turnover,
+            "start_date": start_date,
+            "end_date": end_date,
+            "n_instruments": n_instruments,
+            "n_days": n_days,
+        },
+    }
+
+    perf_path = output_path / 'performance_summary.json'
+    with open(perf_path, 'w') as f:
+        json.dump(summary, f, indent=2, default=str)
+    logger.info(f"  ✓ {perf_path}")
+
+
 def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_universe: bool = True):
     """
     Run pysystemtrade backtest with parquet-backed data adapter.
@@ -219,6 +310,24 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     )
 
     logger.info("✓ System created")
+
+    # Trigger Account stage portfolio calculation before the positions loop.
+    # accountCurveGroup.percent returns an accountCurveGroup (not a plain pd.Series).
+    # Calling .dropna() on it triggers pandas boolean-indexing via __getitem__,
+    # which expects a string instrument key and raises TypeError on numpy arrays.
+    # Fix: wrap in a plain pd.Series before calling dropna().
+    logger.info("\nPre-computing Account stage portfolio returns...")
+    _account_returns = None
+    try:
+        _acc = system.accounts.portfolio()
+        _pct_obj = _acc.percent
+        _pct_series = pd.Series(
+            np.asarray(_pct_obj, dtype=float), index=_pct_obj.index
+        )
+        _account_returns = (_pct_series.dropna() / 100.0)
+        logger.info(f"  Account stage: {len(_account_returns)} days of returns cached")
+    except Exception as e:
+        logger.warning(f"  Account stage pre-compute failed ({e}) — will retry after positions")
 
     # Run backtest by getting portfolio positions for all instruments
     logger.info("\nRunning backtest...")
@@ -326,6 +435,15 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     with open(metadata_path, 'w') as f:
         json.dump(metadata, f, indent=2)
     logger.info(f"  ✓ {metadata_path}")
+
+    # 4. Performance metrics
+    _compute_performance_metrics(
+        system=system,
+        portfolio_positions=portfolio_positions,
+        weights=weights,
+        output_path=output_path,
+        precomputed_returns=_account_returns,
+    )
 
     logger.info("\n" + "="*80)
     logger.info("✓ BACKTEST COMPLETED SUCCESSFULLY")
