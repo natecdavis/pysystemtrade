@@ -21,39 +21,15 @@ data_acquisition:
   auto_discover: true  # Use 541 instruments from CoinGecko registry
   # Registry refresh: opportunistic (daily advisory workflow)
   # Registry location: envs/{env}/data/raw/metadata/discovered_candidate_instruments.json
+  # Dataset: Jagged panel with 317 instruments, 6 years (2020-2026)
+  dataset_path: data/dataset_538registry_6yr_jagged.parquet
 
-# Universe definition (Phase 1, 6)
-universe:
-  # layer_a_instruments = MAX tradable set (production safety)
-  # Hard invariant: trade plan ⊆ layer_a_instruments (Phase 6)
-  # 25 instruments with Vision data available (as of 2026-02-14)
-  # NOTE: As more instruments get Vision data, this list can expand up to top-30 by ADV
-  layer_a_instruments:
-    - AAVEUSDT_PERP
-    - ADAUSDT_PERP
-    - ATOMUSDT_PERP
-    - AVAXUSDT_PERP
-    - AXSUSDT_PERP
-    - BCHUSDT_PERP
-    - BNBUSDT_PERP
-    - BTCUSDT_PERP
-    - DOGEUSDT_PERP
-    - DOTUSDT_PERP
-    - ETCUSDT_PERP
-    - ETHUSDT_PERP
-    - FILUSDT_PERP
-    - ICPUSDT_PERP
-    - LINKUSDT_PERP
-    - LTCUSDT_PERP
-    - MANAUSDT_PERP
-    - SANDUSDT_PERP
-    - SOLUSDT_PERP
-    - THETAUSDT_PERP
-    - TRXUSDT_PERP
-    - UNIUSDT_PERP
-    - VETUSDT_PERP
-    - XLMUSDT_PERP
-    - XRPUSDT_PERP
+# Instruments always included if Stage 1 cost-eligible (manual override of rank threshold).
+# BANNED_FLATTEN overrides pins — hard exits are absolute.
+pinned_instruments: []
+
+# Instruments always excluded (hard exit, target=0, overrides everything including pins).
+banned_instruments: []
 
 # Dynamic universe parameters (Phases 3-5)
 dynamic_universe:
@@ -143,8 +119,8 @@ diagnostics:
 #
 # Production Safety:
 #   1. Validate config: scripts/validate_config.py
-#   2. Hard invariant: trade_plan ⊆ layer_a_instruments (enforced)
-#   3. top_k <= len(layer_a_instruments) (validated)
+#   2. Hard exits: delisted, API staleness >2d, banned_instruments
+#   3. Reduce-only: instruments exiting universe cannot increase exposure
 #
 # See: docs/runbook_541_perps.md for complete operations guide
 # ============================================================================

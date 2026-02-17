@@ -33,54 +33,177 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def validate_tradable_universe(trade_plan_df, config, log):
+def load_universe_snapshot(snapshot_path):
     """
-    Validate trade plan only includes layer_a instruments (Phase 6 hard invariant).
+    Load a universe_snapshot.json file.
+
+    Returns:
+        dict with snapshot data, or None if path is None/missing/empty.
+    """
+    if not snapshot_path:
+        return None
+    p = Path(snapshot_path)
+    if not p.exists():
+        return None
+    with open(p) as f:
+        return json.load(f)
+
+
+def load_data_status_instruments(data_status_path):
+    """
+    Load per-instrument data from raw_data_status.json.
+
+    Returns:
+        dict of {instrument: {api_staleness_days: N, ...}}, or {} if unavailable.
+    """
+    if not data_status_path:
+        return {}
+    p = Path(data_status_path)
+    if not p.exists():
+        return {}
+    with open(p) as f:
+        status = json.load(f)
+    return status.get('instruments', {})
+
+
+def load_delisted_from_registry_changelog(changelog_path):
+    """
+    Extract delisted instruments from a registry changelog JSON file.
+
+    Returns:
+        list of delisted instrument symbols, or [] if unavailable.
+    """
+    if not changelog_path:
+        return []
+    p = Path(changelog_path)
+    if not p.exists():
+        return []
+    with open(p) as f:
+        changelog = json.load(f)
+    return changelog.get('delisted_instruments', [])
+
+
+def apply_hard_exits_and_reduce_only(
+    trade_plan,
+    new_snapshot,
+    prev_snapshot,
+    data_status_instruments,
+    delisted_instruments,
+    banned_instruments,
+    log,
+):
+    """
+    Apply hard exits and reduce-only constraints to trade plan.
+
+    Modifies trade_plan in place:
+    - Hard exits (target=0): delisted, API-stale, BANNED_FLATTEN
+    - Reduce-only (no exposure increase): instruments exiting universe
+
+    Also recomputes delta_notional and delta_weight for modified rows.
 
     Args:
-        trade_plan_df: Trade plan DataFrame with 'instrument' column
-        config: System config dict
-        log: Logger instance
+        trade_plan: DataFrame indexed by instrument with target_notional, current_notional, reason
+        new_snapshot: dict from current universe_snapshot.json, or None
+        prev_snapshot: dict from previous run's universe_snapshot.json, or None
+        data_status_instruments: dict {instrument: {api_staleness_days: N, ...}}
+        delisted_instruments: list of delisted symbols
+        banned_instruments: set of banned instrument codes
+        log: Logger
 
-    Raises:
-        ValueError: If trade plan includes instruments not in layer_a_instruments
+    Returns:
+        Number of instruments modified
     """
-    layer_a = config.get('universe', {}).get('layer_a_instruments', [])
-    if not layer_a:
-        log.warning("No layer_a_instruments defined in config - skipping tradable universe validation")
-        return
+    import numpy as np
 
-    max_tradable_set = set(layer_a)
+    modified = 0
 
-    # Get instruments from either index or column
-    if 'instrument' in trade_plan_df.columns:
-        planned_instruments = set(trade_plan_df['instrument'])
-    elif trade_plan_df.index.name == 'instrument' or (hasattr(trade_plan_df.index, 'name') and trade_plan_df.index.name is None):
-        # Instrument is the index
-        planned_instruments = set(trade_plan_df.index)
-    else:
-        # Try to get from index anyway
-        planned_instruments = set(trade_plan_df.index)
+    # --- Hard exits ---
 
-    non_tradable = planned_instruments - max_tradable_set
+    # Hard exit 1: Delisted (not in current registry)
+    for inst in delisted_instruments:
+        if inst in trade_plan.index:
+            trade_plan.loc[inst, 'target_notional'] = 0.0
+            trade_plan.loc[inst, 'reason'] = 'hard_exit_delisted'
+            modified += 1
+            log.warning(f"Hard exit (delisted): {inst}")
 
-    if non_tradable:
-        error_msg = (
-            f"HARD INVARIANT VIOLATION: Trade plan includes {len(non_tradable)} instruments NOT in layer_a:\n"
-            f"  {sorted(non_tradable)}\n\n"
-            f"layer_a_instruments represents the MAX tradable set for production safety.\n"
-            f"Trade plan must be a subset of layer_a.\n\n"
-            f"Possible causes:\n"
-            f"  - top_k > len(layer_a_instruments) - expand layer_a\n"
-            f"  - Config mismatch - verify config matches backtest\n"
-            f"  - Instruments not in layer_a - add to config or remove from backtest\n\n"
-            f"layer_a count: {len(layer_a)}\n"
-            f"Trade plan count: {len(planned_instruments)}\n"
-            f"Non-tradable instruments: {sorted(non_tradable)}"
+    # Hard exit 2: Binance API daily tail-patch staleness > 2 days
+    # Uses api_staleness_days field (NOT Vision archive lag — that's expected)
+    for inst, s in data_status_instruments.items():
+        if s.get('api_staleness_days', 0) > 2:
+            if inst in trade_plan.index:
+                current_reason = trade_plan.loc[inst, 'reason']
+                if not str(current_reason).startswith('hard_exit'):
+                    trade_plan.loc[inst, 'target_notional'] = 0.0
+                    trade_plan.loc[inst, 'reason'] = 'hard_exit_stale_api_data'
+                    modified += 1
+                    log.warning(
+                        f"Hard exit (stale API data: {s['api_staleness_days']}d): {inst}"
+                    )
+
+    # Hard exit 3: BANNED_FLATTEN
+    for inst in banned_instruments:
+        if inst in trade_plan.index:
+            current_reason = trade_plan.loc[inst, 'reason']
+            if not str(current_reason).startswith('hard_exit'):
+                trade_plan.loc[inst, 'target_notional'] = 0.0
+                trade_plan.loc[inst, 'reason'] = 'hard_exit_banned'
+                modified += 1
+                log.warning(f"Hard exit (banned): {inst}")
+
+    # --- Reduce-only for instruments exiting universe ---
+
+    if prev_snapshot is not None and new_snapshot is not None:
+        prev_tradable = set(prev_snapshot.get('tradable_instruments', []))
+        new_tradable = set(new_snapshot.get('tradable_instruments', []))
+        exits = prev_tradable - new_tradable
+
+        for inst in exits:
+            if inst not in trade_plan.index:
+                continue
+            # Skip if already handled by a hard exit
+            if str(trade_plan.loc[inst, 'reason']).startswith('hard_exit'):
+                continue
+
+            target = float(trade_plan.loc[inst, 'target_notional'])
+            current = float(trade_plan.loc[inst, 'current_notional'])
+
+            # Invariant: cannot increase absolute exposure for exiting instruments
+            if current == 0.0:
+                new_target = 0.0
+            elif current > 0.0:
+                # Long: can only reduce toward zero, cannot flip to short
+                new_target = max(min(target, current), 0.0)
+            else:
+                # Short: can only reduce toward zero, cannot flip to long
+                new_target = min(max(target, current), 0.0)
+
+            if abs(new_target - target) > 1e-6:
+                trade_plan.loc[inst, 'target_notional'] = new_target
+                trade_plan.loc[inst, 'reason'] = 'reduce_only_exit'
+                modified += 1
+                log.info(
+                    f"Reduce-only (universe exit): {inst} "
+                    f"target {target:.0f} → {new_target:.0f}"
+                )
+
+    # Recompute delta_notional and delta_weight for all modified rows
+    hard_exit_mask = trade_plan['reason'].astype(str).str.startswith('hard_exit')
+    reduce_only_mask = trade_plan['reason'] == 'reduce_only_exit'
+    changed_mask = hard_exit_mask | reduce_only_mask
+
+    if changed_mask.any():
+        equity = trade_plan.attrs.get('current_equity', 1.0)
+        trade_plan.loc[changed_mask, 'delta_notional'] = (
+            trade_plan.loc[changed_mask, 'target_notional']
+            - trade_plan.loc[changed_mask, 'current_notional']
         )
-        raise ValueError(error_msg)
+        if equity > 0:
+            trade_plan.loc[changed_mask, 'delta_weight'] = (
+                trade_plan.loc[changed_mask, 'delta_notional'] / equity
+            )
 
-    log.info(f"✓ Trade plan validated: all {len(planned_instruments)} instruments in layer_a (max {len(max_tradable_set)})")
+    return modified
 
 
 def main():
@@ -151,7 +274,22 @@ Notes:
     parser.add_argument(
         '--data-status',
         type=Path,
-        help='Optional: path to raw_data_status.json (for V1 staleness overlay). If not provided, staleness overlay skipped.'
+        help='Optional: path to raw_data_status.json (for V1 staleness overlay and API staleness hard exits). If not provided, staleness overlay skipped.'
+    )
+    parser.add_argument(
+        '--universe-snapshot',
+        type=Path,
+        help='Optional: path to universe_snapshot.json from this run\'s backtest (for reduce-only validation). If not provided, universe validation skipped.'
+    )
+    parser.add_argument(
+        '--prev-universe-snapshot',
+        type=Path,
+        help='Optional: path to universe_snapshot.json from previous run (for reduce-only exit computation). If not provided, reduce-only skipped.'
+    )
+    parser.add_argument(
+        '--registry-changelog',
+        type=Path,
+        help='Optional: path to registry_changelog.json (for delisting hard exits). If not provided, delisting check skipped.'
     )
 
     # Environment isolation
@@ -232,11 +370,59 @@ Notes:
         sanity_checks_path = args.output_dir / f'sanity_checks_{args.as_of_date}.json'
         audit_bundle_path = args.output_dir / f'audit_bundle_{args.as_of_date}.json'
 
+        # Attach current_equity to trade_plan.attrs for delta recomputation in post-processing
+        trade_plan.attrs['current_equity'] = args.current_equity
+
+        # Post-processing: hard exits and reduce-only constraints
+        new_snapshot = load_universe_snapshot(
+            args.universe_snapshot if hasattr(args, 'universe_snapshot') else None
+        )
+        prev_snapshot = load_universe_snapshot(
+            args.prev_universe_snapshot if hasattr(args, 'prev_universe_snapshot') else None
+        )
+        data_status_instruments = load_data_status_instruments(
+            args.data_status if hasattr(args, 'data_status') else None
+        )
+        delisted_instruments = load_delisted_from_registry_changelog(
+            args.registry_changelog if hasattr(args, 'registry_changelog') else None
+        )
+        banned_instruments = set(config.get('banned_instruments', []))
+
+        n_modified = apply_hard_exits_and_reduce_only(
+            trade_plan=trade_plan,
+            new_snapshot=new_snapshot,
+            prev_snapshot=prev_snapshot,
+            data_status_instruments=data_status_instruments,
+            delisted_instruments=delisted_instruments,
+            banned_instruments=banned_instruments,
+            log=logger,
+        )
+        if n_modified > 0:
+            logger.info(
+                f"Post-processing applied {n_modified} hard exit / reduce-only overrides"
+            )
+
+        # Validate trade plan is within new dynamic universe (soft check — warn only)
+        if new_snapshot:
+            new_tradable = set(new_snapshot.get('tradable_instruments', []))
+            non_universe = set(trade_plan.index[trade_plan['target_notional'].abs() > 0.01]) - new_tradable
+            if non_universe:
+                logger.warning(
+                    f"Trade plan includes {len(non_universe)} instrument(s) with non-zero target "
+                    f"outside current universe: {sorted(non_universe)}"
+                )
+            else:
+                logger.info(
+                    f"✓ Trade plan validated: non-zero targets ⊆ universe "
+                    f"({new_snapshot.get('count', '?')} instruments)"
+                )
+        else:
+            logger.warning(
+                "No universe snapshot provided — skipping universe membership validation"
+            )
+
         logger.info(f"Writing trade plan to {trade_plan_path}")
         trade_plan.to_csv(trade_plan_path)
-
-        # Validate hard invariant: trade plan ⊆ layer_a_instruments (Phase 6)
-        validate_tradable_universe(trade_plan, config, logger)
 
         logger.info(f"Writing sanity checks to {sanity_checks_path}")
         with open(sanity_checks_path, 'w') as f:

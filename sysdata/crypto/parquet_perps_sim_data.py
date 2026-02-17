@@ -530,3 +530,41 @@ class parquetCryptoPerpsSimData(simData):
         except (KeyError, IndexError):
             self.log.warning(f"No funding rate data for {instrument_code}")
             return pd.Series(dtype=float)
+
+    def get_prices_df(self, instruments: List[str] = None) -> pd.DataFrame:
+        """
+        Get prices as wide DataFrame (dates × instruments).
+
+        Args:
+            instruments: Subset of instruments to return. If None, returns all.
+
+        Returns:
+            pd.DataFrame with dates as index and instruments as columns.
+        """
+        if instruments is None:
+            return self._prices_df
+        cols = [c for c in instruments if c in self._prices_df.columns]
+        return self._prices_df[cols]
+
+    def get_adv_notional_df(self, instruments: List[str] = None) -> pd.DataFrame:
+        """
+        Get ADV notional as wide DataFrame (dates × instruments).
+
+        Unstacks adv_notional from the multi-indexed metadata DataFrame.
+
+        Args:
+            instruments: Subset of instruments to return. If None, returns all.
+
+        Returns:
+            pd.DataFrame with dates as index and instruments as columns,
+            or empty DataFrame if adv_notional not available.
+        """
+        try:
+            adv_df = self._meta_df['adv_notional'].unstack('instrument')
+            if instruments is not None:
+                cols = [c for c in instruments if c in adv_df.columns]
+                adv_df = adv_df[cols]
+            return adv_df
+        except (KeyError, AttributeError):
+            self.log.warning("ADV notional not available in meta_df, returning empty DataFrame")
+            return pd.DataFrame(dtype=float)

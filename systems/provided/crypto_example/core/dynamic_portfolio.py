@@ -94,11 +94,14 @@ class CryptoDynamicPortfolio(Portfolios):
         subsystem_positions = self._get_all_subsystem_positions()
         position_series_index = subsystem_positions.index
 
-        # Get eligibility matrix from data layer
+        # Get eligibility matrix from data layer (Stage 1: cost filter)
         eligibility_df = self.data.get_universe_eligibility_df(
             instruments=instrument_list,
             dates=position_series_index
         )
+
+        # Stage 2: Top-K Liquidity Selection with Hysteresis (if configured)
+        eligibility_df = self._apply_top_k_selection(eligibility_df)
 
         # Calculate equal weights among eligible instruments with entry/exit logic
         weights_df = self._calculate_dynamic_weights(eligibility_df)
@@ -109,6 +112,101 @@ class CryptoDynamicPortfolio(Portfolios):
         )
 
         return weights_df
+
+    def _apply_top_k_selection(self, eligibility_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Apply Stage 2 Top-K liquidity selection with hysteresis.
+
+        Only runs if dynamic_universe.top_k is set in config.
+        Stashes the tradable_over_time dict as self._tradable_over_time for
+        post-run snapshot extraction.
+
+        Args:
+            eligibility_df: Stage 1 boolean DataFrame (dates × instruments)
+
+        Returns:
+            Filtered eligibility_df (Stage 2 output) or original if Stage 2 not configured
+        """
+        config = self.parent.config
+        du_config = config.get_element_or_default('dynamic_universe', {}) or {}
+
+        if not du_config.get('top_k'):
+            self.log.debug("Stage 2 (Top-K) not configured — using Stage 1 eligibility only")
+            return eligibility_df
+
+        from sysdata.crypto.top_k_selector import TopKInstrumentSelector
+
+        K = du_config.get('top_k', 30)
+        entry_buffer = du_config.get('entry_buffer', 5)
+        exit_buffer = du_config.get('exit_buffer', 10)
+        adv_window = du_config.get('adv_window', 30)
+
+        self.log.info(
+            f"Stage 2: Top-K selection K={K}, entry<={K - entry_buffer}, exit>{K + exit_buffer}"
+        )
+
+        selector = TopKInstrumentSelector(
+            K=K,
+            entry_buffer=entry_buffer,
+            exit_buffer=exit_buffer,
+            adv_window=adv_window,
+            log=self.log,
+        )
+
+        # Get prices and ADV data from data layer
+        prices_df = self.data.get_prices_df(list(eligibility_df.columns))
+        adv_df = self.data.get_adv_notional_df(list(eligibility_df.columns))
+
+        # Derive volumes_df so that price * volume = adv_notional
+        # TopKSelector computes ADV as (recent_prices * recent_volumes).mean()
+        if adv_df.empty:
+            self.log.warning(
+                "ADV notional data not available — using price-only liquidity proxy"
+            )
+            volumes_df = pd.DataFrame(
+                1.0, index=prices_df.index, columns=prices_df.columns
+            )
+        else:
+            prices_aligned = prices_df.reindex(adv_df.index)
+            volumes_df = (
+                adv_df.divide(prices_aligned)
+                .fillna(0.0)
+                .replace([float('inf'), float('-inf')], 0.0)
+            )
+
+        tradable_over_time = selector.get_tradable_over_time(
+            eligible_df=eligibility_df,
+            prices_df=prices_df,
+            volumes_df=volumes_df,
+        )
+
+        # Apply manual pins: add pinned instruments to each date's tradable set
+        # (only if they pass Stage 1 cost filter; BANNED_FLATTEN still overrides)
+        pinned = set(config.get_element_or_default('pinned_instruments', []) or [])
+        if pinned:
+            for date in list(tradable_over_time.keys()):
+                eligible_on_date = set(
+                    eligibility_df.columns[eligibility_df.loc[date]]
+                )
+                tradable_over_time[date] = (
+                    tradable_over_time[date] | (pinned & eligible_on_date)
+                )
+            self.log.info(f"Applied {len(pinned)} pinned instruments to tradable sets")
+
+        # Convert back to boolean DataFrame for _calculate_dynamic_weights
+        eligibility_df = selector.to_eligibility_df(
+            tradable_over_time, list(eligibility_df.columns)
+        )
+
+        # Stash for post-run snapshot extraction
+        self._tradable_over_time = tradable_over_time
+
+        last_tradable_count = len(tradable_over_time[eligibility_df.index[-1]])
+        self.log.info(
+            f"Stage 2 complete: {last_tradable_count} instruments tradable on last date"
+        )
+
+        return eligibility_df
 
     def _calculate_dynamic_weights(self, eligibility_df: pd.DataFrame) -> pd.DataFrame:
         """

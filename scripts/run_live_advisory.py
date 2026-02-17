@@ -294,6 +294,11 @@ Examples:
         help='Use dynamic universe with parquet-backed adapter (pysystemtrade framework). '
              'If not specified, uses research_v1 system (custom implementation).'
     )
+    parser.add_argument(
+        '--prev-snapshot',
+        type=Path,
+        help='Override stable pointer lookup: explicit path to previous run\'s universe_snapshot.json.'
+    )
 
     args = parser.parse_args()
 
@@ -375,10 +380,15 @@ Examples:
         logger.info(f"  (actual tradable universe will be determined by cost filters)")
         universe = candidates
     else:
-        # Static universe: use explicit list from config (backward compat)
+        # Static universe: use instruments from config (backward compat)
         with open(args.config) as f:
             config = yaml.safe_load(f)
-        universe = config.get('universe', {}).get('layer_a_instruments', [])
+        # Support both legacy layer_a_instruments and newer candidate_instruments
+        universe = (
+            config.get('data_acquisition', {}).get('candidate_instruments', [])
+            or config.get('universe', {}).get('instruments', [])
+            or config.get('universe', {}).get('layer_a_instruments', [])
+        )
         logger.info(f"Static universe mode: {len(universe)} instruments")
 
     # Handle expected_as_of_date - SINGLE SOURCE OF TRUTH for all date computations
@@ -560,6 +570,35 @@ Examples:
         logger.info(f"Backtest as_of_date: {as_of_date}")
 
         # STEP 4: Generate trade plan
+
+        # Resolve stable snapshot pointer (for reduce-only computation)
+        # The pointer file stores the absolute path to the previous run's snapshot.
+        prev_snapshot_path = None
+        if args.use_dynamic_universe:
+            # --prev-snapshot overrides the pointer file lookup
+            if hasattr(args, 'prev_snapshot') and args.prev_snapshot:
+                if args.prev_snapshot.exists():
+                    prev_snapshot_path = str(args.prev_snapshot)
+                    logger.info(f"Using explicit previous snapshot: {prev_snapshot_path}")
+                else:
+                    logger.warning(f"--prev-snapshot path not found: {args.prev_snapshot}")
+            else:
+                pointer_path = env.env_root / 'live' / 'latest_snapshot_path.txt'
+                if pointer_path.exists():
+                    prev_snapshot_path = pointer_path.read_text().strip()
+                    if prev_snapshot_path and not Path(prev_snapshot_path).exists():
+                        logger.warning(
+                            f"Previous snapshot pointer exists but file not found: {prev_snapshot_path}"
+                        )
+                        prev_snapshot_path = None
+                    else:
+                        logger.info(f"Previous universe snapshot: {prev_snapshot_path}")
+                else:
+                    logger.info(
+                        "No previous universe snapshot pointer found "
+                        "(first run or pointer not written yet — reduce-only skipped)"
+                    )
+
         trade_plan_cmd = [
             sys.executable,
             'scripts/generate_trade_plan.py',
@@ -571,15 +610,45 @@ Examples:
             '--config', str(args.config)
         ]
 
-        # Add data status for staleness overlay (V1 daily cadence)
-        if args.cadence == 'daily':
-            data_status_path = output_dir / 'raw_data_status.json'
-            if data_status_path.exists():
-                trade_plan_cmd.extend(['--data-status', str(data_status_path)])
+        # Add data status for staleness overlay and API staleness hard exits
+        data_status_path = output_dir / 'raw_data_status.json'
+        if data_status_path.exists():
+            trade_plan_cmd.extend(['--data-status', str(data_status_path)])
+        elif args.cadence == 'daily':
+            logger.warning(f"Data status file not found: {data_status_path}. Staleness overlay skipped.")
+
+        # Add universe snapshot args (dynamic universe mode only)
+        if args.use_dynamic_universe:
+            new_snapshot_path = backtest_dir / 'universe_snapshot.json'
+            if new_snapshot_path.exists():
+                trade_plan_cmd.extend(['--universe-snapshot', str(new_snapshot_path)])
             else:
-                logger.warning(f"Data status file not found: {data_status_path}. Staleness overlay skipped.")
+                logger.warning(
+                    f"Universe snapshot not found at {new_snapshot_path}. "
+                    "Universe validation skipped."
+                )
+
+            if prev_snapshot_path:
+                trade_plan_cmd.extend(['--prev-universe-snapshot', prev_snapshot_path])
+
+            # Registry changelog for delisting hard exits
+            if registry_metadata:
+                # Write changelog to a file that generate_trade_plan.py can read
+                changelog_path = output_dir / 'registry_changelog.json'
+                with open(changelog_path, 'w') as f:
+                    json.dump(registry_metadata.get('changelog', {}), f, indent=2)
+                trade_plan_cmd.extend(['--registry-changelog', str(changelog_path)])
 
         run_command(trade_plan_cmd, "Generate trade plan (target vs actual deltas)")
+
+        # Update stable snapshot pointer after successful trade plan generation
+        if args.use_dynamic_universe:
+            new_snapshot_path = backtest_dir / 'universe_snapshot.json'
+            if new_snapshot_path.exists():
+                pointer_path = env.env_root / 'live' / 'latest_snapshot_path.txt'
+                pointer_path.parent.mkdir(parents=True, exist_ok=True)
+                pointer_path.write_text(str(new_snapshot_path))
+                logger.info(f"Universe pointer updated → {new_snapshot_path}")
 
         # Write advisory metadata (includes registry snapshot)
         advisory_metadata = {
@@ -649,7 +718,23 @@ Examples:
                 if du_stats:
                     logger.info(f"\nDynamic Universe Stats:")
                     logger.info(f"  Active instruments: min={du_stats['min_active']}, max={du_stats['max_active']}, avg={du_stats['avg_active']:.1f}")
-                    logger.info(f"  vs static universe of {len(universe)} instruments")
+                    logger.info(f"  vs candidate universe of {len(universe)} instruments")
+
+            # Log universe transitions from snapshot
+            snapshot_path = backtest_dir / 'universe_snapshot.json'
+            if snapshot_path.exists():
+                with open(snapshot_path) as f:
+                    snapshot = json.load(f)
+                entrants = snapshot.get('entrants', [])
+                exits = snapshot.get('exits', [])
+                count = snapshot.get('count', '?')
+                logger.info(
+                    f"\nUniverse: {len(entrants)} entrants, {len(exits)} exits, {count} active"
+                )
+                if entrants:
+                    logger.info(f"  Entrants: {entrants}")
+                if exits:
+                    logger.info(f"  Exits: {exits}")
 
         logger.info(f"\nNext steps:")
         logger.info(f"  1. Review trade plan: {output_dir / f'trade_plan_{as_of_date}.csv'}")

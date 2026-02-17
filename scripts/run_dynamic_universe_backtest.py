@@ -48,6 +48,81 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _write_universe_snapshot(system, output_path: Path, config_path: str) -> None:
+    """
+    Extract Stage 2 tradable set from portfolio stage and write universe_snapshot.json.
+
+    The snapshot records the last date's tradable instruments, entry/exit transitions
+    vs any previous snapshot, and the selector parameters used.
+
+    Args:
+        system: Backtest System object (portfolio stage must have _tradable_over_time)
+        output_path: Directory where universe_snapshot.json will be written
+        config_path: Path to config YAML (for reading dynamic_universe parameters)
+    """
+    import yaml
+
+    portfolio_stage = system.portfolio
+    tradable_over_time = getattr(portfolio_stage, '_tradable_over_time', None)
+
+    if not tradable_over_time:
+        logger.warning(
+            "_tradable_over_time not found on portfolio stage — "
+            "Stage 2 may not be wired in or top_k not configured. Skipping snapshot."
+        )
+        return
+
+    last_date = max(tradable_over_time.keys())
+    new_tradable = sorted(tradable_over_time[last_date])
+
+    # Load dynamic_universe config parameters
+    with open(config_path) as f:
+        raw_config = yaml.safe_load(f)
+    du_config = raw_config.get('dynamic_universe', {})
+    K = du_config.get('top_k', 30)
+    entry_buffer = du_config.get('entry_buffer', 5)
+    exit_buffer = du_config.get('exit_buffer', 10)
+
+    # Compute entrants/exits relative to any previous snapshot in the same output dir
+    prev_snapshot_path = output_path / 'universe_snapshot.json'
+    prev_tradable = None
+    if prev_snapshot_path.exists():
+        try:
+            with open(prev_snapshot_path) as f:
+                prev_snap = json.load(f)
+            prev_tradable = set(prev_snap.get('tradable_instruments', []))
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    if prev_tradable is not None:
+        entrants = sorted(set(new_tradable) - prev_tradable)
+        exits = sorted(prev_tradable - set(new_tradable))
+    else:
+        entrants = []
+        exits = []
+
+    snapshot = {
+        'as_of_date': last_date.strftime('%Y-%m-%d'),
+        'tradable_instruments': new_tradable,
+        'count': len(new_tradable),
+        'K': K,
+        'entry_threshold': K - entry_buffer,
+        'exit_threshold': K + exit_buffer,
+        'pinned_instruments': raw_config.get('pinned_instruments', []),
+        'entrants': entrants,
+        'exits': exits,
+    }
+
+    snapshot_path = output_path / 'universe_snapshot.json'
+    with open(snapshot_path, 'w') as f:
+        json.dump(snapshot, f, indent=2)
+
+    logger.info(
+        f"  ✓ {snapshot_path} "
+        f"({len(new_tradable)} instruments, {len(entrants)} entrants, {len(exits)} exits)"
+    )
+
+
 def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_universe: bool = True):
     """
     Run pysystemtrade backtest with parquet-backed data adapter.
@@ -170,6 +245,14 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     weights = system.portfolio.get_instrument_weights()
     universe_size = (weights > 0).sum(axis=1)
     logger.info(f"    Universe size: min={universe_size.min():.0f}, max={universe_size.max():.0f}, avg={universe_size.mean():.1f}")
+
+    # Write universe snapshot from Stage 2 selector output
+    if use_dynamic_universe:
+        _write_universe_snapshot(
+            system=system,
+            output_path=output_path,
+            config_path=config_path,
+        )
 
     # Write outputs
     logger.info("\nWriting outputs...")
