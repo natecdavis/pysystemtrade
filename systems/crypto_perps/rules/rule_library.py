@@ -1,0 +1,393 @@
+"""
+Full Carver-style trading rule library for crypto perpetual futures.
+
+Implements rule families not available in pysystemtrade core:
+- Normmom: Vol-normalised momentum
+- Assettrend: ADV-weighted asset-class index momentum
+- BtcLeadLag: BTC returns as leading signal for alts
+- FundingCarry: Smoothed annualised funding rate signal
+- Relcarry: Instrument funding relative to cross-sectional median
+- FundingMR: Mean-reversion from extreme funding rates
+- STreversal: Short-term price reversal
+- ReturnSkew: Negative rolling skewness
+- Mrinasset: Asset-class index mean-reversion
+- Illiquidity: Amihud illiquidity defensive signal
+
+All functions follow pysystemtrade convention:
+  - Positional args = data series injected from YAML config ``data:`` field,
+    called as stage.method(instrument_code) in the order listed
+  - Keyword args = values from ``other_args:`` field
+  - Return: pd.Series (unscaled, uncapped forecast)
+"""
+
+import pandas as pd
+import numpy as np
+
+from sysquant.estimators.vol import robust_vol_calc
+from systems.provided.rules.ewmac import ewmac, ewmac_calc_vol
+
+
+# ============================================================================
+# DIVERGENT RULES
+# ============================================================================
+
+
+def normmom(price: pd.Series, vol: pd.Series, Lfast: int = 16) -> pd.Series:
+    """
+    Normalised momentum: EWMAC applied to cumulative vol-normalised return series.
+
+    Differs from plain EWMAC in that the input series is vol-normalised before
+    differencing, making the signal price-level independent and comparable
+    across instruments with very different price scales.
+
+    Args:
+        price: Daily price series (data.daily_prices)
+        vol: Daily price volatility — unit, not % (rawdata.daily_returns_volatility)
+        Lfast: Fast EWMA lookback in days. Lslow is fixed to 4×Lfast.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    Lslow = Lfast * 4
+    daily_ret = price.diff()
+    vol_filled = vol.ffill().replace(0.0, np.nan).ffill()
+    norm_ret = (daily_ret / vol_filled).fillna(0.0)
+    cum_norm = norm_ret.cumsum()
+    # Unit vol because cum_norm is already normalised
+    unit_vol = pd.Series(1.0, index=cum_norm.index)
+    return ewmac(cum_norm, unit_vol, Lfast=Lfast, Lslow=Lslow)
+
+
+def assettrend(index_price: pd.Series, Lfast: int = 8) -> pd.Series:
+    """
+    Asset-class trend: EWMAC of ADV-weighted cross-asset price index.
+
+    Generates a single market-regime signal identical for all instruments
+    in the asset class. A rising index → long all, falling → short all.
+
+    Args:
+        index_price: ADV-weighted asset-class index price (data.get_asset_class_index_price)
+        Lfast: Fast EWMA lookback in days. Lslow is fixed to 4×Lfast.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    Lslow = Lfast * 4
+    return ewmac_calc_vol(index_price, Lfast=Lfast, Lslow=Lslow)
+
+
+def btc_lead_lag(
+    btc_price: pd.Series,
+    instrument_price: pd.Series,
+    lag_days: int = 1,
+) -> pd.Series:
+    """
+    BTC lead-lag: lagged vol-normalised BTC return as a predictive signal for alts.
+
+    Based on the empirical finding that BTC returns lead altcoin returns by
+    1–2 days. Not applied to BTC itself (set forecast_weight = 0 for BTC).
+
+    Args:
+        btc_price: BTC daily price series (data.get_btc_price)
+        instrument_price: Target instrument price series (data.daily_prices),
+            used only to align the index of the returned signal.
+        lag_days: Number of calendar days to lag the BTC signal.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    btc_vol = robust_vol_calc(btc_price.diff())
+    btc_norm_ret = btc_price.diff() / btc_vol.ffill()
+    signal = btc_norm_ret.shift(lag_days)
+    return signal.reindex(instrument_price.index)
+
+
+# ============================================================================
+# CONVERGENT SUB-A: CARRY / FUNDING RULES
+# ============================================================================
+
+
+def funding_carry(funding_rates: pd.Series, smooth_days: int = 30) -> pd.Series:
+    """
+    Funding carry: smoothed annualised funding rate, negated.
+
+    High positive funding → short bias (receive funding payments).
+    High negative funding → long bias (receive carry via negative rate).
+
+    Assumes 8-hourly funding payments: annualised as rate × 3 × 365.
+
+    Args:
+        funding_rates: Raw 8-hourly funding rate series (data.get_funding_rate).
+            Typical scale: 0.0001 = 0.01% per 8h.
+        smooth_days: EWM span for smoothing.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    ann_funding = funding_rates * 3 * 365
+    smoothed = ann_funding.ewm(span=smooth_days, min_periods=1).mean()
+    return -smoothed
+
+
+def relcarry(
+    funding_rates: pd.Series,
+    median_funding: pd.Series,
+    smooth_days: int = 30,
+) -> pd.Series:
+    """
+    Relative carry: instrument funding rate relative to cross-sectional median.
+
+    When this instrument's funding is above the median → more expensive to hold
+    long → short bias. When below median → cheaper → long bias.
+
+    Not applied to BTC (set forecast_weight = 0 for BTC).
+
+    Args:
+        funding_rates: Raw 8-hourly funding rate for this instrument
+            (data.get_funding_rate).
+        median_funding: Cross-sectional median of annualised funding rates
+            across all instruments (data.get_cross_sectional_median_funding).
+        smooth_days: EWM span for smoothing this instrument's funding.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    ann_funding = funding_rates * 3 * 365
+    smoothed = ann_funding.ewm(span=smooth_days, min_periods=1).mean()
+    median_aligned = median_funding.reindex(smoothed.index, method="ffill")
+    return -(smoothed - median_aligned)
+
+
+def funding_mr(
+    funding_rates: pd.Series,
+    window: int = 60,
+    zscore_threshold: float = 2.0,
+) -> pd.Series:
+    """
+    Funding mean-reversion: fires only when funding z-score exceeds threshold.
+
+    Extreme funding tends to revert. When |z| > threshold, fade the extreme
+    funding direction. Signal is zero when funding is within normal range.
+
+    Args:
+        funding_rates: Raw 8-hourly funding rate series (data.get_funding_rate).
+        window: Rolling window for z-score calculation (days).
+        zscore_threshold: Minimum absolute z-score to generate a non-zero signal.
+
+    Returns:
+        Unscaled forecast series (zero except at extreme funding episodes).
+    """
+    min_p = max(window // 2, 2)
+    roll_mean = funding_rates.rolling(window, min_periods=min_p).mean()
+    roll_std = funding_rates.rolling(window, min_periods=min_p).std()
+    zscore = (funding_rates - roll_mean) / roll_std.clip(lower=1e-8)
+    signal = pd.Series(0.0, index=funding_rates.index)
+    fires = zscore.abs() > zscore_threshold
+    # Scale so z=2 ≈ signal 20 (at forecast cap); opposite direction to funding
+    signal[fires] = -zscore[fires] * 10
+    return signal
+
+
+# ============================================================================
+# CONVERGENT SUB-B: SHORT-TERM / STRUCTURAL RULES
+# ============================================================================
+
+
+def streversal(price: pd.Series, vol: pd.Series, horizon: int = 1) -> pd.Series:
+    """
+    Short-term price reversal: negative N-day return normalised by daily vol.
+
+    Negative recent return → positive forecast (expect mean reversion upward).
+
+    Args:
+        price: Daily price series (data.daily_prices).
+        vol: Daily price volatility — unit, not % (rawdata.daily_returns_volatility).
+        horizon: Return lookback in days.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    ret = price.diff(horizon)
+    vol_filled = vol.ffill().replace(0.0, np.nan).ffill()
+    return -(ret / vol_filled)
+
+
+def return_skew(price: pd.Series, window: int = 20) -> pd.Series:
+    """
+    Return skewness: negative rolling skewness of daily returns, z-scored over time.
+
+    Negative skewness (fat left tail) → positive forecast (expect skew reversion).
+    Positive skewness (fat right tail) → negative forecast.
+
+    Args:
+        price: Daily price series (data.daily_prices).
+        window: Rolling window for skewness calculation (days).
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    daily_ret = price.pct_change()
+    skew_series = daily_ret.rolling(window, min_periods=max(window // 2, 3)).skew()
+    roll_mean = skew_series.rolling(252, min_periods=60).mean()
+    roll_std = skew_series.rolling(252, min_periods=60).std()
+    zscore = (skew_series - roll_mean) / roll_std.clip(lower=1e-8)
+    return -zscore
+
+
+def mrinasset(index_price: pd.Series, ma_window: int = 1000) -> pd.Series:
+    """
+    Asset-class index mean-reversion: deviation from long-term MA, inverted.
+
+    When the asset class is well above its long-term average → short bias
+    (expect reversion toward the mean). Only assigned non-zero weight for
+    BTC and ETH (the most liquid, long-history instruments).
+
+    Args:
+        index_price: ADV-weighted asset-class index price
+            (data.get_asset_class_index_price).
+        ma_window: Rolling window for long-term moving average (days).
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    ma = index_price.rolling(
+        ma_window, min_periods=max(ma_window // 2, 60)
+    ).mean()
+    vol = robust_vol_calc(index_price.diff())
+    deviation = (index_price - ma) / vol.ffill()
+    return -deviation
+
+
+def illiquidity(price: pd.Series, adv: pd.Series, window: int = 20) -> pd.Series:
+    """
+    Illiquidity defensive signal: rising Amihud illiquidity ratio → negative signal.
+
+    The Amihud ratio (|return| / dollar_volume) measures market impact.
+    When it rises, markets are thinning and prices may gap — a defensive
+    signal to reduce exposure.
+
+    Args:
+        price: Daily price series (data.daily_prices).
+        adv: Average daily volume in notional USD (data.get_adv_notional).
+        window: Rolling window for smoothing the Amihud ratio (days).
+
+    Returns:
+        Unscaled forecast series (negative when illiquidity rising — defensive).
+    """
+    abs_ret = price.pct_change().abs()
+    adv_filled = adv.reindex(price.index, method="ffill").clip(lower=1.0)
+    amihud = abs_ret / adv_filled
+    smoothed = amihud.rolling(window, min_periods=max(window // 2, 2)).mean()
+    change = smoothed.diff()
+    change_vol = change.rolling(252, min_periods=60).std()
+    return -(change / change_vol.clip(lower=1e-12))
+
+
+# ============================================================================
+# MACRO-RESIDUALISED MOMENTUM
+# ============================================================================
+
+
+def _rolling_ols_residuals(
+    y: pd.Series, X: pd.DataFrame, window: int
+) -> pd.Series:
+    """
+    Rolling OLS: regress y on X (with intercept) and return point-in-time residuals.
+
+    Only the final-date residual of each rolling window is stored (the actual
+    out-of-sample error for that day given the trailing window's coefficients).
+
+    Args:
+        y: Dependent variable (instrument daily returns).
+        X: Factor DataFrame (spx_ret, dxy_ret, yield_chg) — same index as y.
+        window: Rolling window length in days.
+
+    Returns:
+        pd.Series of residuals with the same index as y; NaN for the first
+        (window-1) observations.
+    """
+    n = len(y)
+    residuals = pd.Series(np.nan, index=y.index, dtype=float)
+    X_vals = X.values
+    y_vals = y.values
+    ones = np.ones((window, 1))
+
+    for i in range(window - 1, n):
+        X_win = np.hstack([ones, X_vals[i - window + 1 : i + 1]])
+        y_win = y_vals[i - window + 1 : i + 1]
+        try:
+            coeffs, _, _, _ = np.linalg.lstsq(X_win, y_win, rcond=None)
+            predicted = X_win[-1] @ coeffs
+            residuals.iloc[i] = y_win[-1] - predicted
+        except np.linalg.LinAlgError:
+            pass
+
+    return residuals
+
+
+def residual_momentum(
+    price: pd.Series,
+    spx_price: pd.Series,
+    dxy_price: pd.Series,
+    us10y_yield: pd.Series,
+    Lfast: int = 16,
+    reg_window: int = 60,
+) -> pd.Series:
+    """
+    Macro-residualised momentum.
+
+    Runs a rolling OLS regression of instrument daily returns on three macro
+    factors (SPX returns, DXY returns, 10Y yield changes). Cumulates the
+    residuals — the part of the instrument's return that macro cannot explain —
+    into a 'crypto-specific price' series and applies EWMAC.
+
+    This signal is orthogonal to standard EWMAC by construction: it captures
+    halving-cycle rallies and crypto-native catalysts while going quiet when BTC
+    is simply tracking SPX risk-on/risk-off.
+
+    Missing macro days (weekends, US holidays) are treated as zero-return days,
+    which is conservative and avoids double-counting weekend moves.
+
+    Args:
+        price: Daily instrument price series (data.daily_prices).
+        spx_price: S&P 500 daily close (data.get_spx_price).
+        dxy_price: US Dollar Index daily close (data.get_dxy_price).
+        us10y_yield: US 10Y yield in % (data.get_us10y_yield).
+        Lfast: Fast EWMA lookback (days). Lslow is fixed at 4×Lfast.
+        reg_window: Rolling OLS window (days). Default 60 ≈ one quarter.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    Lslow = Lfast * 4
+
+    # Factor returns / changes (same for all instruments on a given date)
+    spx_ret = spx_price.pct_change()
+    dxy_ret = dxy_price.pct_change()
+    yield_chg = us10y_yield.diff()
+
+    # Instrument daily returns on instrument's own calendar
+    instr_ret = price.pct_change(fill_method=None)
+    idx = instr_ret.dropna().index
+
+    # Align macro series to instrument's date index.
+    # Gaps (weekends / US holidays where crypto trades but macro markets are closed)
+    # are filled with 0.0 — neutral, avoids double-counting weekend moves.
+    factors = pd.DataFrame(
+        {
+            'spx': spx_ret.reindex(idx),
+            'dxy': dxy_ret.reindex(idx),
+            'yield': yield_chg.reindex(idx),
+        }
+    ).fillna(0.0)
+    y = instr_ret.reindex(idx).fillna(0.0)
+
+    # Rolling OLS residuals (point-in-time; NaN for first reg_window days)
+    residuals = _rolling_ols_residuals(y, factors, window=reg_window)
+
+    # Cumulate residuals → crypto-specific price series
+    cum_resid = residuals.cumsum()
+
+    # Apply EWMAC with unit vol — residuals are already dimensionless daily fractions
+    unit_vol = pd.Series(1.0, index=cum_resid.index)
+    return ewmac(cum_resid, unit_vol, Lfast=Lfast, Lslow=Lslow)

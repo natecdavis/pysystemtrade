@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sysdata.config.configdata import Config
 from sysdata.crypto.parquet_perps_sim_data import parquetCryptoPerpsSimData
 from systems.provided.crypto_example.core.dynamic_portfolio import CryptoDynamicPortfolio
+from systems.crypto_perps.crypto_portfolio import CryptoPortfolios
 from systems.basesystem import System
 from systems.forecasting import Rules
 from systems.forecast_combine import ForecastCombine
@@ -123,12 +124,54 @@ def _write_universe_snapshot(system, output_path: Path, config_path: str) -> Non
     )
 
 
+def _compute_funding_pnl_series(
+    portfolio_positions: pd.DataFrame,
+    prices_df: pd.DataFrame,
+    funding_rates_df: pd.DataFrame,
+    capital: float,
+) -> pd.Series:
+    """
+    Compute daily portfolio funding P&L as a fraction of capital.
+
+    Convention:
+      - Long position (positive) + positive funding → you PAY → negative P&L
+      - Short position (negative) + positive funding → you RECEIVE → positive P&L
+      formula: funding_pnl = -signed_position_base × price × funding_rate
+
+    Args:
+        portfolio_positions: dates × instruments, base-asset units
+        prices_df: dates × instruments, close prices
+        funding_rates_df: dates × instruments, daily total funding rate
+        capital: notional trading capital in USD
+
+    Returns:
+        pd.Series of daily funding P&L as fraction of capital
+    """
+    if funding_rates_df.empty or capital <= 0:
+        return pd.Series(0.0, index=portfolio_positions.index)
+
+    instruments = [
+        c for c in portfolio_positions.columns
+        if c in prices_df.columns and c in funding_rates_df.columns
+    ]
+    if not instruments:
+        return pd.Series(0.0, index=portfolio_positions.index)
+
+    pos = portfolio_positions[instruments].reindex(funding_rates_df.index, method='ffill')
+    price = prices_df[instruments].reindex(funding_rates_df.index, method='ffill')
+    rate = funding_rates_df[instruments]
+
+    daily_funding_usd = -(pos * price * rate).sum(axis=1)
+    return daily_funding_usd / capital
+
+
 def _compute_performance_metrics(
     system,
     portfolio_positions: pd.DataFrame,
     weights: pd.DataFrame,
     output_path: Path,
     precomputed_returns: pd.Series = None,
+    data=None,
 ) -> None:
     """
     Compute and write performance_summary.json using existing accounting/metrics modules.
@@ -155,9 +198,41 @@ def _compute_performance_metrics(
         except Exception as e:
             logger.warning(f"  Account stage failed ({e}) — P&L metrics will be omitted")
 
+    # 1b. Add funding P&L
+    funding_drag_ann = 0.0
+    if daily_returns_dec is not None and data is not None:
+        try:
+            capital = float(
+                getattr(system.config, 'notional_trading_capital', 10000.0)
+            )
+            funding_rates_df = data.get_funding_rates_df()
+            if not funding_rates_df.empty:
+                funding_series = _compute_funding_pnl_series(
+                    portfolio_positions,
+                    data._prices_df,
+                    funding_rates_df,
+                    capital,
+                )
+                funding_aligned = funding_series.reindex(
+                    daily_returns_dec.index
+                ).fillna(0.0)
+                funding_drag_ann = float(funding_aligned.mean() * 252)
+                daily_returns_dec = daily_returns_dec + funding_aligned
+                logger.info(
+                    f"  Funding P&L: annualised drag = {funding_drag_ann:.4f} "
+                    f"({funding_drag_ann * 100:.2f}% p.a.)"
+                )
+        except Exception as e:
+            logger.warning(f"  Funding P&L computation failed ({e}) — skipping")
+
     # 2. Portfolio-specific metrics from positions/weights
+    # Count instruments with non-zero POSITIONS (after lot-size rounding and min-notional
+    # filter) — not just non-zero weights. The two differ when many positions are zeroed
+    # by the $25 min-notional floor.
     universe_size = (weights > 0).sum(axis=1)
-    avg_active = float(universe_size.mean())
+    avg_active_weighted = float(universe_size.mean())
+    positioned_size = (portfolio_positions.abs() > 0).sum(axis=1)
+    avg_active = float(positioned_size.mean())
 
     # Annual turnover: total abs position changes / (2 × avg exposure) / n_years
     total_exposure = portfolio_positions.abs().sum(axis=1)
@@ -200,11 +275,15 @@ def _compute_performance_metrics(
         "metrics": {k: _to_python(v) for k, v in metrics.items() if k != 'name'},
         "portfolio": {
             "avg_active_positions": avg_active,
+            "avg_active_weighted": avg_active_weighted,
             "annual_turnover": annual_turnover,
             "start_date": start_date,
             "end_date": end_date,
             "n_instruments": n_instruments,
             "n_days": n_days,
+        },
+        "cost_model": {
+            "funding_drag_ann": funding_drag_ann,
         },
     }
 
@@ -214,7 +293,7 @@ def _compute_performance_metrics(
     logger.info(f"  ✓ {perf_path}")
 
 
-def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_universe: bool = True):
+def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_universe: bool = True, macro_data_path: str = None):
     """
     Run pysystemtrade backtest with parquet-backed data adapter.
 
@@ -242,29 +321,24 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     config = Config(config_dict)
 
     # Extract dynamic universe config if enabled
+    # Note: config.dynamic_universe is a plain dict (nested keys are not flattened
+    # as attributes), so we use .get() rather than get_element_or_default().
     dynamic_universe_config = None
     if use_dynamic_universe:
+        du = getattr(config, 'dynamic_universe', {}) or {}
         dynamic_universe_config = {
-            'max_sr_cost_per_trade': config.get_element_or_default(
-                'dynamic_universe.max_sr_cost_per_trade', 0.01
-            ),
-            'max_sr_cost_annual': config.get_element_or_default(
-                'dynamic_universe.max_sr_cost_annual', 0.13
-            ),
-            'stack_turnover': config.get_element_or_default(
-                'dynamic_universe.stack_turnover', 15.0
-            ),
-            'adv_window': config.get_element_or_default(
-                'dynamic_universe.adv_window', 30
-            ),
-            'fee_bps': config.get_element_or_default(
-                'dynamic_universe.fee_bps', 5
-            ),
+            'max_sr_cost_per_trade': du.get('max_sr_cost_per_trade', 0.01),
+            'max_sr_cost_annual': du.get('max_sr_cost_annual', 0.13),
+            'stack_turnover': du.get('stack_turnover', 15.0),
+            'adv_window': du.get('adv_window', 30),
+            'fee_bps': du.get('fee_bps', 5),
+            'vol_window': du.get('vol_window', 35),
         }
         logger.info(f"Dynamic universe enabled:")
         logger.info(f"  Max SR cost per trade: {dynamic_universe_config['max_sr_cost_per_trade']}")
         logger.info(f"  Max SR cost annual: {dynamic_universe_config['max_sr_cost_annual']}")
         logger.info(f"  Stack turnover: {dynamic_universe_config['stack_turnover']}")
+        logger.info(f"  Vol window: {dynamic_universe_config['vol_window']}d")
 
     # Load data
     logger.info(f"Loading dataset: {data_path}")
@@ -275,12 +349,17 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     env_root_str = os.environ.get('LIVE_OPS_ENV_ROOT')
     env_root = Path(env_root_str) if env_root_str else Path.cwd()
 
+    from syscore.constants import arg_not_supplied as _arg_not_supplied
+    macro_kwarg = (
+        macro_data_path if macro_data_path is not None else _arg_not_supplied
+    )
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
         env_root=env_root,
         use_dynamic_universe=use_dynamic_universe,
         dynamic_universe_config=dynamic_universe_config,
+        macro_data_path=macro_kwarg,
     )
 
     instruments = data.get_instrument_list()
@@ -292,8 +371,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     if use_dynamic_universe:
         portfolio_stage = CryptoDynamicPortfolio()
     else:
-        from systems.portfolio import Portfolios
-        portfolio_stage = Portfolios()
+        portfolio_stage = CryptoPortfolios()
 
     system = System(
         stage_list=[
@@ -443,6 +521,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         weights=weights,
         output_path=output_path,
         precomputed_returns=_account_returns,
+        data=data,
     )
 
     logger.info("\n" + "="*80)
@@ -481,6 +560,12 @@ def main():
         action='store_true',
         help='Use static universe (disable dynamic cost filtering)'
     )
+    parser.add_argument(
+        '--macro-data',
+        type=Path,
+        default=None,
+        help='Path to macro factors parquet (spx, dxy, us10y columns); required for residual_momentum rules'
+    )
 
     args = parser.parse_args()
 
@@ -499,7 +584,8 @@ def main():
             config_path=str(args.config),
             data_path=str(args.data),
             output_dir=str(args.outdir),
-            use_dynamic_universe=use_dynamic
+            use_dynamic_universe=use_dynamic,
+            macro_data_path=str(args.macro_data) if args.macro_data else None,
         )
 
         sys.exit(0 if success else 1)

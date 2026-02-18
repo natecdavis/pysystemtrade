@@ -37,6 +37,9 @@ from sysdata.crypto.prices import load_crypto_perps_panel
 from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
 
 
+TAKER_FEE_FRAC = 0.0005  # 5 bps — Binance standard taker (no BNB discount)
+
+
 class parquetCryptoPerpsSimData(simData):
     """
     Simulation data adapter for crypto perpetual futures using parquet panels.
@@ -78,6 +81,7 @@ class parquetCryptoPerpsSimData(simData):
         env_root: Path = arg_not_supplied,
         use_dynamic_universe: bool = False,
         dynamic_universe_config: dict = arg_not_supplied,
+        macro_data_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -103,6 +107,14 @@ class parquetCryptoPerpsSimData(simData):
         self._universe_manager = None
         if use_dynamic_universe:
             self._init_dynamic_universe(dynamic_universe_config)
+
+        # Load macro factors if path provided (used by residual_momentum rule family)
+        self._macro_df: Optional[pd.DataFrame] = None
+        if macro_data_path is not arg_not_supplied:
+            self._macro_df = pd.read_parquet(macro_data_path)
+            self.log.info(
+                f"Loaded macro factors from {macro_data_path}: {list(self._macro_df.columns)}"
+            )
 
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
@@ -232,7 +244,7 @@ class parquetCryptoPerpsSimData(simData):
         """
         Get trading cost data for an instrument.
 
-        Reads spread and taker fee from parquet metadata.
+        Uses ADV-tiered spread (time-averaged cross-sectional rank) + 5 bps taker fee.
 
         Args:
             instrument_code: Instrument code
@@ -240,15 +252,7 @@ class parquetCryptoPerpsSimData(simData):
         Returns:
             instrumentCosts object
         """
-        # Get latest spread and fee from metadata
-        try:
-            meta_for_instr = self._meta_df.xs(instrument_code, level='instrument')
-            latest_spread = meta_for_instr['spread_frac'].iloc[-1]
-            latest_fee = meta_for_instr['taker_fee_frac'].iloc[-1]
-        except (KeyError, IndexError):
-            self.log.warning(f"No cost metadata for {instrument_code}, using defaults")
-            latest_spread = 0.0005  # 5 bps
-            latest_fee = 0.0004  # 4 bps
+        spread_bps = self._get_adv_tiered_spread_bps(instrument_code)
 
         # Build instrumentCosts using percentage_cost only (fraction of trade value).
         #
@@ -259,14 +263,37 @@ class parquetCryptoPerpsSimData(simData):
         #
         # Instead we fold the half-spread into percentage_cost so all costs scale with
         # notional trade value:
-        #   one-way cost = half_spread + fee  (e.g. 0.00025 + 0.0004 = 0.00065 = 6.5 bps)
-        #   round-trip   = spread + 2×fee     (e.g. 0.0005  + 0.0008 = 0.0013  = 13 bps)
-        one_way_cost_frac = latest_spread / 2.0 + latest_fee
+        #   one-way cost = half_spread + fee
+        #   round-trip   = spread + 2×fee
+        one_way_cost_frac = (spread_bps / 2.0 / 10000.0) + TAKER_FEE_FRAC
         return instrumentCosts(
             price_slippage=0.0,
             value_of_block_commission=0.0,
             percentage_cost=one_way_cost_frac,
         )
+
+    def _get_adv_tiered_spread_bps(self, instrument_code: str) -> float:
+        """
+        Return spread in bps based on time-averaged cross-sectional ADV rank.
+
+        Tier: top 20 → 2 bps, rank 21-70 → 5 bps, rest → 12 bps.
+        """
+        try:
+            adv_wide = self._meta_df['adv_notional'].unstack('instrument')
+            avg_adv = adv_wide.mean()
+            rank = avg_adv.rank(ascending=False, na_option='bottom')
+            instr_rank = rank.get(instrument_code, float('inf'))
+            if instr_rank <= 20:
+                return 2.0
+            elif instr_rank <= 70:
+                return 5.0
+            else:
+                return 12.0
+        except Exception:
+            self.log.warning(
+                f"ADV rank failed for {instrument_code}, using 5 bps spread"
+            )
+            return 5.0
 
     # =========================================================================
     # FUTURES COMPATIBILITY METHODS - Raise missingData to trigger fallbacks
@@ -441,29 +468,20 @@ class parquetCryptoPerpsSimData(simData):
 
         price_adapter = ParquetPriceAdapter(self._prices_df, self._meta_df, self.log)
 
-        # Create cost estimator (override to use metadata ADV instead of calculating from volume)
+        # Build ADV panel for cross-sectional rank spread model
+        try:
+            adv_panel = self._meta_df['adv_notional'].unstack('instrument')
+        except (KeyError, Exception):
+            adv_panel = None
+
+        # Create cost estimator with cross-sectional ADV panel for time-varying spread
         self._cost_estimator = WalkForwardCostEstimator(
             prices_data=price_adapter,
             adv_window=config.get('adv_window', 30),
             fee_bps=config.get('fee_bps', 5),
+            adv_panel=adv_panel,
             log=self.log,
         )
-
-        # Override spread calculation to use metadata
-        original_get_spread = self._cost_estimator.get_spread_series
-
-        def get_spread_from_metadata(instrument_code: str) -> pd.Series:
-            """Use spread from metadata instead of calculating from ADV."""
-            try:
-                meta_for_instr = self._meta_df.xs(instrument_code, level='instrument')
-                # Convert spread_frac to bps
-                spread_bps = meta_for_instr['spread_frac'] * 10000
-                return spread_bps
-            except (KeyError, IndexError):
-                # Fallback to original calculation
-                return original_get_spread(instrument_code)
-
-        self._cost_estimator.get_spread_series = get_spread_from_metadata
 
         # Create universe manager
         self._universe_manager = DynamicUniverseManager(
@@ -473,6 +491,7 @@ class parquetCryptoPerpsSimData(simData):
             stack_turnover=config.get('stack_turnover', 15.0),
             forecast_weights=config.get('forecast_weights'),
             min_annual_vol=config.get('min_annual_vol', 0.0),
+            vol_window=config.get('vol_window', 35),
             log=self.log,
         )
 
@@ -775,3 +794,88 @@ class parquetCryptoPerpsSimData(simData):
         except (KeyError, AttributeError):
             self.log.warning("ADV notional not available in meta_df, returning empty DataFrame")
             return pd.DataFrame(dtype=float)
+
+    def get_funding_rates_df(self, instruments: List[str] = None) -> pd.DataFrame:
+        """
+        Return funding rates as wide DataFrame (dates × instruments).
+
+        Args:
+            instruments: Subset of instruments to return. If None, returns all.
+
+        Returns:
+            pd.DataFrame with dates as index and instruments as columns,
+            or empty DataFrame if funding_rate not available.
+        """
+        if 'funding_rate' not in self._meta_df.columns:
+            self.log.warning("funding_rate not in meta_df, returning empty DataFrame")
+            return pd.DataFrame()
+        try:
+            panel = self._meta_df['funding_rate'].unstack('instrument')
+            if instruments:
+                panel = panel[[c for c in instruments if c in panel.columns]]
+            return panel
+        except (KeyError, AttributeError):
+            self.log.warning("Could not unstack funding_rate, returning empty DataFrame")
+            return pd.DataFrame()
+
+    # =========================================================================
+    # MACRO FACTOR DATA METHODS
+    # Used by the residual_momentum rule family. All three methods ignore
+    # instrument_code and return the same market-wide series.
+    # Requires macro_data_path to be set in __init__.
+    # =========================================================================
+
+    def get_spx_price(self, instrument_code: str) -> pd.Series:
+        """
+        S&P 500 daily close price series.
+
+        The ``instrument_code`` argument is ignored — the same series is
+        returned for every instrument. Used by ``residual_momentum``.
+
+        Returns:
+            pd.Series with DatetimeIndex (empty if macro data not loaded).
+        """
+        return self._get_macro_column('spx', instrument_code)
+
+    def get_dxy_price(self, instrument_code: str) -> pd.Series:
+        """
+        US Dollar Index (DXY) daily close price series.
+
+        The ``instrument_code`` argument is ignored — the same series is
+        returned for every instrument. Used by ``residual_momentum``.
+
+        Returns:
+            pd.Series with DatetimeIndex (empty if macro data not loaded).
+        """
+        return self._get_macro_column('dxy', instrument_code)
+
+    def get_us10y_yield(self, instrument_code: str) -> pd.Series:
+        """
+        US 10-year Treasury yield daily series (values in %, e.g. 4.25 = 4.25%).
+
+        The ``instrument_code`` argument is ignored — the same series is
+        returned for every instrument. Used by ``residual_momentum``.
+
+        Returns:
+            pd.Series with DatetimeIndex (empty if macro data not loaded).
+        """
+        return self._get_macro_column('us10y', instrument_code)
+
+    def _get_macro_column(self, col: str, instrument_code: str) -> pd.Series:
+        """
+        Internal helper: return a single column from the macro factors DataFrame.
+
+        Args:
+            col: Column name ('spx', 'dxy', or 'us10y').
+            instrument_code: Ignored (same data returned for all instruments).
+
+        Returns:
+            pd.Series (empty float series if macro data not available).
+        """
+        if self._macro_df is None or col not in self._macro_df.columns:
+            self.log.warning(
+                f"Macro factor '{col}' not available — "
+                "set macro_data_path in constructor or run download_macro_factors.py"
+            )
+            return pd.Series(dtype=float)
+        return self._macro_df[col].dropna()
