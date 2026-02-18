@@ -70,6 +70,7 @@ dynamic_universe:
   entry_buffer: 5
   exit_buffer: 10
   min_history_days: 365
+  min_annual_vol: 0.20   # Explicit vol floor: rejects stables and semi-pegged tokens
 
 # ============================================================================
 # TRADING RULES — 45 VARIATIONS

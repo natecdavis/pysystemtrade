@@ -472,6 +472,7 @@ class parquetCryptoPerpsSimData(simData):
             max_sr_cost_annual=config.get('max_sr_cost_annual', 0.13),
             stack_turnover=config.get('stack_turnover', 15.0),
             forecast_weights=config.get('forecast_weights'),
+            min_annual_vol=config.get('min_annual_vol', 0.0),
             log=self.log,
         )
 
@@ -555,6 +556,202 @@ class parquetCryptoPerpsSimData(simData):
             return self._prices_df
         cols = [c for c in instruments if c in self._prices_df.columns]
         return self._prices_df[cols]
+
+    # =========================================================================
+    # CROSS-SECTIONAL DATA METHODS
+    # Referenced in trading rule YAML via ``data.method_name``
+    # =========================================================================
+
+    def get_asset_class_index_price(self, instrument_code: str) -> pd.Series:
+        """
+        ADV-weighted crypto asset-class price index, rebased to 100 at first date.
+
+        The ``instrument_code`` argument is ignored — the same index is returned
+        for every instrument. This supports the ``assettrend`` and ``mrinasset``
+        trading rules which treat the whole asset class as a single entity.
+
+        The index is built from daily close prices weighted by each instrument's
+        30-day rolling average ADV notional, normalised to sum to 1 each day.
+        Only instruments with both price and ADV data on a given date contribute.
+
+        Returns:
+            pd.Series with the same DatetimeIndex as the price panel, values ≥ 0.
+        """
+        if hasattr(self, "_asset_index_cache"):
+            return self._asset_index_cache
+
+        prices = self._prices_df.copy()
+
+        # Build ADV weight matrix (dates × instruments)
+        try:
+            adv_wide = self._meta_df["adv_notional"].unstack("instrument")
+        except KeyError:
+            self.log.warning(
+                "adv_notional not in meta_df; falling back to equal-weight index"
+            )
+            adv_wide = pd.DataFrame(1.0, index=prices.index, columns=prices.columns)
+
+        adv_wide = adv_wide.reindex(prices.index, method="ffill")
+        adv_smooth = adv_wide.rolling(30, min_periods=5).mean()
+
+        # Zero-out ADV where price is missing so those instruments don't contribute
+        adv_smooth = adv_smooth.where(prices.notna(), other=0.0)
+        adv_smooth = adv_smooth.clip(lower=0.0)
+
+        # Normalise weights row-wise
+        row_sums = adv_smooth.sum(axis=1).replace(0.0, np.nan)
+        weights = adv_smooth.div(row_sums, axis=0)
+
+        # Weighted average price
+        index_price = (prices * weights).sum(axis=1)
+        index_price = index_price.replace(0.0, np.nan).dropna()
+
+        # Rebase to 100 at first valid date
+        first_valid = index_price.first_valid_index()
+        if first_valid is not None:
+            index_price = index_price / index_price[first_valid] * 100.0
+
+        self._asset_index_cache = index_price
+        return self._asset_index_cache
+
+    def get_cross_sectional_median_funding(self, instrument_code: str) -> pd.Series:
+        """
+        Cross-sectional median of annualised funding rates across all instruments.
+
+        The ``instrument_code`` argument is ignored — the same series is returned
+        for every instrument. Used by the ``relcarry`` trading rule.
+
+        Funding is annualised as ``rate × 3 × 365`` (assumes 8-hourly payments).
+
+        Returns:
+            pd.Series with a DatetimeIndex (union of all instruments' dates).
+        """
+        if hasattr(self, "_median_funding_cache"):
+            return self._median_funding_cache
+
+        try:
+            funding_wide = (
+                self._meta_df["funding_rate"]
+                .unstack("instrument")
+                .astype(float)
+            )
+        except KeyError:
+            self.log.warning("funding_rate not in meta_df; returning zeros")
+            idx = self._prices_df.index
+            self._median_funding_cache = pd.Series(0.0, index=idx)
+            return self._median_funding_cache
+
+        ann_funding_wide = funding_wide * 3 * 365
+        median_series = ann_funding_wide.median(axis=1)
+
+        self._median_funding_cache = median_series
+        return self._median_funding_cache
+
+    def get_btc_price(self, instrument_code: str) -> pd.Series:
+        """
+        BTC daily price series, available from the earliest date in the dataset.
+
+        The ``instrument_code`` argument is ignored. Used by the ``btc_lead_lag``
+        trading rule to obtain the BTC signal independently of the target instrument.
+
+        Returns:
+            pd.Series with DatetimeIndex.
+
+        Raises:
+            missingData: if BTCUSDT_PERP is not present in the dataset.
+        """
+        btc_code = "BTCUSDT_PERP"
+        if btc_code not in self._prices_df.columns:
+            raise missingData(f"{btc_code} not found in dataset; btc_lead_lag unavailable")
+        return self._prices_df[btc_code].dropna()
+
+    def get_adv_notional(self, instrument_code: str) -> pd.Series:
+        """
+        ADV notional (USD) time series for a single instrument.
+
+        Used by the ``illiquidity`` trading rule. Mirrors the pattern of
+        ``get_funding_rate``.
+
+        Args:
+            instrument_code: Instrument code (e.g. 'SOLUSDT_PERP').
+
+        Returns:
+            pd.Series with DatetimeIndex and values in USD.
+        """
+        try:
+            meta_for_instr = self._meta_df.xs(instrument_code, level="instrument")
+            return meta_for_instr["adv_notional"]
+        except (KeyError, IndexError):
+            self.log.warning(f"No ADV notional data for {instrument_code}")
+            return pd.Series(dtype=float)
+
+    def get_normalised_price_this_instrument(
+        self, instrument_code: str
+    ) -> pd.Series:
+        """
+        Cumulative vol-normalised return for this instrument.
+
+        Used by ``relmomentum`` (pysystemtrade's ``relative_momentum`` function)
+        as the first data argument.
+
+        Returns:
+            pd.Series: cumulative sum of daily_return / daily_vol.
+        """
+        if not hasattr(self, "_norm_price_cache"):
+            self._norm_price_cache: dict = {}
+
+        if instrument_code in self._norm_price_cache:
+            return self._norm_price_cache[instrument_code]
+
+        prices = self.get_raw_price_from_start_date(
+            instrument_code, pd.Timestamp("2000-01-01")
+        )
+        if len(prices) == 0:
+            return pd.Series(dtype=float)
+
+        from sysquant.estimators.vol import robust_vol_calc
+
+        vol = robust_vol_calc(prices.diff())
+        daily_ret = prices.diff()
+        vol_filled = vol.ffill().replace(0.0, np.nan).ffill()
+        norm_ret = (daily_ret / vol_filled).fillna(0.0)
+        result = norm_ret.cumsum()
+
+        self._norm_price_cache[instrument_code] = result
+        return result
+
+    def get_normalised_price_for_asset_class(
+        self, instrument_code: str
+    ) -> pd.Series:
+        """
+        Cross-sectional median of cumulative vol-normalised returns across all instruments.
+
+        Used by ``relmomentum`` (pysystemtrade's ``relative_momentum`` function)
+        as the second data argument. The ``instrument_code`` is ignored.
+
+        Returns:
+            pd.Series: cross-sectional median of per-instrument normalised prices.
+        """
+        if hasattr(self, "_cs_norm_price_cache"):
+            return self._cs_norm_price_cache
+
+        instruments = self.get_instrument_list()
+        all_norm: dict = {}
+        for inst in instruments:
+            try:
+                series = self.get_normalised_price_this_instrument(inst)
+                if len(series) > 0:
+                    all_norm[inst] = series
+            except Exception:
+                pass
+
+        if not all_norm:
+            self._cs_norm_price_cache = pd.Series(dtype=float)
+            return self._cs_norm_price_cache
+
+        norm_df = pd.DataFrame(all_norm)
+        self._cs_norm_price_cache = norm_df.median(axis=1)
+        return self._cs_norm_price_cache
 
     def get_adv_notional_df(self, instruments: List[str] = None) -> pd.DataFrame:
         """

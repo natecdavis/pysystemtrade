@@ -64,6 +64,7 @@ class DynamicUniverseManager:
         max_sr_cost_annual: float = 0.13,
         stack_turnover: float = 15.0,
         forecast_weights: Optional[Dict[str, float]] = None,
+        min_annual_vol: float = 0.0,
         log=get_logger("DynamicUniverseManager"),
     ):
         """
@@ -73,11 +74,14 @@ class DynamicUniverseManager:
             max_sr_cost_annual: Maximum annual SR cost (default 0.13)
             stack_turnover: Expected turnover if not using forecast_weights
             forecast_weights: Dict of rule -> weight for turnover calculation
+            min_annual_vol: Minimum annualised vol floor (default 0.0 = disabled).
+                            Rejects stablecoins and semi-pegged tokens.
             log: Logger instance
         """
         self._cost_estimator = cost_estimator
         self._max_sr_per_trade = max_sr_cost_per_trade
         self._max_sr_annual = max_sr_cost_annual
+        self._min_annual_vol = min_annual_vol
         self._log = log
 
         # Calculate turnover from weights if provided
@@ -148,8 +152,11 @@ class DynamicUniverseManager:
         # History filter: must have enough history for at least one rule
         history_ok = self._get_history_filter_series(prices)
 
+        # Volatility floor: exclude stablecoins and semi-pegged tokens
+        vol_ok = self._get_vol_floor_series(prices)
+
         # Combined eligibility
-        eligible = cost_ok & annual_ok & history_ok
+        eligible = cost_ok & annual_ok & history_ok & vol_ok
 
         self._eligibility_cache[instrument_code] = eligible
         return eligible
@@ -296,6 +303,26 @@ class DynamicUniverseManager:
 
         # True when we have enough history
         return cum_count >= MIN_HISTORY_ANY_RULE
+
+    def _get_vol_floor_series(
+        self,
+        prices: pd.Series,
+    ) -> pd.Series:
+        """
+        Get time series of whether annualised vol exceeds the minimum floor.
+
+        Uses the same 35-day rolling window as the SR cost calculation for
+        consistency. Returns all-True when min_annual_vol == 0.0 (disabled).
+        """
+        if self._min_annual_vol <= 0.0:
+            return pd.Series(True, index=prices.index)
+
+        log_ret = np.log(prices / prices.shift(1))
+        daily_vol = log_ret.rolling(35, min_periods=10).std()
+        annual_vol = daily_vol * np.sqrt(252)
+
+        # NaN before warmup → treat as ineligible (same conservative logic as cost filter)
+        return annual_vol >= self._min_annual_vol
 
     def clear_cache(self):
         """Clear cached computations."""
