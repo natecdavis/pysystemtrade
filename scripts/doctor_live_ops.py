@@ -49,6 +49,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def resolve_data_status_path(env_root: Path, cli_arg: Path = None) -> Path:
+    """
+    Resolve data status file path with deterministic precedence.
+
+    Priority:
+    1. CLI --data-status-path if provided
+    2. env_root/out/raw_data_status_v1.json (daily flow output)
+    3. env_root/data/raw/raw_data_status_v1.json (fallback)
+
+    Raises:
+        FileNotFoundError: If no valid status file found
+    """
+    if cli_arg and cli_arg.exists():
+        logger.info(f"Using data status from CLI arg: {cli_arg}")
+        return cli_arg
+
+    daily_status = env_root / 'out' / 'raw_data_status_v1.json'
+    if daily_status.exists():
+        logger.info(f"Using daily flow data status: {daily_status}")
+        return daily_status
+
+    fallback_status = env_root / 'data' / 'raw' / 'raw_data_status_v1.json'
+    if fallback_status.exists():
+        logger.warning(f"Using fallback data status (may be stale): {fallback_status}")
+        return fallback_status
+
+    raise FileNotFoundError(
+        f"No data status file found. Expected:\n"
+        f"  1. {daily_status} (daily flow output)\n"
+        f"  2. {fallback_status} (fallback)\n"
+        f"Run update_data_monthly.py to generate current status."
+    )
+
+
 def check_data_recency(data_status_path: Path, cadence: str, tradable_universe: list = None) -> tuple[str, list, list]:
     """
     Check data recency from data_status.json (PRIMARY SOURCE).
@@ -75,6 +109,19 @@ def check_data_recency(data_status_path: Path, cadence: str, tradable_universe: 
         generated_at = data_status.get('generated_at', 'unknown')
         expected_as_of_date = date.fromisoformat(data_status['expected_as_of_date'])
         dataset_as_of_date = date.fromisoformat(data_status['dataset_as_of_date'])
+
+        # Check staleness of data status file itself
+        today = datetime.now(timezone.utc).date()
+        lag_days = (today - expected_as_of_date).days
+
+        if lag_days > 7:
+            warnings.append(
+                f"Data status appears stale:\n"
+                f"  Expected as_of_date: {expected_as_of_date}\n"
+                f"  Lag: {lag_days} days\n"
+                f"  Status file: {data_status_path}\n"
+                f"  Action: Run update_data_daily.py to refresh"
+            )
 
         # Check expected_as_of_date is reasonable (yesterday UTC for daily cadence)
         if cadence == 'daily':
@@ -243,12 +290,14 @@ def check_positions_sanity(
         return 'FAIL', errors, warnings
 
     # Validate positions
+    # ALLOWLIST SEMANTICS: Missing layer_a instruments => WARNING (not ERROR)
+    # Hard invariant: positions must be subset of layer_a (no extra instruments)
     result = validate_positions_file(
         positions_df,
         universe,
         equity,
         critical_staleness_hours=48,
-        allow_missing_instruments=False
+        allow_missing_instruments=True  # Soft warning for missing instruments
     )
 
     # Convert validation errors/warnings to lists
@@ -308,9 +357,20 @@ def check_equity_staleness(equity_file: Path, critical_hours: int = 48) -> tuple
         return 'FAIL', errors, warnings
 
 
-def check_rectangular_panel(dataset_path: Path) -> tuple[str, list, list]:
+def is_jagged_mode(config: dict) -> bool:
+    """Check if config uses jagged panels / dynamic universe."""
+    return (
+        config.get('system', {}).get('allow_jagged', False) or
+        config.get('dynamic_universe', {}).get('enabled', False)
+    )
+
+
+def check_rectangular_panel(dataset_path: Path, config: dict) -> tuple[str, list, list]:
     """
-    Check rectangular panel (no NaNs, consistent dates).
+    Check dataset for NaNs with mode-aware validation.
+
+    Jagged mode: NaNs => PASS_WITH_WARNINGS (informational)
+    Rectangular mode: NaNs => FAIL (strict)
 
     Returns:
         (status, errors, warnings)
@@ -327,23 +387,38 @@ def check_rectangular_panel(dataset_path: Path) -> tuple[str, list, list]:
 
         # Check for NaNs
         nan_count = df.isna().sum().sum()
-        if nan_count > 0:
-            errors.append(f"Dataset contains {nan_count} NaN values")
 
-        # Check date consistency
-        close_cols = [c for c in df.columns if c.startswith('close_')]
-        date_counts = {col: df[col].notna().sum() for col in close_cols}
-        if date_counts:
-            min_dates = min(date_counts.values())
-            max_dates = max(date_counts.values())
-            if min_dates != max_dates:
-                warnings.append(
-                    f"Inconsistent date counts across instruments "
-                    f"(min: {min_dates}, max: {max_dates})"
-                )
+        if nan_count == 0:
+            logger.info("✓ No NaNs in dataset (rectangular panel)")
+            return 'PASS', errors, warnings
 
-        status = 'PASS' if not errors and not warnings else ('FAIL' if errors else 'PASS_WITH_WARNINGS')
-        return status, errors, warnings
+        # Jagged mode: NaNs are expected
+        if is_jagged_mode(config):
+            # Report stats but don't fail
+            nan_by_col = df.isna().sum().sort_values(ascending=False)
+            nan_by_row = df.isna().sum(axis=1).sort_values(ascending=False)
+
+            top10_cols = nan_by_col.head(10)
+            top10_rows = nan_by_row.head(10)
+
+            warning_msg = (
+                f"Dataset has {nan_count} NaNs (jagged mode enabled):\n"
+                f"  Top 10 columns by NaN count:\n"
+            )
+            for col, count in top10_cols.items():
+                pct = (count / len(df)) * 100
+                warning_msg += f"    {col}: {count} NaNs ({pct:.1f}%)\n"
+
+            warnings.append(warning_msg)
+            logger.warning(warning_msg)
+
+            return 'PASS_WITH_WARNINGS', errors, warnings
+
+        # Rectangular mode: NaNs are errors
+        errors.append(f"Dataset has {nan_count} NaNs but allow_jagged=False")
+        logger.error(f"✗ Dataset has NaNs (rectangular mode requires complete data)")
+
+        return 'FAIL', errors, warnings
 
     except Exception as e:
         errors.append(f"Error reading dataset: {e}")
@@ -480,26 +555,15 @@ def main():
     logger.info(f"Data directory: {data_dir}")
     logger.info(f"Output directory: {output_dir}")
 
-    # Auto-discover data status if not provided
-    if not args.data_status_path:
-        # For live ops, require V1 format (day-level)
-        # Search in: {data_dir.parent} (e.g., data/raw/) and output_dir
-        v1_candidates = []
-        if (data_dir.parent / 'raw_data_status_v1.json').exists():
-            v1_candidates.append(data_dir.parent / 'raw_data_status_v1.json')
-        v1_candidates.extend(output_dir.rglob('raw_data_status_v1.json'))
-
-        if v1_candidates:
-            args.data_status_path = max(v1_candidates, key=lambda p: p.stat().st_mtime)
-            logger.info(f"Auto-discovered V1 data status: {args.data_status_path}")
-        else:
-            # Don't fall back to V0 - error clearly
-            logger.error(
-                "Could not find V1 data_status report (raw_data_status_v1.json). "
-                "Doctor requires day-level V1 format for live ops. "
-                "Run update_data_monthly.py first to generate V1 report."
-            )
-            sys.exit(2)
+    # Resolve data status path using deterministic precedence
+    try:
+        args.data_status_path = resolve_data_status_path(
+            env.env_root,
+            cli_arg=args.data_status_path
+        )
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        sys.exit(2)
 
     # Load config to get tradable universe
     try:
@@ -540,7 +604,7 @@ def main():
         dataset_candidates = list(output_dir.glob('dataset_*.parquet'))
         if dataset_candidates:
             latest_dataset = max(dataset_candidates, key=lambda p: p.stat().st_mtime)
-            status, errors, warnings = check_rectangular_panel(latest_dataset)
+            status, errors, warnings = check_rectangular_panel(latest_dataset, config)
             checks['rectangular_panel'] = (status, errors, warnings)
 
     # Format and print report

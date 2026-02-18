@@ -15,6 +15,9 @@ system:
   min_position_frac: 0.03  # Minimum position fraction (3%)
   allow_jagged: true  # REQUIRED for dynamic universe (instruments vary over time)
 
+# Dataset: Jagged panel with 317 instruments, 6 years (2020-2026)
+dataset_path: data/dataset_538registry_6yr_jagged.parquet
+
 # Dynamic universe parameters (Carver's SR cost thresholds)
 dynamic_universe:
   max_sr_cost_per_trade: 0.01  # Maximum 1% of annual SR per trade

@@ -65,6 +65,7 @@ class DynamicUniverseManager:
         stack_turnover: float = 15.0,
         forecast_weights: Optional[Dict[str, float]] = None,
         min_annual_vol: float = 0.0,
+        vol_window: int = 35,
         log=get_logger("DynamicUniverseManager"),
     ):
         """
@@ -76,12 +77,15 @@ class DynamicUniverseManager:
             forecast_weights: Dict of rule -> weight for turnover calculation
             min_annual_vol: Minimum annualised vol floor (default 0.0 = disabled).
                             Rejects stablecoins and semi-pegged tokens.
+            vol_window: Rolling window (days) for volatility calculation used in
+                        SR cost and vol floor filters (default 35).
             log: Logger instance
         """
         self._cost_estimator = cost_estimator
         self._max_sr_per_trade = max_sr_cost_per_trade
         self._max_sr_annual = max_sr_cost_annual
         self._min_annual_vol = min_annual_vol
+        self._vol_window = vol_window
         self._log = log
 
         # Calculate turnover from weights if provided
@@ -277,7 +281,7 @@ class DynamicUniverseManager:
 
         # Calculate daily volatility
         returns = np.log(prices / prices.shift(1))
-        daily_vol = returns.rolling(35, min_periods=10).std()
+        daily_vol = returns.rolling(self._vol_window, min_periods=min(10, self._vol_window)).std()
         annual_vol = daily_vol * np.sqrt(252)
 
         # Align spread to price index
@@ -311,14 +315,14 @@ class DynamicUniverseManager:
         """
         Get time series of whether annualised vol exceeds the minimum floor.
 
-        Uses the same 35-day rolling window as the SR cost calculation for
+        Uses the same rolling window as the SR cost calculation for
         consistency. Returns all-True when min_annual_vol == 0.0 (disabled).
         """
         if self._min_annual_vol <= 0.0:
             return pd.Series(True, index=prices.index)
 
         log_ret = np.log(prices / prices.shift(1))
-        daily_vol = log_ret.rolling(35, min_periods=10).std()
+        daily_vol = log_ret.rolling(self._vol_window, min_periods=min(10, self._vol_window)).std()
         annual_vol = daily_vol * np.sqrt(252)
 
         # NaN before warmup → treat as ineligible (same conservative logic as cost filter)

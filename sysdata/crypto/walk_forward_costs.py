@@ -62,6 +62,7 @@ class WalkForwardCostEstimator:
         prices_data,
         adv_window: int = 30,
         fee_bps: float = DEFAULT_FEE_BPS,
+        adv_panel: Optional[pd.DataFrame] = None,
         log=get_logger("WalkForwardCostEstimator"),
     ):
         """
@@ -69,11 +70,15 @@ class WalkForwardCostEstimator:
             prices_data: csvSpotPricesData instance for accessing price/volume
             adv_window: Rolling window for ADV calculation (default 30 days)
             fee_bps: One-way trading fee in basis points
+            adv_panel: Optional wide DataFrame (dates × instruments) of ADV notional.
+                       When provided, get_spread_series() uses cross-sectional rank tiers
+                       (top 20 → 2 bps, rank 21-70 → 5 bps, rest → 12 bps).
             log: Logger instance
         """
         self._prices_data = prices_data
         self._adv_window = adv_window
         self._fee_bps = fee_bps
+        self._adv_panel = adv_panel
         self._log = log
 
         # Cache for computed series
@@ -125,7 +130,10 @@ class WalkForwardCostEstimator:
         """
         Get time series of spread estimates in basis points.
 
-        Maps trailing ADV$ to spread using conservative bins.
+        When adv_panel is provided, uses time-varying cross-sectional rank tiers:
+          top 20 → 2 bps, rank 21-70 → 5 bps, rest → 12 bps.
+
+        Otherwise, maps trailing ADV$ to spread using absolute bins.
         Higher volume = lower spread.
 
         Args:
@@ -136,6 +144,17 @@ class WalkForwardCostEstimator:
         """
         if instrument_code in self._spread_cache:
             return self._spread_cache[instrument_code]
+
+        if self._adv_panel is not None and instrument_code in self._adv_panel.columns:
+            rank = self._adv_panel.rank(axis=1, ascending=False)
+            rank_series = rank[instrument_code]
+            spread = rank_series.copy()
+            spread[rank_series <= 20] = 2.0
+            spread[(rank_series > 20) & (rank_series <= 70)] = 5.0
+            spread[rank_series > 70] = 12.0
+            spread[rank_series.isna()] = 12.0
+            self._spread_cache[instrument_code] = spread
+            return spread
 
         adv = self.get_trailing_adv(instrument_code)
 

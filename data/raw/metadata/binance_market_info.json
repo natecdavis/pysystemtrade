@@ -7,204 +7,2032 @@
     "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "BNBUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
   "SOLUSDT": {
-    "spread_frac": 0.00030,
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "XRPUSDT": {
-    "spread_frac": 0.00030,
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "LTCUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "EOSUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "DOTUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "LINKUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "ADAUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "DOGEUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "MATICUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "AVAXUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "UNIUSDT": {
-    "spread_frac": 0.00030,
+  "BNBUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "BCHUSDT": {
-    "spread_frac": 0.00030,
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "ATOMUSDT": {
-    "spread_frac": 0.00030,
+  "DOGEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HYPEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PAXGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZECUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "TRXUSDT": {
-    "spread_frac": 0.00035,
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "ETCUSDT": {
-    "spread_frac": 0.00035,
+  "ASTERUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "XLMUSDT": {
-    "spread_frac": 0.00035,
+  "SUIUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "FILUSDT": {
-    "spread_frac": 0.00030,
+  "PIPPINUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LINKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ADAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PUMPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "UNIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ENAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AVAXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LTCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WLFIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KITEUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "AAVEUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "SANDUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "MANAUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "AXSUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "ICPUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "VETUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "THETAUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "FTMUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "ALGOUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "NEOUSDT": {
-    "spread_frac": 0.00035,
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "NEARUSDT": {
-    "spread_frac": 0.00030,
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XPLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TAOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TRUMPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ARCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WLDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FILUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DOTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZROUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RIVERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TONUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ATOMUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "APTUSDT": {
-    "spread_frac": 0.00030,
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BERAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HBARUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AXSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MONUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XLMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XMRUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "ARBUSDT": {
-    "spread_frac": 0.00030,
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "OPUSDT": {
-    "spread_frac": 0.00030,
+  "ICPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FFUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FETUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WIFUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FARTCOINUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "CRVUSDT": {
-    "spread_frac": 0.00035,
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "SNXUSDT": {
-    "spread_frac": 0.00035,
+  "PENGUUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
-  "MKRUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "COMPUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "LDOUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "RUNEUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "SUSHIUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "GALAUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "ENJUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "IMXUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
-  },
-  "GRTUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "RENDERUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "1INCHUSDT": {
-    "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
-  },
-  "APEUSDT": {
-    "spread_frac": 0.00035,
+  "BARDUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "CHZUSDT": {
-    "spread_frac": 0.00035,
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DASHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ETCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PARTIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "POLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "INITUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "OPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BTCDOMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ONDOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SENTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VIRTUALUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZAMAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SEIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STABLEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SIRENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BANUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "JUPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "POWERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ETHFIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BTRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "UBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ALCHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PENDLEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VVVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LDOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "INJUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SKYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CYSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RENDERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ATUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "OMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AWEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BANANAS31USDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KAITOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ENSOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HANAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DUSKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SANDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NIGHTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MYXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HOMEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GIGGLEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LYNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STRKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PYTHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ROSEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SKYAIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "COMPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PIEVERSEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CAKEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TRADOORUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "USDCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SPACEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ALGOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GPSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "METUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MOVEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ESPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GALAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BULLAUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "ZILUSDT": {
-    "spread_frac": 0.00035,
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XPINUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HUMAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AVNTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "B2USDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MORPHOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "COLLECTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GUNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AUCTIONUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BEAMXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZKPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LINEAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "EIGENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VETUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SYRUPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FHEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XTZUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ENSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AEROUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FORMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RPLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ESPORTSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RAVEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "JELLYJELLYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LRCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DYDXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GUAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ALLOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LITUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BIRBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MOODENGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RESOLVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NXPCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FOGOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "OGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LPTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BEATUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MERLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SOMIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PLUMEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PNUTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BIOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NEOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GWEIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "EDUUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VANAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TRBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ATHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PTBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ORDIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TRIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "JTOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BANKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ARUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LUNA2USDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "API3USDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XNYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CFXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WCTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "EULUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NMRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "JASMYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "COAIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MUBARAKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "USELESSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MANAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CLOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FLOWUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SPXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "APEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "QNTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "UMAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "UAIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NILUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AZTECUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TAGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IMXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "JSTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FIGHTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XVGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "COWUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GRTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LIGHTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TAKEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KAIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZKCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MAGICUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FRAXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AGTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BREVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SPKUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "ZRXUSDT": {
-    "spread_frac": 0.00035,
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SFPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "THETAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MMTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "EGLDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ACTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NEIROUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SUPERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NOMUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   },
   "IOTAUSDT": {
-    "spread_frac": 0.00035,
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "YFIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TNSRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZORAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MANTAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SNXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BSVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GRASSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AXLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RUNEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SKRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TSTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MINAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PEOPLEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MEGAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SAHARAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ANIMEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TWTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IRYSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "C98USDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PROVEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SIGNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ARKMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FOLKSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KASUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TUTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "POPCATUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ICNTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SOPHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "YBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STORJUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KGENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BOMEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CYBERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BATUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TURBOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BLUAIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AVAAIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SWARMSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ACHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GMTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GASUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CATIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BABYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SANTOSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LAYERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TRUTHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "OPENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AKEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AIOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SUSHIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IDOLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CELOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PROMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MASKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZBTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PLAYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SOONUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ONTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BLURUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "YGGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MEMEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SUNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CTSIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VELODROMEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ALTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SOLVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GLMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ONUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZEREBROUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "THEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ASRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DEEPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AIXBTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BROCCOLI714USDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SONICUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RAREUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "INUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VELVETUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ARPAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WALUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KOMAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SKLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "QTUMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DYMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SYNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STBLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SAGAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CVXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ANKRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MELANIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DEXEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KMNOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LISTAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KERNELUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DEGOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BANANAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ERAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RSRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HYPERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KAVAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TOSHIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ORCAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DRIFTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AINUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "POLYXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HEMIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LSKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "OGNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GMXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KSMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "EDENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NOTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DOLOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XVSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ARIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RAYSOLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SAPIENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BASUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HOLOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MIRAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "KNCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MAVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ASTRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SSVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HIPPOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ACEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HEIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NAORISUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ENJUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CROSSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IOTXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RVNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "JCTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "USUALUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ELSAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RDNTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NEWTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SXTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VINEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HAEDALUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ONEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "METISUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FLUIDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AEVOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ALLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ICXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LQTYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BIGTIMEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GTCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SCRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MITOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SHELLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CVCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CHRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FUNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ALICEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DOGSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CLANKERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RLCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HMSTRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BLESSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BANDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "REZUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CKBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DAMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AGLDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VANRYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WOOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RONINUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "APRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "EVAAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WETUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NTRNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MEWUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "COTIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ACXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "EPICUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TURTLEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MOVRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FIDAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AIOTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LABUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GRIFFAINUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "NFPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DENTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CARVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HFTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FIOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TACUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TREEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "GOATUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "REDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ALPINEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BELUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HOTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "COOKIEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RIFUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TRUUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ARKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PROMPTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "A2ZUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "IOSTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XAIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "WAXPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ORDERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BDXNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BICOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PHBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RLSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ACUUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HOOKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TOWNSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "USTCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MLNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BROCCOLIF3BUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SCRTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CETUSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "XANUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SPELLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SAFEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FLOCKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ILVUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "RECALLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BNTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AIUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BRETTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PUNDIXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VICUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CHILLGUYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HIGHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AKTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZETAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VTHOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BMTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MOCAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FORTHUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SLPUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DOODUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MTLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SPORTFUNUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BOBUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PORTALUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "INXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ATAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "FLUXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "STEEMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "JOEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PIXELUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AVAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CELRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TRUSTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CGPTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "HIVEUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "LUMIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PUMPBTCUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "POWRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "COSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ONGUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TLMUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SYSUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MBOXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "SQDUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "OXTUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PHAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "PUFFERUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "AERGOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ZKJUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "USUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "B3USDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "CTKUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MAVIAUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "BRUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "ETHWUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "VFYUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "TAIKOUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DODOXUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "DEGENUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "OLUSDT": {
+    "spread_frac": 0.00025,
+    "taker_fee_frac": 0.0004
+  },
+  "MAGMAUSDT": {
+    "spread_frac": 0.00025,
     "taker_fee_frac": 0.0004
   }
 }

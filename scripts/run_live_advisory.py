@@ -711,7 +711,6 @@ Examples:
         if args.use_dynamic_universe:
             metadata_path = backtest_dir / 'metadata.json'
             if metadata_path.exists():
-                import json
                 with open(metadata_path) as f:
                     metadata = json.load(f)
                 du_stats = metadata.get('dynamic_universe_stats', {})

@@ -1,0 +1,5764 @@
+{
+  "generated_at": "2026-02-17T16:34:17.861980Z",
+  "dataset_metadata": {
+    "requested_start_date": "2020-01-01",
+    "requested_end_date": "2026-01-31",
+    "actual_start_date": "2020-01-01",
+    "actual_end_date": "2026-01-31"
+  },
+  "date_range": {
+    "start": "2020-01-01",
+    "end": "2026-01-31",
+    "total_days": 2223
+  },
+  "instruments": {
+    "included": {
+      "AAVEUSDT_PERP": {
+        "date_range": {
+          "start": "2020-10-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1934,
+        "coverage_pct": 0.8699955015744489,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ACEUSDT_PERP": {
+        "date_range": {
+          "start": "2023-12-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 776,
+        "coverage_pct": 0.3490778227620333,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ACHUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1075,
+        "coverage_pct": 0.4835807467386415,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ACTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 447,
+        "coverage_pct": 0.20107962213225372,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ACXUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 422,
+        "coverage_pct": 0.18983355825461087,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ADAUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2193,
+        "coverage_pct": 0.9865047233468286,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AERGOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 509,
+        "coverage_pct": 0.2289698605488079,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AEROUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-04",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 424,
+        "coverage_pct": 0.1907332433648223,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AEVOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-03-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 690,
+        "coverage_pct": 0.31039136302294196,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AGLDUSDT_PERP": {
+        "date_range": {
+          "start": "2023-07-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 918,
+        "coverage_pct": 0.41295546558704455,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AIUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 755,
+        "coverage_pct": 0.3396311291048133,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AIXBTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 408,
+        "coverage_pct": 0.18353576248313092,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AKTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 440,
+        "coverage_pct": 0.19793072424651373,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ALCHUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 390,
+        "coverage_pct": 0.17543859649122806,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ALGOUSDT_PERP": {
+        "date_range": {
+          "start": "2020-06-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2056,
+        "coverage_pct": 0.9248762932973459,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ALICEUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1783,
+        "coverage_pct": 0.8020692757534863,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ALTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 738,
+        "coverage_pct": 0.3319838056680162,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ANIMEUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-23",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 374,
+        "coverage_pct": 0.16824111560953667,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ANKRUSDT_PERP": {
+        "date_range": {
+          "start": "2021-01-26",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1832,
+        "coverage_pct": 0.8241115609536662,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "APEUSDT_PERP": {
+        "date_range": {
+          "start": "2022-03-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1417,
+        "coverage_pct": 0.6374269005847953,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "API3USDT_PERP": {
+        "date_range": {
+          "start": "2022-02-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1440,
+        "coverage_pct": 0.6477732793522267,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "APTUSDT_PERP": {
+        "date_range": {
+          "start": "2022-10-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1201,
+        "coverage_pct": 0.5402609086819613,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ARBUSDT_PERP": {
+        "date_range": {
+          "start": "2023-03-23",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1046,
+        "coverage_pct": 0.4705353126405758,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ARCUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 380,
+        "coverage_pct": 0.17094017094017094,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ARKMUSDT_PERP": {
+        "date_range": {
+          "start": "2023-07-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 919,
+        "coverage_pct": 0.41340530814215026,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ARKUSDT_PERP": {
+        "date_range": {
+          "start": "2023-09-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 866,
+        "coverage_pct": 0.38956365272154747,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ARPAUSDT_PERP": {
+        "date_range": {
+          "start": "2021-10-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1566,
+        "coverage_pct": 0.7044534412955465,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ARUSDT_PERP": {
+        "date_range": {
+          "start": "2021-09-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1587,
+        "coverage_pct": 0.7139001349527665,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ASTRUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-14",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1083,
+        "coverage_pct": 0.48717948717948717,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ATAUSDT_PERP": {
+        "date_range": {
+          "start": "2021-08-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1615,
+        "coverage_pct": 0.7264957264957265,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ATOMUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2186,
+        "coverage_pct": 0.9833558254610886,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AUCTIONUSDT_PERP": {
+        "date_range": {
+          "start": "2023-12-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 779,
+        "coverage_pct": 0.3504273504273504,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AVAAIUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 380,
+        "coverage_pct": 0.17094017094017094,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AVAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 415,
+        "coverage_pct": 0.1866846603688709,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AVAXUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-23",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1957,
+        "coverage_pct": 0.8803418803418803,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AXLUSDT_PERP": {
+        "date_range": {
+          "start": "2024-03-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 702,
+        "coverage_pct": 0.3157894736842105,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AXSUSDT_PERP": {
+        "date_range": {
+          "start": "2020-11-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1899,
+        "coverage_pct": 0.854251012145749,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BANANAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 535,
+        "coverage_pct": 0.24066576698155645,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BANDUSDT_PERP": {
+        "date_range": {
+          "start": "2020-07-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2013,
+        "coverage_pct": 0.9055330634278003,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BANUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 440,
+        "coverage_pct": 0.19793072424651373,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BATUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2180,
+        "coverage_pct": 0.9806567701304544,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BBUSDT_PERP": {
+        "date_range": {
+          "start": "2024-05-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 629,
+        "coverage_pct": 0.2829509671614935,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BCHUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2223,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BEAMXUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 807,
+        "coverage_pct": 0.3630229419703104,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BELUSDT_PERP": {
+        "date_range": {
+          "start": "2020-11-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1901,
+        "coverage_pct": 0.8551506972559604,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BICOUSDT_PERP": {
+        "date_range": {
+          "start": "2023-09-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 857,
+        "coverage_pct": 0.385515069725596,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BIGTIMEUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-12",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 843,
+        "coverage_pct": 0.3792172739541161,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BIOUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-03",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 394,
+        "coverage_pct": 0.17723796671165093,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BLURUSDT_PERP": {
+        "date_range": {
+          "start": "2023-04-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1010,
+        "coverage_pct": 0.45434098065677014,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BNBUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2183,
+        "coverage_pct": 0.9820062977957715,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BNTUSDT_PERP": {
+        "date_range": {
+          "start": "2023-08-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 906,
+        "coverage_pct": 0.407557354925776,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BOMEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-03-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 687,
+        "coverage_pct": 0.3090418353576248,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BRETTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 530,
+        "coverage_pct": 0.2384165542060279,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BSVUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 835,
+        "coverage_pct": 0.37561853351327035,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BTCDOMUSDT_PERP": {
+        "date_range": {
+          "start": "2021-06-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1686,
+        "coverage_pct": 0.7584345479082322,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BTCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2223,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "C98USDT_PERP": {
+        "date_range": {
+          "start": "2021-08-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1622,
+        "coverage_pct": 0.7296446243814665,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CAKEUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-02",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 822,
+        "coverage_pct": 0.3697705802968961,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CATIUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 499,
+        "coverage_pct": 0.2244714349977508,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CELOUSDT_PERP": {
+        "date_range": {
+          "start": "2021-09-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1588,
+        "coverage_pct": 0.7143499775078722,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CELRUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1770,
+        "coverage_pct": 0.796221322537112,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CETUSUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 452,
+        "coverage_pct": 0.20332883490778228,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CFXUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1077,
+        "coverage_pct": 0.4844804318488529,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CGPTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 408,
+        "coverage_pct": 0.18353576248313092,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CHILLGUYUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 431,
+        "coverage_pct": 0.1938821412505623,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CHRUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-12",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1787,
+        "coverage_pct": 0.8038686459739092,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CHZUSDT_PERP": {
+        "date_range": {
+          "start": "2021-01-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1837,
+        "coverage_pct": 0.8263607737291948,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CKBUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1069,
+        "coverage_pct": 0.4808816914080072,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "COMPUSDT_PERP": {
+        "date_range": {
+          "start": "2020-06-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2042,
+        "coverage_pct": 0.918578497525866,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "COOKIEUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 390,
+        "coverage_pct": 0.17543859649122806,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "COSUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 489,
+        "coverage_pct": 0.21997300944669365,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "COTIUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1789,
+        "coverage_pct": 0.8047683310841206,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "COWUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 452,
+        "coverage_pct": 0.20332883490778228,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CRVUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1979,
+        "coverage_pct": 0.890238416554206,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CTKUSDT_PERP": {
+        "date_range": {
+          "start": "2020-11-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1900,
+        "coverage_pct": 0.8547008547008547,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CTSIUSDT_PERP": {
+        "date_range": {
+          "start": "2021-10-26",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1559,
+        "coverage_pct": 0.7013045434098065,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CVCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-11-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1908,
+        "coverage_pct": 0.8582995951417004,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "CVXUSDT_PERP": {
+        "date_range": {
+          "start": "2022-09-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1228,
+        "coverage_pct": 0.5524066576698156,
+        "funding_coverage_pct": 0.9731270358306189,
+        "schema_compliant": true
+      },
+      "CYBERUSDT_PERP": {
+        "date_range": {
+          "start": "2023-08-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 895,
+        "coverage_pct": 0.40260908681961316,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DASHUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-04",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2159,
+        "coverage_pct": 0.9712100764732343,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DEGENUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 443,
+        "coverage_pct": 0.19928025191183085,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DEGOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 415,
+        "coverage_pct": 0.1866846603688709,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DENTUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1775,
+        "coverage_pct": 0.7984705353126406,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DEXEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 404,
+        "coverage_pct": 0.18173639226270805,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DIAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-10-02",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 487,
+        "coverage_pct": 0.21907332433648224,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DODOXUSDT_PERP": {
+        "date_range": {
+          "start": "2023-08-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 908,
+        "coverage_pct": 0.40845704003598743,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DOGEUSDT_PERP": {
+        "date_range": {
+          "start": "2020-07-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2032,
+        "coverage_pct": 0.9140800719748088,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DOTUSDT_PERP": {
+        "date_range": {
+          "start": "2020-08-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1989,
+        "coverage_pct": 0.8947368421052632,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DRIFTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 450,
+        "coverage_pct": 0.20242914979757085,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DUSKUSDT_PERP": {
+        "date_range": {
+          "start": "2022-01-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1486,
+        "coverage_pct": 0.6684660368870895,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DYDXUSDT_PERP": {
+        "date_range": {
+          "start": "2021-09-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1605,
+        "coverage_pct": 0.7219973009446694,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DYMUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 725,
+        "coverage_pct": 0.32613585245164195,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "EDUUSDT_PERP": {
+        "date_range": {
+          "start": "2023-04-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1008,
+        "coverage_pct": 0.4534412955465587,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "EGLDUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-14",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1966,
+        "coverage_pct": 0.8843904633378318,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "EIGENUSDT_PERP": {
+        "date_range": {
+          "start": "2024-10-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 488,
+        "coverage_pct": 0.21952316689158793,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ENAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-04-02",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 670,
+        "coverage_pct": 0.3013945119208277,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ENJUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1951,
+        "coverage_pct": 0.877642825011246,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ENSUSDT_PERP": {
+        "date_range": {
+          "start": "2021-11-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1524,
+        "coverage_pct": 0.6855600539811066,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ETCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2208,
+        "coverage_pct": 0.9932523616734144,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ETHFIUSDT_PERP": {
+        "date_range": {
+          "start": "2024-03-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 685,
+        "coverage_pct": 0.3081421502474134,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ETHUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2223,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ETHWUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 796,
+        "coverage_pct": 0.35807467386414754,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "FARTCOINUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 408,
+        "coverage_pct": 0.18353576248313092,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "FETUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1111,
+        "coverage_pct": 0.49977507872244714,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "FIDAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 500,
+        "coverage_pct": 0.2249212775528565,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "FILUSDT_PERP": {
+        "date_range": {
+          "start": "2020-10-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1929,
+        "coverage_pct": 0.8677462887989204,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "FIOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 499,
+        "coverage_pct": 0.2244714349977508,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "FLOWUSDT_PERP": {
+        "date_range": {
+          "start": "2022-02-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1447,
+        "coverage_pct": 0.6509221772379667,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "FLUXUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-03",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 516,
+        "coverage_pct": 0.2321187584345479,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GALAUSDT_PERP": {
+        "date_range": {
+          "start": "2021-09-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1597,
+        "coverage_pct": 0.7183985605038237,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GASUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 830,
+        "coverage_pct": 0.3733693207377418,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GLMUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 710,
+        "coverage_pct": 0.31938821412505625,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GMTUSDT_PERP": {
+        "date_range": {
+          "start": "2022-03-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1417,
+        "coverage_pct": 0.6374269005847953,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GMXUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1080,
+        "coverage_pct": 0.48582995951417,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GOATUSDT_PERP": {
+        "date_range": {
+          "start": "2024-10-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 465,
+        "coverage_pct": 0.20917678812415655,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GRASSUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 450,
+        "coverage_pct": 0.20242914979757085,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GRIFFAINUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-02",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 395,
+        "coverage_pct": 0.17768780926675665,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GRTUSDT_PERP": {
+        "date_range": {
+          "start": "2020-12-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1865,
+        "coverage_pct": 0.8389563652721548,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "GTCUSDT_PERP": {
+        "date_range": {
+          "start": "2021-06-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1691,
+        "coverage_pct": 0.7606837606837606,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HBARUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1777,
+        "coverage_pct": 0.799370220422852,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HFTUSDT_PERP": {
+        "date_range": {
+          "start": "2023-04-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1032,
+        "coverage_pct": 0.4642375168690958,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HIGHUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1090,
+        "coverage_pct": 0.4903283850652272,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HIPPOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 445,
+        "coverage_pct": 0.2001799370220423,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HIVEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-23",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 405,
+        "coverage_pct": 0.18218623481781376,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HMSTRUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-26",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 493,
+        "coverage_pct": 0.22177237966711652,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HOOKUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-23",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1105,
+        "coverage_pct": 0.49707602339181284,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "HOTUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1764,
+        "coverage_pct": 0.7935222672064778,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ICPUSDT_PERP": {
+        "date_range": {
+          "start": "2021-05-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1701,
+        "coverage_pct": 0.7651821862348178,
+        "funding_coverage_pct": 0.7189888300999412,
+        "schema_compliant": true
+      },
+      "ICXUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1965,
+        "coverage_pct": 0.8839406207827261,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "IDUSDT_PERP": {
+        "date_range": {
+          "start": "2023-03-23",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1046,
+        "coverage_pct": 0.4705353126405758,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ILVUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 814,
+        "coverage_pct": 0.3661718398560504,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "IMXUSDT_PERP": {
+        "date_range": {
+          "start": "2022-02-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1446,
+        "coverage_pct": 0.650472334682861,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "INJUSDT_PERP": {
+        "date_range": {
+          "start": "2022-08-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1264,
+        "coverage_pct": 0.5686009896536213,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "IOSTUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2172,
+        "coverage_pct": 0.9770580296896086,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "IOTAUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-12",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2176,
+        "coverage_pct": 0.9788573999100315,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "IOTXUSDT_PERP": {
+        "date_range": {
+          "start": "2021-08-12",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1634,
+        "coverage_pct": 0.7350427350427351,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "IOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-06-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 600,
+        "coverage_pct": 0.2699055330634278,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "JASMYUSDT_PERP": {
+        "date_range": {
+          "start": "2022-04-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1383,
+        "coverage_pct": 0.6221322537112011,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "JOEUSDT_PERP": {
+        "date_range": {
+          "start": "2023-03-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1040,
+        "coverage_pct": 0.4678362573099415,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "JTOUSDT_PERP": {
+        "date_range": {
+          "start": "2023-12-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 786,
+        "coverage_pct": 0.3535762483130904,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "JUPUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 732,
+        "coverage_pct": 0.3292847503373819,
+        "funding_coverage_pct": 0.9986338797814208,
+        "schema_compliant": true
+      },
+      "KAIAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-04",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 424,
+        "coverage_pct": 0.1907332433648223,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "KASUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 807,
+        "coverage_pct": 0.3630229419703104,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "KAVAUSDT_PERP": {
+        "date_range": {
+          "start": "2020-07-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2014,
+        "coverage_pct": 0.905982905982906,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "KMNOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 408,
+        "coverage_pct": 0.18353576248313092,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "KNCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-06-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2045,
+        "coverage_pct": 0.9199280251911831,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "KOMAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 418,
+        "coverage_pct": 0.18803418803418803,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "KSMUSDT_PERP": {
+        "date_range": {
+          "start": "2020-10-14",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1931,
+        "coverage_pct": 0.8686459739091318,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LDOUSDT_PERP": {
+        "date_range": {
+          "start": "2022-09-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1228,
+        "coverage_pct": 0.5524066576698156,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LINKUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2207,
+        "coverage_pct": 0.9928025191183086,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LISTAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-06-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 591,
+        "coverage_pct": 0.2658569500674764,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LITUSDT_PERP": {
+        "date_range": {
+          "start": "2021-02-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1804,
+        "coverage_pct": 0.8115159694107063,
+        "funding_coverage_pct": 0.8968957871396895,
+        "schema_compliant": true
+      },
+      "LPTUSDT_PERP": {
+        "date_range": {
+          "start": "2021-11-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1543,
+        "coverage_pct": 0.6941070625281152,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LQTYUSDT_PERP": {
+        "date_range": {
+          "start": "2023-03-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1059,
+        "coverage_pct": 0.47638326585695007,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LRCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-10-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1926,
+        "coverage_pct": 0.8663967611336032,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LSKUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 738,
+        "coverage_pct": 0.3319838056680162,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LTCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-09",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2210,
+        "coverage_pct": 0.9941520467836257,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LUMIAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 410,
+        "coverage_pct": 0.18443544759334232,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LUNA2USDT_PERP": {
+        "date_range": {
+          "start": "2022-09-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1240,
+        "coverage_pct": 0.5578047683310842,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MAGICUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1103,
+        "coverage_pct": 0.49617633828160146,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MANAUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1779,
+        "coverage_pct": 0.8002699055330634,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MANTAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 745,
+        "coverage_pct": 0.3351327035537562,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MASKUSDT_PERP": {
+        "date_range": {
+          "start": "2021-08-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1614,
+        "coverage_pct": 0.7260458839406208,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MAVIAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 711,
+        "coverage_pct": 0.31983805668016196,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MAVUSDT_PERP": {
+        "date_range": {
+          "start": "2023-06-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 948,
+        "coverage_pct": 0.42645074224021595,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MBOXUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 522,
+        "coverage_pct": 0.23481781376518218,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MELANIAUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 377,
+        "coverage_pct": 0.1695906432748538,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MEMEUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-03",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 821,
+        "coverage_pct": 0.36932073774179036,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "METISUSDT_PERP": {
+        "date_range": {
+          "start": "2024-03-12",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 691,
+        "coverage_pct": 0.3108412055780477,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 418,
+        "coverage_pct": 0.18803418803418803,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MEWUSDT_PERP": {
+        "date_range": {
+          "start": "2024-06-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 594,
+        "coverage_pct": 0.26720647773279355,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MINAUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1090,
+        "coverage_pct": 0.4903283850652272,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MOCAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 412,
+        "coverage_pct": 0.18533513270355376,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MOODENGUSDT_PERP": {
+        "date_range": {
+          "start": "2024-10-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 464,
+        "coverage_pct": 0.20872694556905083,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MORPHOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 431,
+        "coverage_pct": 0.1938821412505623,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MOVEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-09",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 419,
+        "coverage_pct": 0.18848403058929375,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MOVRUSDT_PERP": {
+        "date_range": {
+          "start": "2023-12-26",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 768,
+        "coverage_pct": 0.34547908232118757,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "MTLUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1768,
+        "coverage_pct": 0.7953216374269005,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "NEARUSDT_PERP": {
+        "date_range": {
+          "start": "2020-10-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1930,
+        "coverage_pct": 0.8681961313540261,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "NEOUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2176,
+        "coverage_pct": 0.9788573999100315,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "NFPUSDT_PERP": {
+        "date_range": {
+          "start": "2023-12-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 767,
+        "coverage_pct": 0.34502923976608185,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "NMRUSDT_PERP": {
+        "date_range": {
+          "start": "2023-06-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 955,
+        "coverage_pct": 0.4295996401259559,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "NOTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-05-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 626,
+        "coverage_pct": 0.28160143949617633,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "NTRNUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-14",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 810,
+        "coverage_pct": 0.3643724696356275,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "OGNUSDT_PERP": {
+        "date_range": {
+          "start": "2021-04-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1762,
+        "coverage_pct": 0.7926225820962663,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "OMUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 719,
+        "coverage_pct": 0.32343679712100765,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ONDOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 743,
+        "coverage_pct": 0.33423301844354475,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ONEUSDT_PERP": {
+        "date_range": {
+          "start": "2021-03-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1776,
+        "coverage_pct": 0.7989203778677463,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ONGUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 797,
+        "coverage_pct": 0.35852451641925326,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ONTUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2182,
+        "coverage_pct": 0.9815564552406658,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "OPUSDT_PERP": {
+        "date_range": {
+          "start": "2022-06-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1341,
+        "coverage_pct": 0.6032388663967612,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ORCAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 422,
+        "coverage_pct": 0.18983355825461087,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ORDIUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 817,
+        "coverage_pct": 0.36752136752136755,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "OXTUSDT_PERP": {
+        "date_range": {
+          "start": "2023-08-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 905,
+        "coverage_pct": 0.4071075123706703,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PENDLEUSDT_PERP": {
+        "date_range": {
+          "start": "2023-07-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 919,
+        "coverage_pct": 0.41340530814215026,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PENGUUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 411,
+        "coverage_pct": 0.18488529014844804,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PEOPLEUSDT_PERP": {
+        "date_range": {
+          "start": "2021-12-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1495,
+        "coverage_pct": 0.672514619883041,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PHAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 398,
+        "coverage_pct": 0.17903733693207377,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PHBUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1081,
+        "coverage_pct": 0.48627980206927574,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PIPPINUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 373,
+        "coverage_pct": 0.16779127305443095,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PIXELUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 713,
+        "coverage_pct": 0.32073774179037334,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PNUTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 447,
+        "coverage_pct": 0.20107962213225372,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "POLUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 506,
+        "coverage_pct": 0.2276203328834908,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "POLYXUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 830,
+        "coverage_pct": 0.3733693207377418,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "POPCATUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 528,
+        "coverage_pct": 0.23751686909581646,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PORTALUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 703,
+        "coverage_pct": 0.3162393162393162,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "POWRUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 828,
+        "coverage_pct": 0.3724696356275304,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PROMUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 382,
+        "coverage_pct": 0.17183985605038238,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "PYTHUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 802,
+        "coverage_pct": 0.36077372919478184,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "QNTUSDT_PERP": {
+        "date_range": {
+          "start": "2022-10-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1200,
+        "coverage_pct": 0.5398110661268556,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "QTUMUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2173,
+        "coverage_pct": 0.9775078722447144,
+        "funding_coverage_pct": 0.9953980671882191,
+        "schema_compliant": true
+      },
+      "RAREUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 535,
+        "coverage_pct": 0.24066576698155645,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RAYSOLUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 418,
+        "coverage_pct": 0.18803418803418803,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RDNTUSDT_PERP": {
+        "date_range": {
+          "start": "2023-04-05",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1033,
+        "coverage_pct": 0.46468735942420153,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RENDERUSDT_PERP": {
+        "date_range": {
+          "start": "2024-07-26",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 555,
+        "coverage_pct": 0.2496626180836707,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "REZUSDT_PERP": {
+        "date_range": {
+          "start": "2024-04-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 642,
+        "coverage_pct": 0.28879892037786775,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RIFUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 834,
+        "coverage_pct": 0.37516869095816463,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RLCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-07-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2006,
+        "coverage_pct": 0.9023841655420602,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RONINUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 726,
+        "coverage_pct": 0.3265856950067476,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ROSEUSDT_PERP": {
+        "date_range": {
+          "start": "2021-12-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1488,
+        "coverage_pct": 0.6693657219973009,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RPLUSDT_PERP": {
+        "date_range": {
+          "start": "2024-09-09",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 510,
+        "coverage_pct": 0.22941970310391363,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RSRUSDT_PERP": {
+        "date_range": {
+          "start": "2020-10-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1926,
+        "coverage_pct": 0.8663967611336032,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RUNEUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-04",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1976,
+        "coverage_pct": 0.8888888888888888,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "RVNUSDT_PERP": {
+        "date_range": {
+          "start": "2021-02-23",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1799,
+        "coverage_pct": 0.8092667566351777,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SAFEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-10-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 464,
+        "coverage_pct": 0.20872694556905083,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SAGAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-04-09",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 663,
+        "coverage_pct": 0.2982456140350877,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SANDUSDT_PERP": {
+        "date_range": {
+          "start": "2021-01-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1828,
+        "coverage_pct": 0.8223121907332434,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SANTOSUSDT_PERP": {
+        "date_range": {
+          "start": "2024-10-28",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 461,
+        "coverage_pct": 0.20737741790373368,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SCRTUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 437,
+        "coverage_pct": 0.19658119658119658,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SCRUSDT_PERP": {
+        "date_range": {
+          "start": "2024-10-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 467,
+        "coverage_pct": 0.21007647323436798,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SEIUSDT_PERP": {
+        "date_range": {
+          "start": "2023-08-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 899,
+        "coverage_pct": 0.404408457040036,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SFPUSDT_PERP": {
+        "date_range": {
+          "start": "2021-02-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1803,
+        "coverage_pct": 0.8110661268556005,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SKLUSDT_PERP": {
+        "date_range": {
+          "start": "2020-12-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1876,
+        "coverage_pct": 0.8439046333783176,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SLPUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 824,
+        "coverage_pct": 0.3706702654071075,
+        "funding_coverage_pct": 0.9599514563106796,
+        "schema_compliant": true
+      },
+      "SNXUSDT_PERP": {
+        "date_range": {
+          "start": "2020-08-14",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1997,
+        "coverage_pct": 0.8983355825461089,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SOLUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-14",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1961,
+        "coverage_pct": 0.8821412505623032,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SOLVUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 380,
+        "coverage_pct": 0.17094017094017094,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SONICUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 389,
+        "coverage_pct": 0.17498875393612237,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SPELLUSDT_PERP": {
+        "date_range": {
+          "start": "2022-09-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1244,
+        "coverage_pct": 0.5596041385515069,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SPXUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 418,
+        "coverage_pct": 0.18803418803418803,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SSVUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1073,
+        "coverage_pct": 0.48268106162843005,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "STEEMUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 816,
+        "coverage_pct": 0.36707152496626183,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "STGUSDT_PERP": {
+        "date_range": {
+          "start": "2022-08-25",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1256,
+        "coverage_pct": 0.5650022492127755,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "STORJUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1959,
+        "coverage_pct": 0.8812415654520918,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "STRKUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 712,
+        "coverage_pct": 0.3202878992352677,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "STXUSDT_PERP": {
+        "date_range": {
+          "start": "2023-02-21",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1076,
+        "coverage_pct": 0.4840305892937472,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SUIUSDT_PERP": {
+        "date_range": {
+          "start": "2023-05-03",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1005,
+        "coverage_pct": 0.45209176788124156,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SUNUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 528,
+        "coverage_pct": 0.23751686909581646,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SUPERUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-26",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 798,
+        "coverage_pct": 0.358974358974359,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SUSHIUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-04",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1971,
+        "coverage_pct": 0.8866396761133604,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SWARMSUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 390,
+        "coverage_pct": 0.17543859649122806,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SYNUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 534,
+        "coverage_pct": 0.24021592442645073,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SYSUSDT_PERP": {
+        "date_range": {
+          "start": "2024-08-19",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 531,
+        "coverage_pct": 0.2388663967611336,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TAOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-04-11",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 661,
+        "coverage_pct": 0.29734592892487627,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "THETAUSDT_PERP": {
+        "date_range": {
+          "start": "2020-05-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2076,
+        "coverage_pct": 0.9338731443994602,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "THEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-11-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 431,
+        "coverage_pct": 0.1938821412505623,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TIAUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 824,
+        "coverage_pct": 0.3706702654071075,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TLMUSDT_PERP": {
+        "date_range": {
+          "start": "2021-07-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1632,
+        "coverage_pct": 0.7341430499325237,
+        "funding_coverage_pct": 0.6366421568627451,
+        "schema_compliant": true
+      },
+      "TNSRUSDT_PERP": {
+        "date_range": {
+          "start": "2024-04-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 664,
+        "coverage_pct": 0.2986954565901934,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TONUSDT_PERP": {
+        "date_range": {
+          "start": "2024-03-01",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 702,
+        "coverage_pct": 0.3157894736842105,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TRBUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-03",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1972,
+        "coverage_pct": 0.8870895186684661,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TRUMPUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 379,
+        "coverage_pct": 0.17049032838506523,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TRUUSDT_PERP": {
+        "date_range": {
+          "start": "2023-03-07",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1062,
+        "coverage_pct": 0.4777327935222672,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TRXUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-15",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2204,
+        "coverage_pct": 0.9914529914529915,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TURBOUSDT_PERP": {
+        "date_range": {
+          "start": "2024-05-30",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 612,
+        "coverage_pct": 0.27530364372469635,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "TWTUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-03",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 821,
+        "coverage_pct": 0.36932073774179036,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "UMAUSDT_PERP": {
+        "date_range": {
+          "start": "2023-05-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 998,
+        "coverage_pct": 0.4489428699955016,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "UNIUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1962,
+        "coverage_pct": 0.8825910931174089,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "USDCUSDT_PERP": {
+        "date_range": {
+          "start": "2023-03-12",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1057,
+        "coverage_pct": 0.47548358074673863,
+        "funding_coverage_pct": 0.9990539262062441,
+        "schema_compliant": true
+      },
+      "USTCUSDT_PERP": {
+        "date_range": {
+          "start": "2023-11-27",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 797,
+        "coverage_pct": 0.35852451641925326,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "USUALUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 410,
+        "coverage_pct": 0.18443544759334232,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VANAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-16",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 412,
+        "coverage_pct": 0.18533513270355376,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VANRYUSDT_PERP": {
+        "date_range": {
+          "start": "2024-03-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 690,
+        "coverage_pct": 0.31039136302294196,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VELODROMEUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 415,
+        "coverage_pct": 0.1866846603688709,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VETUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-14",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2174,
+        "coverage_pct": 0.9779577147998201,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VINEUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 373,
+        "coverage_pct": 0.16779127305443095,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VIRTUALUSDT_PERP": {
+        "date_range": {
+          "start": "2024-12-10",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 418,
+        "coverage_pct": 0.18803418803418803,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VTHOUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-22",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 375,
+        "coverage_pct": 0.16869095816464239,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "VVVUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-29",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 368,
+        "coverage_pct": 0.1655420602789024,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "WAXPUSDT_PERP": {
+        "date_range": {
+          "start": "2023-10-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 837,
+        "coverage_pct": 0.3765182186234818,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "WIFUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 745,
+        "coverage_pct": 0.3351327035537562,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "WLDUSDT_PERP": {
+        "date_range": {
+          "start": "2023-07-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 923,
+        "coverage_pct": 0.4152046783625731,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "WOOUSDT_PERP": {
+        "date_range": {
+          "start": "2022-04-08",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1395,
+        "coverage_pct": 0.6275303643724697,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XAIUSDT_PERP": {
+        "date_range": {
+          "start": "2024-01-09",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 754,
+        "coverage_pct": 0.3391812865497076,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XLMUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2199,
+        "coverage_pct": 0.9892037786774629,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XMRUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-03",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2190,
+        "coverage_pct": 0.9851551956815114,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XRPUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2213,
+        "coverage_pct": 0.9955015744489428,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XTZUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-06",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2187,
+        "coverage_pct": 0.9838056680161943,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XVGUSDT_PERP": {
+        "date_range": {
+          "start": "2023-07-05",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 942,
+        "coverage_pct": 0.42375168690958165,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XVSUSDT_PERP": {
+        "date_range": {
+          "start": "2023-04-13",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1025,
+        "coverage_pct": 0.46108861898335585,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "YFIUSDT_PERP": {
+        "date_range": {
+          "start": "2020-08-31",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1975,
+        "coverage_pct": 0.8884390463337831,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "YGGUSDT_PERP": {
+        "date_range": {
+          "start": "2023-08-05",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 911,
+        "coverage_pct": 0.4098065677013045,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ZECUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-05",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2183,
+        "coverage_pct": 0.9820062977957715,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ZENUSDT_PERP": {
+        "date_range": {
+          "start": "2020-11-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 1890,
+        "coverage_pct": 0.8502024291497976,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ZEREBROUSDT_PERP": {
+        "date_range": {
+          "start": "2025-01-02",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 395,
+        "coverage_pct": 0.17768780926675665,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ZETAUSDT_PERP": {
+        "date_range": {
+          "start": "2024-02-02",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 730,
+        "coverage_pct": 0.3283850652271705,
+        "funding_coverage_pct": 0.8356164383561644,
+        "schema_compliant": true
+      },
+      "ZILUSDT_PERP": {
+        "date_range": {
+          "start": "2020-06-18",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2049,
+        "coverage_pct": 0.921727395411606,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ZKUSDT_PERP": {
+        "date_range": {
+          "start": "2024-06-17",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 594,
+        "coverage_pct": 0.26720647773279355,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ZROUSDT_PERP": {
+        "date_range": {
+          "start": "2024-06-20",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 591,
+        "coverage_pct": 0.2658569500674764,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ZRXUSDT_PERP": {
+        "date_range": {
+          "start": "2020-06-24",
+          "end": "2026-01-31"
+        },
+        "coverage_days": 2048,
+        "coverage_pct": 0.9212775528565003,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      }
+    },
+    "excluded": {
+      "A2ZUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ACUUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AGTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AIAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AINUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AIOTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AIOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AKEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ALLOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ALLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ALPINEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "APRUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ARIAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ASRUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ASTERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ATHUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ATUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AVNTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AWEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "AZTECUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "B2USDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "B3USDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BABYUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BANANAS31USDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BANKUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BARDUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BASUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BDXNUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BEATUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BERAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BIRBUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BLESSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BLUAIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BMTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BOBUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BREVUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BROCCOLI714USDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BROCCOLIF3BUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BRUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BTRUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "BULLAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "CARVUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "CCUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "CLANKERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "CLOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "COAIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "COLLECTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "CROSSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "CYSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "DAMUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "DEEPUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "DOGSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DOLOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "DOODUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "EDENUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ELSAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ENSOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "EPICUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ERAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ESPORTSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ESPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EULUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "EVAAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FFUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FHEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FIGHTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FLOCKUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FLUIDUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FOGOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FOLKSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FORMUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FORTHUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FRAXUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "FUNUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "GIGGLEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "GPSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "GUAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "GUNUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "GWEIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HAEDALUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HANAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HEIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HEMIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HOLOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HOMEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HUMAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HYPERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "HYPEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ICNTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "IDOLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "INITUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "INUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "INXUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "IPUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "IRUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "IRYSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "JCTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "JELLYJELLYUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "JSTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "KAITOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "KERNELUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "KGENUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "KITEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "LABUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "LAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "LAYERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "LIGHTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "LINEAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "LYNUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MAGMAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MEGAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MERLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "METUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MIRAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MITOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MLNUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MMTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MONUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MUBARAKUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "MYXUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "NAORISUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "NEIROUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NEWTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "NIGHTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "NILUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "NOMUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "NXPCUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "OGUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "OLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ONUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "OPENUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ORDERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PARTIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PAXGUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PIEVERSEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PLAYUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PLUMEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "POWERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PROMPTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PROVEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PTBUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PUFFERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PUMPBTCUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PUMPUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "PUNDIXUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "RAVEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "RECALLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "REDUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "RESOLVUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "RIVERUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "RLSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SAHARAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SAPIENUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SENTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SHELLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SIGNUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SIRENUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SKRUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SKYAIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SKYUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SOMIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SOONUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SOPHUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SPACEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SPKUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SPORTFUNUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SQDUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "STABLEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "STBLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "STOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SXTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "SYRUPUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TACUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TAGUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TAIKOUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TAKEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TOSHIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TOWNSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TRADOORUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TREEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TRIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRUSTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TRUTHUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TSTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TURTLEUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "TUTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "UAIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "UBUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "USELESSUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "USUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "VELVETUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "VFYUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "VICUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "WALUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "WCTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "WETUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "WLFIUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "XANUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "XNYUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "XPINUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "XPLUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "YBUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ZAMAUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ZBTUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ZKCUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ZKJUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ZKPUSDT_PERP": {
+        "reason": "insufficient_history"
+      },
+      "ZORAUSDT_PERP": {
+        "reason": "insufficient_history"
+      }
+    }
+  },
+  "lifecycle": {
+    "AAVEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ACEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ACHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ACTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ACXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ADAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AERGOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AEROUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AEVOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AGLDUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AIXBTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AKTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ALCHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ALGOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ALICEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ALTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ANIMEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ANKRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "APEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "API3USDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "APTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ARBUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ARCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ARKMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ARKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ARPAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ARUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ASTRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ATAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ATOMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AUCTIONUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AVAAIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AVAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AVAXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AXLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "AXSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BANANAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BANDUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BANUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BATUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BBUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BCHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BEAMXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BELUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BICOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BIGTIMEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BIOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BLURUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BNBUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BNTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BOMEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BRETTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BSVUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BTCDOMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "BTCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "C98USDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CAKEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CATIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CELOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CELRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CETUSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CFXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CGPTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CHILLGUYUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CHRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CHZUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CKBUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "COMPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "COOKIEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "COSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "COTIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "COWUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CRVUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CTKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CTSIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CVCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CVXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "CYBERUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DASHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DEGENUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DEGOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DENTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DEXEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DIAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DODOXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DOGEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DOTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DRIFTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DUSKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DYDXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "DYMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "EDUUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "EGLDUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "EIGENUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ENAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ENJUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ENSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ETCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ETHFIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ETHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ETHWUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "FARTCOINUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "FETUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "FIDAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "FILUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "FIOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "FLOWUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "FLUXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GALAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GASUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GLMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GMTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GMXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GOATUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GRASSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GRIFFAINUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GRTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "GTCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HBARUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HFTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HIGHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HIPPOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HIVEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HMSTRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HOOKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "HOTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ICPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ICXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "IDUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ILVUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "IMXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "INJUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "IOSTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "IOTAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "IOTXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "IOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "JASMYUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "JOEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "JTOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "JUPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "KAIAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "KASUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "KAVAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "KMNOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "KNCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "KOMAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "KSMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LDOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LINKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LISTAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LITUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LPTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LQTYUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LRCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LSKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LTCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LUMIAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "LUNA2USDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MAGICUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MANAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MANTAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MASKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MAVIAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MAVUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MBOXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MELANIAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MEMEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "METISUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MEWUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MINAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MOCAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MOODENGUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MORPHOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MOVEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MOVRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "MTLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "NEARUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "NEOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "NFPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "NMRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "NOTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "NTRNUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "OGNUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "OMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ONDOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ONEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ONGUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ONTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "OPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ORCAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ORDIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "OXTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PENDLEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PENGUUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PEOPLEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PHAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PHBUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PIPPINUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PIXELUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PNUTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "POLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "POLYXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "POPCATUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PORTALUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "POWRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PROMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "PYTHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "QNTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "QTUMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RAREUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RAYSOLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RDNTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RENDERUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "REZUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RIFUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RLCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RONINUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ROSEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RPLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RSRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RUNEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "RVNUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SAFEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SAGAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SANDUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SANTOSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SCRTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SCRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SEIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SFPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SKLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SLPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SNXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SOLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SOLVUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SONICUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SPELLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SPXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SSVUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "STEEMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "STGUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "STORJUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "STRKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "STXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SUIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SUNUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SUPERUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SUSHIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SWARMSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SYNUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "SYSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TAOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "THETAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "THEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TIAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TLMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TNSRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TONUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TRBUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TRUMPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TRUUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TRXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TURBOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "TWTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "UMAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "UNIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "USDCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "USTCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "USUALUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VANAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VANRYUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VELODROMEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VETUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VINEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VIRTUALUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VTHOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "VVVUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "WAXPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "WIFUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "WLDUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "WOOUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "XAIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "XLMUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "XMRUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "XRPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "XTZUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "XVGUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "XVSUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "YFIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "YGGUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZECUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZENUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZEREBROUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZETAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZILUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZROUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    },
+    "ZRXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2026-01-31",
+      "data_days": 2223,
+      "status": "STALE",
+      "days_since_last": 17
+    }
+  },
+  "lifecycle_summary": {
+    "active": 0,
+    "stale": 300,
+    "no_data": 0,
+    "error": 0
+  },
+  "summary": {
+    "total_candidates": 509,
+    "included_count": 300,
+    "excluded_count": 209,
+    "exclusion_breakdown": {
+      "insufficient_history": 204,
+      "load_error": 5
+    }
+  }
+}

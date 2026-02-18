@@ -274,8 +274,8 @@ def update_raw_data(
         # Also generate V1 day-level report for live ops
         logger.info("Generating V1 day-level data status report...")
         # V1 report should cover all candidate instruments (not just tradable universe)
-        from sysdata.crypto.config_helpers import extract_candidate_instruments
-        instrument_ids = extract_candidate_instruments(config)
+        from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
+        instrument_ids, _ = extract_candidate_instruments_with_registry(config, env_root)
 
         v1_report = generate_data_status_report_v1(
             data_dir,
@@ -352,8 +352,8 @@ def update_raw_data(
     logger.info("Generating V1 day-level data status report...")
 
     # V1 report should cover all candidate instruments (not just tradable universe)
-    from sysdata.crypto.config_helpers import extract_candidate_instruments
-    instrument_ids = extract_candidate_instruments(config)
+    from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
+    instrument_ids, _ = extract_candidate_instruments_with_registry(config, env_root)
 
     v1_report = generate_data_status_report_v1(
         data_dir,

@@ -1,0 +1,1 @@
+/Users/nathanieldavis/pysystemtrade-crypto-perps/envs/dev/advisory/smoke_r2/backtest_latest/universe_snapshot.json

@@ -1553,6 +1553,14 @@ def main():
         help='Instrument list (default: all 5 Layer A instruments if not specified)'
     )
     parser.add_argument(
+        '--instruments-from-registry',
+        type=Path,
+        default=None,
+        help='Path to registry JSON (discovered_candidate_instruments.json). '
+             'Loads candidate_instruments list from registry instead of CLI. '
+             'Takes precedence over --instruments if both provided.'
+    )
+    parser.add_argument(
         '--fail-on-missing-close',
         action='store_true',
         help='Raise error if any rows with NaN close are dropped (default: log warning only)'
@@ -1674,12 +1682,33 @@ def main():
         )
 
     elif args.source == 'real':
+        # Determine instruments: registry > CLI > default (None)
+        if args.instruments_from_registry:
+            # Load from registry file
+            import json
+            registry_path = args.instruments_from_registry
+            if not registry_path.is_absolute():
+                registry_path = Path(__file__).parent.parent / registry_path
+
+            with open(registry_path) as f:
+                registry_data = json.load(f)
+            instruments = registry_data['candidate_instruments']
+            print(f"Loaded {len(instruments)} instruments from registry: {registry_path}")
+        elif args.instruments:
+            # Use CLI-provided list
+            instruments = args.instruments
+            print(f"Using {len(instruments)} instruments from CLI arguments")
+        else:
+            # Default to None (will use 5 Layer A in build function)
+            instruments = None
+            print("Using default 5 Layer A instruments")
+
         print("Building dataset from real Binance Data Vision files...")
         df, instruments_included, instruments_excluded = build_real_crypto_dataset(
             data_dir=Path(args.data_dir),
             start_date=start_date,
             end_date=end_date,
-            instruments=args.instruments,
+            instruments=instruments,
             fail_on_missing_close=args.fail_on_missing_close,
             min_coverage=args.min_coverage,
             verify_checksums=args.verify_checksums,

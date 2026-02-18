@@ -9,11 +9,11 @@ This module provides a portfolio stage that implements time-varying instrument w
 
 import pandas as pd
 import numpy as np
-from systems.portfolio import Portfolios
 from systems.system_cache import diagnostic
+from systems.crypto_perps.crypto_portfolio import CryptoPortfolios
 
 
-class CryptoDynamicPortfolio(Portfolios):
+class CryptoDynamicPortfolio(CryptoPortfolios):
     """
     Portfolio stage with dynamic instrument universe based on walk-forward cost filters.
 
@@ -213,14 +213,22 @@ class CryptoDynamicPortfolio(Portfolios):
         Calculate 1/N weights with entry/exit logic.
 
         Entry Rule:
-            - Cost filter passes (eligibility_df = True)
+            - Cost filter passes AND in top-K (eligibility_df = True)
             - Not currently held
 
-        Exit Rule:
-            - Aggregate forecast crosses zero (abs < 0.01)
+        Exit Rule (ineligible instruments):
+            - Fell out of top-K AND (|forecast| < 0.1 OR forecast switches sign)
+            - OR forecast is NaN
+            - Two triggers: signal fades to near-zero, OR signal reverses direction.
+              Prevents drifting into an unintended position after ranking out.
+
+        Exit Rule (eligible instruments):
+            - Forecast is NaN
+            - No forced exit on weak signal; position sizing scales exposure naturally
 
         Hold Rule:
-            - Keep weight even if cost filter fails (no forced exits on cost)
+            - Keep weight even if cost filter or top-K eligibility fails;
+              position sizing reduces exposure as signal decays
 
         Args:
             eligibility_df: DataFrame with dates as index, instruments as columns,
@@ -288,8 +296,12 @@ class CryptoDynamicPortfolio(Portfolios):
                 ]
                 entry_count += len(new_entries)
 
-                # Phase 1.4: Explicit NaN Policy in Exit Logic
-                # Exit: forecast crosses zero or is NaN
+                # Exit rules:
+                #   - NaN forecast: always exit (data gone)
+                #   - Ineligible (fell out of top-K): exit when |forecast| < 0.1
+                #     OR forecast switches sign vs previous day
+                #   - Eligible (still in top-K): no forced exit; position sizing
+                #     naturally scales exposure down as signal weakens
                 exits = []
                 forecast_zero_exits = []
                 forecast_nan_exits = []
@@ -303,11 +315,23 @@ class CryptoDynamicPortfolio(Portfolios):
                         forecast_nan_exits.append(instr)
                         continue
 
-                    # Exit if forecast is effectively zero (abs < 0.01)
-                    # This threshold can be tuned via config in future
-                    if abs(forecast_value) < 0.01:
-                        exits.append(instr)
-                        forecast_zero_exits.append(instr)
+                    # Only force-exit for instruments that have fallen out of the
+                    # eligible set (no longer in top-K). Two triggers:
+                    #   (a) |forecast| < 0.1 — signal too weak to maintain
+                    #   (b) forecast switches sign vs previous day — signal reversed
+                    # Either condition closes the position, preventing it from
+                    # drifting into an unintended direction after ranking out.
+                    # Eligible instruments stay in; position sizing handles the rest.
+                    is_eligible = eligibility_df.loc[date, instr]
+                    if not is_eligible:
+                        prev_forecast = forecasts_df.loc[prev_date, instr]
+                        sign_switched = (
+                            not pd.isna(prev_forecast)
+                            and np.sign(forecast_value) != np.sign(prev_forecast)
+                        )
+                        if abs(forecast_value) < 0.1 or sign_switched:
+                            exits.append(instr)
+                            forecast_zero_exits.append(instr)
 
                 exit_count += len(exits)
 

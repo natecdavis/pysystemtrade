@@ -1,0 +1,22 @@
+{
+  "workflow": "live_advisory",
+  "version": "1.0",
+  "timestamp": "2026-02-17T15:16:02.006982",
+  "config": "/Users/nathanieldavis/pysystemtrade-crypto-perps/config/crypto_perps_dynamic_universe_top30.yaml",
+  "mode": "dynamic_universe",
+  "cadence": "monthly",
+  "as_of_date": "2026-01-23",
+  "candidate_count": 509,
+  "environment": "unknown",
+  "registry_snapshot": {
+    "hash": "71fd8a00627a",
+    "refresh_success": true,
+    "timestamp": "2026-02-17T15:10:31.209194",
+    "changelog": {
+      "new_instruments": [],
+      "delisted_instruments": [],
+      "total_count": 509,
+      "timestamp": "2026-02-17T15:10:30.997067+00:00"
+    }
+  }
+}

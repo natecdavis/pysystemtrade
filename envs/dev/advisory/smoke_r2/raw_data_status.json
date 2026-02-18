@@ -1,0 +1,4317 @@
+{
+  "as_of_date": "2026-02-17",
+  "expected_last_month": "2025-12",
+  "lag_policy_months": 2,
+  "instruments": {
+    "A2ZUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AAVEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ACEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ACHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ACTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ACUUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ACXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ADAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AERGOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AEROUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AEVOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AGLDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AGTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AINUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AIOTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AIOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AIXBTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AKEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AKTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ALCHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ALGOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ALICEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ALLOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ALLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ALPINEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ALTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ANIMEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ANKRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "APEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "API3USDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "APRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "APTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ARBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ARCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ARIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ARKMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ARKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ARPAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ARUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ASRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ASTERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ASTRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ATAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ATHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ATOMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ATUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AUCTIONUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AVAAIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AVAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AVAXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AVNTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AWEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AXLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AXSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "AZTECUSDT": {
+      "last_available_month": null,
+      "months_downloaded": [],
+      "status": "missing_data",
+      "data_lag_days": 999,
+      "missing_months": [
+        "2020-01",
+        "2020-02",
+        "2020-03",
+        "2020-04",
+        "2020-05",
+        "2020-06",
+        "2020-07",
+        "2020-08",
+        "2020-09",
+        "2020-10",
+        "2020-11",
+        "2020-12",
+        "2021-01",
+        "2021-02",
+        "2021-03",
+        "2021-04",
+        "2021-05",
+        "2021-06",
+        "2021-07",
+        "2021-08",
+        "2021-09",
+        "2021-10",
+        "2021-11",
+        "2021-12",
+        "2022-01",
+        "2022-02",
+        "2022-03",
+        "2022-04",
+        "2022-05",
+        "2022-06",
+        "2022-07",
+        "2022-08",
+        "2022-09",
+        "2022-10",
+        "2022-11",
+        "2022-12",
+        "2023-01",
+        "2023-02",
+        "2023-03",
+        "2023-04",
+        "2023-05",
+        "2023-06",
+        "2023-07",
+        "2023-08",
+        "2023-09",
+        "2023-10",
+        "2023-11",
+        "2023-12",
+        "2024-01",
+        "2024-02",
+        "2024-03",
+        "2024-04",
+        "2024-05",
+        "2024-06",
+        "2024-07",
+        "2024-08",
+        "2024-09",
+        "2024-10",
+        "2024-11",
+        "2024-12",
+        "2025-01",
+        "2025-02",
+        "2025-03",
+        "2025-04",
+        "2025-05",
+        "2025-06",
+        "2025-07",
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12"
+      ],
+      "warnings": [
+        "No data found for AZTECUSDT"
+      ]
+    },
+    "B2USDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "B3USDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BABYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BANANAS31USDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BANANAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BANDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BANKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BANUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BARDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BASUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BATUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BCHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BDXNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BEAMXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BEATUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BELUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BERAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BICOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BIGTIMEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BIOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BIRBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BLESSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BLUAIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BLURUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BMTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BNBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BNTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BOBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BOMEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BRETTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BREVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BROCCOLI714USDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BROCCOLIF3BUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BSVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BTCDOMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BTCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BTRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "BULLAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "C98USDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CAKEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CARVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CATIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CELOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CELRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CETUSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CFXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CGPTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CHILLGUYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CHRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CHZUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CKBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CLANKERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CLOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "COAIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "COLLECTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "COMPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "COOKIEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "COSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "COTIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "COWUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CROSSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CRVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CTKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CTSIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CVCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CVXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CYBERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "CYSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DAMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DASHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DEEPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DEGENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DEGOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DENTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DEXEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DODOXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DOGEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DOGSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DOLOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DOODUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DOTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DRIFTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DUSKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DYDXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "DYMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "EDENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "EDUUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "EGLDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "EIGENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ELSAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ENAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ENJUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ENSOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ENSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "EPICUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ERAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ESPORTSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ESPUSDT": {
+      "last_available_month": null,
+      "months_downloaded": [],
+      "status": "missing_data",
+      "data_lag_days": 999,
+      "missing_months": [
+        "2020-01",
+        "2020-02",
+        "2020-03",
+        "2020-04",
+        "2020-05",
+        "2020-06",
+        "2020-07",
+        "2020-08",
+        "2020-09",
+        "2020-10",
+        "2020-11",
+        "2020-12",
+        "2021-01",
+        "2021-02",
+        "2021-03",
+        "2021-04",
+        "2021-05",
+        "2021-06",
+        "2021-07",
+        "2021-08",
+        "2021-09",
+        "2021-10",
+        "2021-11",
+        "2021-12",
+        "2022-01",
+        "2022-02",
+        "2022-03",
+        "2022-04",
+        "2022-05",
+        "2022-06",
+        "2022-07",
+        "2022-08",
+        "2022-09",
+        "2022-10",
+        "2022-11",
+        "2022-12",
+        "2023-01",
+        "2023-02",
+        "2023-03",
+        "2023-04",
+        "2023-05",
+        "2023-06",
+        "2023-07",
+        "2023-08",
+        "2023-09",
+        "2023-10",
+        "2023-11",
+        "2023-12",
+        "2024-01",
+        "2024-02",
+        "2024-03",
+        "2024-04",
+        "2024-05",
+        "2024-06",
+        "2024-07",
+        "2024-08",
+        "2024-09",
+        "2024-10",
+        "2024-11",
+        "2024-12",
+        "2025-01",
+        "2025-02",
+        "2025-03",
+        "2025-04",
+        "2025-05",
+        "2025-06",
+        "2025-07",
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12"
+      ],
+      "warnings": [
+        "No data found for ESPUSDT"
+      ]
+    },
+    "ETCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ETHFIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ETHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ETHWUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "EULUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "EVAAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FARTCOINUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FETUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FFUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FHEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FIDAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FIGHTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FILUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FIOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FLOCKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FLOWUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FLUIDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FLUXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FOGOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FOLKSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FORMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FORTHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FRAXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "FUNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GALAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GASUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GIGGLEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GLMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GMTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GMXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GOATUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GPSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GRASSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GRIFFAINUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GRTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GTCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GUAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GUNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "GWEIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HAEDALUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HANAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HBARUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HEIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HEMIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HFTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HIGHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HIPPOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HIVEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HMSTRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HOLOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HOMEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HOOKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HOTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HUMAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HYPERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "HYPEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ICNTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ICPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ICXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IDOLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ILVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IMXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "INITUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "INJUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "INUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "INXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IOSTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IOTAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IOTXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "IRYSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "JASMYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "JCTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "JELLYJELLYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "JOEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "JSTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "JTOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "JUPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KAIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KAITOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KASUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KAVAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KERNELUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KGENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KITEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KMNOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KNCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KOMAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "KSMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LABUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LAYERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LDOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LIGHTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LINEAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LINKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LISTAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LITUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LPTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LQTYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LRCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LSKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LTCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LUMIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LUNA2USDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "LYNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MAGICUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MAGMAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MANAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MANTAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MASKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MAVIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MAVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MBOXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MEGAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MELANIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MEMEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MERLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "METISUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "METUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MEWUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MINAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MIRAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MITOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MLNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MMTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MOCAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MONUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MOODENGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MORPHOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MOVEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MOVRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MTLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MUBARAKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "MYXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NAORISUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NEARUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NEIROUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NEOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NEWTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NFPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NIGHTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NILUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NMRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NOMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NOTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NTRNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "NXPCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "OGNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "OGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "OLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "OMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ONDOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ONEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ONGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ONTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ONUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "OPENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "OPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ORCAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ORDERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ORDIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "OXTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PARTIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PAXGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PENDLEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PENGUUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PEOPLEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PHAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PHBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PIEVERSEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PIPPINUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PIXELUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PLAYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PLUMEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PNUTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "POLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "POLYXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "POPCATUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PORTALUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "POWERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "POWRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PROMPTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PROMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PROVEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PTBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PUFFERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PUMPBTCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PUMPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PUNDIXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "PYTHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "QNTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "QTUMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RAREUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RAVEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RAYSOLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RDNTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RECALLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "REDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RENDERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RESOLVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "REZUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RIFUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RIVERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RLCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RLSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RONINUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ROSEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RPLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RSRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RUNEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "RVNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SAFEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SAGAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SAHARAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SANDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SANTOSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SAPIENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SCRTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SCRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SEIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SENTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SFPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SHELLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SIGNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SIRENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SKLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SKRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SKYAIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SKYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SLPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SNXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SOLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SOLVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SOMIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SONICUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SOONUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SOPHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SPACEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SPELLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SPKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SPORTFUNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SPXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SQDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SSVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STABLEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STBLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STEEMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STORJUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STRKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "STXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SUIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SUNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SUPERUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SUSHIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SWARMSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SXTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SYNUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SYRUPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "SYSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TACUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TAGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TAIKOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TAKEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TAOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "THETAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "THEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TIAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TLMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TNSRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TONUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TOSHIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TOWNSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TRADOORUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TRBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TREEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TRIAUSDT": {
+      "last_available_month": null,
+      "months_downloaded": [],
+      "status": "missing_data",
+      "data_lag_days": 999,
+      "missing_months": [
+        "2020-01",
+        "2020-02",
+        "2020-03",
+        "2020-04",
+        "2020-05",
+        "2020-06",
+        "2020-07",
+        "2020-08",
+        "2020-09",
+        "2020-10",
+        "2020-11",
+        "2020-12",
+        "2021-01",
+        "2021-02",
+        "2021-03",
+        "2021-04",
+        "2021-05",
+        "2021-06",
+        "2021-07",
+        "2021-08",
+        "2021-09",
+        "2021-10",
+        "2021-11",
+        "2021-12",
+        "2022-01",
+        "2022-02",
+        "2022-03",
+        "2022-04",
+        "2022-05",
+        "2022-06",
+        "2022-07",
+        "2022-08",
+        "2022-09",
+        "2022-10",
+        "2022-11",
+        "2022-12",
+        "2023-01",
+        "2023-02",
+        "2023-03",
+        "2023-04",
+        "2023-05",
+        "2023-06",
+        "2023-07",
+        "2023-08",
+        "2023-09",
+        "2023-10",
+        "2023-11",
+        "2023-12",
+        "2024-01",
+        "2024-02",
+        "2024-03",
+        "2024-04",
+        "2024-05",
+        "2024-06",
+        "2024-07",
+        "2024-08",
+        "2024-09",
+        "2024-10",
+        "2024-11",
+        "2024-12",
+        "2025-01",
+        "2025-02",
+        "2025-03",
+        "2025-04",
+        "2025-05",
+        "2025-06",
+        "2025-07",
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12"
+      ],
+      "warnings": [
+        "No data found for TRIAUSDT"
+      ]
+    },
+    "TRUMPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TRUSTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TRUTHUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TRUUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TRXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TSTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TURBOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TURTLEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TUTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "TWTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "UAIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "UBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "UMAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "UNIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "USDCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "USELESSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "USTCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "USUALUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "USUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VANAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VANRYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VELODROMEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VELVETUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VETUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VFYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VICUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VINEUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VIRTUALUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VTHOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "VVVUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WALUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WAXPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WCTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WETUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WIFUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WLDUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WLFIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "WOOUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XAIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XANUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XLMUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XMRUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XNYUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XPINUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XPLUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XRPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XTZUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XVGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "XVSUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "YBUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "YFIUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "YGGUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZAMAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZBTUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZECUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZENUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZEREBROUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZETAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZILUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZKCUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZKJUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZKPUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZKUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZORAUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZROUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    },
+    "ZRXUSDT": {
+      "last_available_month": "2026-01",
+      "months_downloaded": [],
+      "status": "up_to_date",
+      "data_lag_days": 17,
+      "missing_months": [],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "total_instruments": 509,
+    "up_to_date": 506,
+    "lagging": 0,
+    "missing_data": 3,
+    "max_lag_days": 17
+  },
+  "download_summary": {
+    "total_months_attempted": 216,
+    "successful": 0,
+    "failed": 0,
+    "dry_run": false
+  }
+}

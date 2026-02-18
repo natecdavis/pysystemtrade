@@ -92,42 +92,102 @@ def download_instrument_from_vision(
     """
     Download klines and funding data from Binance Vision for one instrument.
 
-    NOTE: This is a reference implementation. In production, you would:
-    1. Use Binance Vision's public data repository (https://data.binance.vision)
-    2. Download monthly ZIP files for each symbol
-    3. Extract and organize into the canonical raw data structure
-
-    For now, this script validates the workflow without implementing the full
-    Vision downloader. See docs/phase4_vision_data_management.md for details.
+    Downloads monthly ZIP files from Binance Vision and stores them in canonical format:
+    - data/raw/binance/klines/{SYMBOL}/{SYMBOL}-1d-YYYY-MM.zip
+    - data/raw/binance/funding_rates/{SYMBOL}/{SYMBOL}-fundingRate-YYYY-MM.zip
 
     Args:
         instrument_id: Instrument ID (e.g., BTCUSDT_PERP)
-        data_dir: Raw data directory
+        data_dir: Raw data directory (e.g., envs/dev/data/raw/binance)
         start_date: Start date for download (YYYY-MM-DD)
-        dry_run: If True, print actions without downloading
+        dry_run: If True, print URLs without downloading
 
     Returns:
-        True if successful, False otherwise
+        True if successful (at least one file downloaded), False otherwise
     """
+    import requests
+    import pandas as pd
     from sysdata.crypto.config_helpers import instrument_id_to_symbol
 
     symbol = instrument_id_to_symbol(instrument_id)
 
     if dry_run:
         logger.info(f"[DRY RUN] Would download {symbol} from Vision (start: {start_date})")
-        logger.info(f"  - Klines: https://data.binance.vision/?prefix=data/futures/um/monthly/klines/{symbol}/")
-        logger.info(f"  - Funding: https://data.binance.vision/?prefix=data/futures/um/monthly/fundingRate/{symbol}/")
+        logger.info(f"  - Klines: https://data.binance.vision/data/futures/um/monthly/klines/{symbol}/1d/")
+        logger.info(f"  - Funding: https://data.binance.vision/data/futures/um/monthly/fundingRate/{symbol}/")
         return True
 
-    # TODO: Implement full Vision downloader
-    # For now, this is a placeholder that validates the workflow
-    logger.warning(f"Vision downloader not yet implemented for {symbol}")
-    logger.info(f"Manual download required from: https://data.binance.vision")
-    logger.info(f"  1. Download monthly klines for {symbol}")
-    logger.info(f"  2. Download monthly funding rates for {symbol}")
-    logger.info(f"  3. Extract ZIPs to {data_dir}")
+    # Compute month range from start_date to present
+    start = pd.to_datetime(start_date)
+    end = datetime.now()
+    months = pd.date_range(start, end, freq='MS').strftime('%Y-%m')
 
-    return False
+    downloaded_files = 0
+    klines_dir = data_dir / 'klines' / symbol
+    funding_dir = data_dir / 'funding_rates' / symbol
+    klines_dir.mkdir(parents=True, exist_ok=True)
+    funding_dir.mkdir(parents=True, exist_ok=True)
+
+    # Download klines ZIPs
+    for month in months:
+        year, mon = month.split('-')
+        zip_filename = f"{symbol}-1d-{year}-{mon}.zip"
+        klines_path = klines_dir / zip_filename
+
+        # Skip if already exists
+        if klines_path.exists():
+            logger.debug(f"{symbol}: Klines {month} already exists, skipping")
+            downloaded_files += 1
+            continue
+
+        klines_url = f"https://data.binance.vision/data/futures/um/monthly/klines/{symbol}/1d/{zip_filename}"
+
+        try:
+            response = requests.get(klines_url, timeout=30)
+            if response.status_code == 200:
+                klines_path.write_bytes(response.content)
+                logger.debug(f"{symbol}: Downloaded klines {month} ({len(response.content)} bytes)")
+                downloaded_files += 1
+            elif response.status_code == 404:
+                logger.debug(f"{symbol}: Klines {month} not available (404 - expected for pre-launch)")
+            else:
+                logger.warning(f"{symbol}: Klines {month} failed ({response.status_code})")
+        except Exception as e:
+            logger.error(f"{symbol}: Klines {month} error: {e}")
+
+    # Download funding ZIPs
+    for month in months:
+        year, mon = month.split('-')
+        zip_filename = f"{symbol}-fundingRate-{year}-{mon}.zip"
+        funding_path = funding_dir / zip_filename
+
+        # Skip if already exists
+        if funding_path.exists():
+            logger.debug(f"{symbol}: Funding {month} already exists, skipping")
+            downloaded_files += 1
+            continue
+
+        funding_url = f"https://data.binance.vision/data/futures/um/monthly/fundingRate/{symbol}/{zip_filename}"
+
+        try:
+            response = requests.get(funding_url, timeout=30)
+            if response.status_code == 200:
+                funding_path.write_bytes(response.content)
+                logger.debug(f"{symbol}: Downloaded funding {month} ({len(response.content)} bytes)")
+                downloaded_files += 1
+            elif response.status_code == 404:
+                logger.debug(f"{symbol}: Funding {month} not available (404)")
+            else:
+                logger.warning(f"{symbol}: Funding {month} failed ({response.status_code})")
+        except Exception as e:
+            logger.error(f"{symbol}: Funding {month} error: {e}")
+
+    if downloaded_files > 0:
+        logger.info(f"{instrument_id}: Downloaded {downloaded_files} files from Vision")
+        return True
+    else:
+        logger.warning(f"{instrument_id}: No files downloaded (may be pre-launch or network issue)")
+        return False
 
 
 def main():
@@ -158,6 +218,11 @@ def main():
     )
     parser.add_argument('--dry-run', action='store_true', help='Print plan without downloading')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose logging')
+    parser.add_argument(
+        '--config',
+        type=Path,
+        help='Config file to prioritize layer_a instruments (optional)'
+    )
     args = parser.parse_args()
 
     if args.verbose:
@@ -178,6 +243,18 @@ def main():
 
     # Load candidate instruments from registry
     all_candidates = load_registry_candidates(env_root)
+
+    # Prioritize layer_a instruments if config provided
+    if args.config:
+        import yaml
+        with open(args.config) as f:
+            config = yaml.safe_load(f)
+        layer_a = config.get('universe', {}).get('layer_a_instruments', [])
+        if layer_a:
+            # Sort: layer_a first, then rest of registry
+            priority_order = layer_a + [c for c in all_candidates if c not in layer_a]
+            logger.info(f"Prioritized {len(layer_a)} layer_a instruments from config")
+            all_candidates = priority_order
 
     # Load progress tracker
     progress = load_progress(env_root)

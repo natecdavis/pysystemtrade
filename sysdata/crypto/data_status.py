@@ -522,10 +522,13 @@ def compute_dates_and_staleness(
         last_date = get_last_available_date(data_dir, symbol, "klines")
 
         if last_date is None:
-            raise ValueError(
-                f"No data found for {symbol}. Cannot compute as_of_date. "
-                f"Run update_data_monthly.py to download historical data."
-            )
+            logger.debug(f"No data found for {symbol} — skipping in V1 staleness report")
+            staleness_report[symbol] = {
+                'last_available_date': None,
+                'staleness_days': None,
+                'status': 'no_data'
+            }
+            continue
 
         last_dates.append(last_date)
         staleness_days = compute_staleness_days(expected_as_of_date, last_date)
@@ -535,8 +538,8 @@ def compute_dates_and_staleness(
             'staleness_days': staleness_days
         }
 
-    # Dataset as_of_date = min across instruments (for rectangular panel)
-    dataset_as_of_date = min(last_dates)
+    # Dataset as_of_date = min across instruments that have data (for rectangular panel)
+    dataset_as_of_date = min(last_dates) if last_dates else None
 
     return expected_as_of_date, dataset_as_of_date, staleness_report
 
@@ -927,6 +930,16 @@ def generate_data_status_report_v1(
     for inst_id, symbol in instrument_to_symbol.items():
         last_date = staleness_report[symbol]['last_available_date']
         staleness_days = staleness_report[symbol]['staleness_days']
+
+        # New instrument with no Vision data yet — record and skip
+        if last_date is None:
+            instrument_status[inst_id] = {
+                "last_available_date": None,
+                "staleness_days": None,
+                "status": "no_data",
+                "warnings": ["No Vision data found — instrument may be newly listed"],
+            }
+            continue
 
         # Load klines dates (cached for funding coverage computation)
         klines_dates = load_klines_dates(data_dir, symbol)

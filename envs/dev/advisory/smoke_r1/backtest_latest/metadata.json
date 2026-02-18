@@ -1,0 +1,52 @@
+{
+  "run_timestamp": "2026-02-17T15:16:01.205838",
+  "system_type": "dynamic_universe",
+  "config_path": "/Users/nathanieldavis/pysystemtrade-crypto-perps/config/crypto_perps_dynamic_universe_top30.yaml",
+  "data_path": "/Users/nathanieldavis/pysystemtrade-crypto-perps/envs/dev/advisory/smoke_r1/dataset_latest.parquet",
+  "backtest_start_date": "2020-01-01",
+  "backtest_end_date": "2026-01-23",
+  "n_days": 1583,
+  "instruments": [
+    "AAVEUSDT_PERP",
+    "ADAUSDT_PERP",
+    "ALGOUSDT_PERP",
+    "ATOMUSDT_PERP",
+    "AVAXUSDT_PERP",
+    "AXSUSDT_PERP",
+    "BCHUSDT_PERP",
+    "BNBUSDT_PERP",
+    "BTCUSDT_PERP",
+    "DOGEUSDT_PERP",
+    "DOTUSDT_PERP",
+    "ETCUSDT_PERP",
+    "ETHUSDT_PERP",
+    "FILUSDT_PERP",
+    "ICPUSDT_PERP",
+    "LINKUSDT_PERP",
+    "LTCUSDT_PERP",
+    "MANAUSDT_PERP",
+    "NEOUSDT_PERP",
+    "SANDUSDT_PERP",
+    "SOLUSDT_PERP",
+    "THETAUSDT_PERP",
+    "TRXUSDT_PERP",
+    "UNIUSDT_PERP",
+    "VETUSDT_PERP",
+    "XLMUSDT_PERP",
+    "XRPUSDT_PERP"
+  ],
+  "n_instruments": 27,
+  "dynamic_universe_stats": {
+    "min_active": 0,
+    "max_active": 27,
+    "avg_active": 24.84017687934302,
+    "median_active": 27.0
+  },
+  "dynamic_universe_config": {
+    "max_sr_cost_per_trade": 0.01,
+    "max_sr_cost_annual": 0.13,
+    "stack_turnover": 15.0,
+    "adv_window": 30,
+    "fee_bps": 5
+  }
+}

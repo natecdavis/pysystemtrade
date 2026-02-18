@@ -208,7 +208,14 @@ def check_stale_timestamps(
         (error_message, warning_message) - both None if OK
     """
     try:
-        timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        # Parse timestamp and ensure it's timezone-aware
+        timestamp_str_clean = timestamp_str.replace('Z', '+00:00')
+        timestamp = datetime.fromisoformat(timestamp_str_clean)
+
+        # If naive, assume UTC
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+
         now = datetime.now(timezone.utc)
         age = now - timestamp
         age_hours = age.total_seconds() / 3600
