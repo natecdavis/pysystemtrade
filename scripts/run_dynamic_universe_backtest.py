@@ -49,6 +49,68 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def apply_position_buffering(
+    optimal_positions: pd.DataFrame,
+    buffer_size: float,
+) -> pd.DataFrame:
+    """
+    Apply position inertia (buffering) to optimal positions.
+
+    Positions are only updated when the optimal position moves outside
+    a buffer zone of ±(buffer_size × avg_position). This simulates
+    realistic trading where small position changes are ignored to
+    reduce transaction costs.
+
+    Args:
+        optimal_positions: dates × instruments DataFrame of optimal positions
+        buffer_size: buffer threshold as fraction of average position
+                     (e.g. 0.10 = ±10% buffer zone)
+
+    Returns:
+        buffered_positions: dates × instruments DataFrame with buffering applied
+    """
+    if buffer_size == 0:
+        # No buffering, return optimal positions
+        return optimal_positions.copy()
+
+    buffered = {}
+
+    for instrument in optimal_positions.columns:
+        opt = optimal_positions[instrument].dropna()
+        if len(opt) == 0:
+            buffered[instrument] = opt
+            continue
+
+        # Calculate buffer threshold for this instrument
+        # threshold = buffer_size × mean(abs(position))
+        avg_abs_position = abs(opt).mean()
+        buffer_threshold = buffer_size * avg_abs_position
+
+        # Apply buffering logic
+        buffered_series = [opt.iloc[0]]  # Start with first optimal position
+        current_pos = opt.iloc[0]
+
+        for i in range(1, len(opt)):
+            optimal = opt.iloc[i]
+
+            # Check if optimal position is outside buffer zone
+            delta = abs(optimal - current_pos)
+            if delta > buffer_threshold:
+                # Breach buffer — update to optimal
+                current_pos = optimal
+            # else: Within buffer — hold current position
+
+            buffered_series.append(current_pos)
+
+        buffered[instrument] = pd.Series(
+            buffered_series,
+            index=opt.index,
+            name=instrument
+        )
+
+    return pd.DataFrame(buffered)
+
+
 def _write_universe_snapshot(system, output_path: Path, config_path: str) -> None:
     """
     Extract Stage 2 tradable set from portfolio stage and write universe_snapshot.json.
@@ -124,6 +186,65 @@ def _write_universe_snapshot(system, output_path: Path, config_path: str) -> Non
     )
 
 
+def _compute_calendar_pnl(
+    portfolio_positions: pd.DataFrame,
+    prices_df: pd.DataFrame,
+    meta_df: pd.DataFrame,
+    capital: float,
+) -> tuple:
+    """
+    Compute calendar-daily gross returns and transaction costs as fractions of capital.
+
+    Uses the full calendar-day index (including weekends) so that crypto weekend
+    moves are captured rather than bundled into the following Monday.
+
+    Gross:  pos[t-1] × (price[t] - price[t-1]) / capital
+    Cost:   |Δpos[t]| × price[t] × (spread_frac/2 + taker_fee_frac) / capital
+            (half-spread on entry + taker fee; mirrored on exit when position reverses)
+
+    Args:
+        portfolio_positions: dates × instruments, position in base-asset units
+        prices_df:           dates × instruments close prices (calendar daily)
+        meta_df:             MultiIndex (date, instrument) with spread_frac, taker_fee_frac
+        capital:             notional capital in USD
+
+    Returns:
+        (gross_returns, daily_cost) — both pd.Series indexed on portfolio_positions.index
+    """
+    instruments = [c for c in portfolio_positions.columns if c in prices_df.columns]
+    pos = portfolio_positions[instruments]
+    price = prices_df[instruments].reindex(pos.index, method='ffill')
+
+    # Gross P&L
+    gross_pnl = (pos.shift(1) * price.diff()).sum(axis=1)
+    gross_returns = gross_pnl / capital
+
+    # Transaction costs: incurred on position-change days
+    pos_change = pos.diff().abs()
+    try:
+        spread_panel = (
+            meta_df['spread_frac']
+            .unstack('instrument')
+            .reindex(pos.index, method='ffill')
+            .reindex(columns=instruments)
+        )
+        fee_panel = (
+            meta_df['taker_fee_frac']
+            .unstack('instrument')
+            .reindex(pos.index, method='ffill')
+            .reindex(columns=instruments)
+        )
+        # Per-leg cost: half-spread (crossing) + taker fee
+        cost_frac_panel = spread_panel / 2.0 + fee_panel
+        notional_traded = (pos_change * price * cost_frac_panel).sum(axis=1)
+    except Exception as e:
+        logger.warning(f"  Per-instrument cost data unavailable ({e}), using flat 10bps")
+        notional_traded = (pos_change * price).sum(axis=1) * 0.001
+
+    daily_cost = notional_traded / capital
+    return gross_returns, daily_cost
+
+
 def _compute_funding_pnl_series(
     portfolio_positions: pd.DataFrame,
     prices_df: pd.DataFrame,
@@ -170,12 +291,16 @@ def _compute_performance_metrics(
     portfolio_positions: pd.DataFrame,
     weights: pd.DataFrame,
     output_path: Path,
-    precomputed_returns: pd.Series = None,
     data=None,
 ) -> None:
     """
     Compute and write performance_summary.json using existing accounting/metrics modules.
     Called after positions are computed and written.
+
+    Uses calendar-daily P&L (all 365 days/year including weekends) so that crypto
+    weekend moves are captured accurately. Pysystemtrade's Account stage is NOT used
+    here because it runs on a business-day calendar and silently drops ~635 weekend
+    days per 6-year backtest.
     """
     from systems.provided.crypto_example.core.portfolio_metrics import (
         calculate_all_metrics,
@@ -184,27 +309,34 @@ def _compute_performance_metrics(
 
     logger.info("\nComputing performance metrics...")
 
-    # 1. Get returns — use pre-computed if available, else try Account stage
-    daily_returns_dec = precomputed_returns
-    if daily_returns_dec is None:
+    capital = float(getattr(system.config, 'notional_trading_capital', 10000.0))
+
+    # 1. Calendar-daily gross returns + transaction costs
+    daily_returns_dec = None
+    daily_cost_ann = 0.0
+    funding_drag_ann = 0.0
+
+    if data is not None:
         try:
-            account = system.accounts.portfolio()
-            pct_obj = account.percent
-            pct_series = pd.Series(
-                np.asarray(pct_obj, dtype=float), index=pct_obj.index
+            gross_returns, daily_cost = _compute_calendar_pnl(
+                portfolio_positions,
+                data._prices_df,
+                data._meta_df,
+                capital,
             )
-            daily_returns_dec = pct_series.dropna() / 100.0
-            logger.info(f"  Account stage: {len(daily_returns_dec)} days of returns")
+            net_before_funding = gross_returns - daily_cost
+            daily_cost_ann = float(daily_cost.mean() * 365)
+            logger.info(
+                f"  Calendar P&L: {len(gross_returns)} days  "
+                f"cost drag = {daily_cost_ann * 100:.2f}% p.a."
+            )
+            daily_returns_dec = net_before_funding
         except Exception as e:
-            logger.warning(f"  Account stage failed ({e}) — P&L metrics will be omitted")
+            logger.warning(f"  Calendar P&L computation failed ({e}) — P&L metrics will be omitted")
 
     # 1b. Add funding P&L
-    funding_drag_ann = 0.0
     if daily_returns_dec is not None and data is not None:
         try:
-            capital = float(
-                getattr(system.config, 'notional_trading_capital', 10000.0)
-            )
             funding_rates_df = data.get_funding_rates_df()
             if not funding_rates_df.empty:
                 funding_series = _compute_funding_pnl_series(
@@ -216,7 +348,7 @@ def _compute_performance_metrics(
                 funding_aligned = funding_series.reindex(
                     daily_returns_dec.index
                 ).fillna(0.0)
-                funding_drag_ann = float(funding_aligned.mean() * 252)
+                funding_drag_ann = float(funding_aligned.mean() * 365)
                 daily_returns_dec = daily_returns_dec + funding_aligned
                 logger.info(
                     f"  Funding P&L: annualised drag = {funding_drag_ann:.4f} "
@@ -238,7 +370,7 @@ def _compute_performance_metrics(
     total_exposure = portfolio_positions.abs().sum(axis=1)
     avg_exposure = float(total_exposure.mean())
     daily_delta = portfolio_positions.diff().abs().sum(axis=1)
-    n_years = len(portfolio_positions) / 252.0
+    n_years = len(portfolio_positions) / 365.0
     if avg_exposure > 0 and n_years > 0:
         annual_turnover = float(daily_delta.sum() / (2.0 * avg_exposure) / n_years)
     else:
@@ -283,6 +415,7 @@ def _compute_performance_metrics(
             "n_days": n_days,
         },
         "cost_model": {
+            "transaction_cost_ann": daily_cost_ann,
             "funding_drag_ann": funding_drag_ann,
         },
     }
@@ -349,6 +482,15 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     env_root_str = os.environ.get('LIVE_OPS_ENV_ROOT')
     env_root = Path(env_root_str) if env_root_str else Path.cwd()
 
+    # Auto-discover macro data if not explicitly provided
+    if macro_data_path is None:
+        candidate = Path(data_path).parent / 'macro_factors.parquet'
+        if candidate.exists():
+            macro_data_path = str(candidate)
+            logger.info(f"Auto-discovered macro data: {macro_data_path}")
+        else:
+            logger.warning("macro_factors.parquet not found — residual_momentum rules will produce NaN forecasts")
+
     from syscore.constants import arg_not_supplied as _arg_not_supplied
     macro_kwarg = (
         macro_data_path if macro_data_path is not None else _arg_not_supplied
@@ -389,39 +531,40 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
 
     logger.info("✓ System created")
 
-    # Trigger Account stage portfolio calculation before the positions loop.
-    # accountCurveGroup.percent returns an accountCurveGroup (not a plain pd.Series).
-    # Calling .dropna() on it triggers pandas boolean-indexing via __getitem__,
-    # which expects a string instrument key and raises TypeError on numpy arrays.
-    # Fix: wrap in a plain pd.Series before calling dropna().
-    logger.info("\nPre-computing Account stage portfolio returns...")
-    _account_returns = None
-    try:
-        _acc = system.accounts.portfolio()
-        _pct_obj = _acc.percent
-        _pct_series = pd.Series(
-            np.asarray(_pct_obj, dtype=float), index=_pct_obj.index
-        )
-        _account_returns = (_pct_series.dropna() / 100.0)
-        logger.info(f"  Account stage: {len(_account_returns)} days of returns cached")
-    except Exception as e:
-        logger.warning(f"  Account stage pre-compute failed ({e}) — will retry after positions")
-
     # Run backtest by getting portfolio positions for all instruments
     logger.info("\nRunning backtest...")
-    logger.info("  Getting portfolio positions...")
+    logger.info("  Getting optimal positions...")
 
-    # Get positions for all instruments
+    # Get optimal positions for all instruments (with capital multiplier applied)
     position_dict = {}
     for instrument in instruments:
         try:
-            position = system.portfolio.get_notional_position(instrument)
+            # get_actual_position() = get_notional_position() × capital_multiplier
+            # (Note: "actual" is misleading - it doesn't apply buffering, just capital scaling)
+            position = system.portfolio.get_actual_position(instrument)
             position_dict[instrument] = position
         except Exception as e:
             logger.warning(f"Could not get position for {instrument}: {e}")
             continue
 
-    portfolio_positions = pd.DataFrame(position_dict)
+    optimal_positions = pd.DataFrame(position_dict)
+
+    # Apply position buffering (inertia threshold)
+    # Positions only update when optimal moves outside buffer zone
+    # Check for both buffer_size (from sweep script) and buffer_frac (from YAML)
+    if hasattr(config, 'buffer_size'):
+        buffer_size = config.buffer_size
+    elif hasattr(config, 'buffer_frac'):
+        buffer_size = config.buffer_frac
+    else:
+        buffer_size = 0.0
+
+    logger.info(f"  Applying buffering (buffer_size={buffer_size:.2f})...")
+
+    portfolio_positions = apply_position_buffering(
+        optimal_positions=optimal_positions,
+        buffer_size=buffer_size,
+    )
 
     logger.info(f"  Backtest completed:")
     logger.info(f"    Date range: {portfolio_positions.index[0].date()} to {portfolio_positions.index[-1].date()}")
@@ -520,7 +663,6 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         portfolio_positions=portfolio_positions,
         weights=weights,
         output_path=output_path,
-        precomputed_returns=_account_returns,
         data=data,
     )
 

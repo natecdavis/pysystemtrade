@@ -1,6 +1,215 @@
 # Current Work Context
 
-## Last Session Summary (2026-02-17)
+## Current Session Summary (2026-02-20, Part 2)
+
+**Implemented Forecast-Based Stage 2 Selection** - Alternative universe ranking criterion
+
+**Goal:** Test whether selecting top-K instruments by **|forecast| magnitude** instead of by **ADV (liquidity)** improves risk-adjusted returns.
+
+**Implementation:**
+
+1. **Modified `sysdata/crypto/top_k_selector.py`:**
+   - Added `compute_forecast_magnitude_metric()` method to rank by absolute forecast value
+   - Extended `select_tradable_set()` to accept `selection_criterion` parameter ('adv' or 'forecast_magnitude')
+   - Implemented ranking logic switch between ADV and forecast magnitude
+   - Updated `get_tradable_over_time()` to pass criterion through
+
+2. **Modified `systems/provided/crypto_example/core/dynamic_portfolio.py`:**
+   - Read `selection_criterion` from config (with validation)
+   - Fetch forecasts from `combForecast` stage when criterion is 'forecast_magnitude'
+   - Pass forecasts and criterion to selector
+   - Enhanced logging to show which criterion is active
+
+3. **Config files:**
+   - Updated `config/crypto_perps_full_rules.yaml`: Added `selection_criterion: 'adv'` (baseline)
+   - Created `config/crypto_perps_full_rules_forecast_select.yaml`: Test config with `selection_criterion: 'forecast_magnitude'`
+
+4. **Created diagnostic tools:**
+   - `scripts/compare_stage2_universes.py`: Analyzes universe composition differences (overlap, divergent selections, turnover)
+   - `TESTING_GUIDE_FORECAST_SELECTION.md`: Complete testing protocol with hypotheses and success criteria
+
+**Research Hypotheses:**
+- **H1:** Forecast-based selection → higher Sharpe (concentrates capital in strongest signals)
+- **H2:** Forecast-based selection → higher turnover (forecasts more volatile than ADV)
+- **H3:** Forecast-based selection → different instrument mix (high-|forecast| illiquid assets now selected)
+
+**Testing Commands:**
+```bash
+# Baseline (ADV-based, should reproduce Sharpe 0.84)
+python scripts/run_dynamic_universe_backtest.py \
+  --config config/crypto_perps_full_rules.yaml \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --outdir out/stage2_comparison/adv_baseline
+
+# Test (Forecast-based)
+python scripts/run_dynamic_universe_backtest.py \
+  --config config/crypto_perps_full_rules_forecast_select.yaml \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --outdir out/stage2_comparison/forecast_magnitude
+
+# Compare universes
+python scripts/compare_stage2_universes.py \
+  --adv out/stage2_comparison/adv_baseline/universe_snapshot.json \
+  --forecast out/stage2_comparison/forecast_magnitude/universe_snapshot.json \
+  --output out/stage2_comparison/universe_comparison.json
+```
+
+**Key Metrics to Compare:**
+- Sharpe ratio (primary goal: improve risk-adjusted returns)
+- Turnover (expect higher with forecast-based)
+- Transaction costs (risk: illiquid selections)
+- Universe overlap (divergent instrument preferences)
+
+**Status:** ✅ Implementation complete. ✅ Testing complete. ❌ Forecast-based selection REJECTED.
+
+**Test Results:**
+
+| Metric | ADV-Based | Forecast-Based | Δ | Winner |
+|--------|-----------|----------------|---|--------|
+| **Sharpe** | **0.8419** | 0.7831 | -7.0% | ✅ ADV |
+| **CAGR** | **14.4%** | 9.3% | -35.4% | ✅ ADV |
+| **Annual Vol** | 17.9% | 12.4% | -30.7% | N/A |
+| **Max DD** | -21.9% | -14.7% | +32.9% | ✅ Forecast |
+| **Avg Positions** | **24.9** | 22.8 | -8.4% | ✅ ADV |
+| **Turnover** | **15.3x** | 16.3x | +6.5% | ✅ ADV |
+| **Universe Overlap** | 30 instruments | 27 instruments | **10% overlap** | Critical divergence |
+
+**Critical Finding:** Forecast-based selection **excludes BTC and ETH** (the two largest cryptos), instead selecting small-cap, low-liquidity instruments with high forecast volatility but poor actual performance.
+
+**Root Cause:** High |forecast| magnitude reflects **forecast volatility**, not signal quality. Small caps have noisier data → higher vol-adjusted forecasts, but worse risk-adjusted returns.
+
+**Decision:** **KEEP ADV-BASED SELECTION** (current default). Do not adopt forecast-based selection.
+
+**Deliverables:**
+- ✅ `out/stage2_comparison/COMPARISON_REPORT.md` - Full analysis (3000+ words)
+- ✅ Baseline backtest: Sharpe 0.84 (exact reproduction)
+- ✅ Forecast backtest: Sharpe 0.78 (underperformed by 7%)
+- ✅ Universe analysis: Only 10% overlap (missed BTC, ETH, SOL, major caps)
+
+**Key Lesson:** Liquidity is a proxy for institutional quality. The most liquid instruments are better researched, have higher quality data, and exhibit more predictable trends. Forecast magnitude is a misleading signal that favors noisy small caps over quality major caps.
+
+---
+
+## Previous Session Summary (2026-02-20, Part 1)
+
+**Diagnosed "Sharpe Regression" (0.84 → 0.76)** - Root Cause: Wrong Configuration File
+
+**Problem:** After reverting Mr Greedy optimizer changes, baseline verification showed Sharpe 0.76, but historical results showed Sharpe 0.84. This appeared to be a -9.5% performance degradation.
+
+**Investigation Results:**
+- **Root cause**: Different configuration files were used for the two backtests
+- **0.84 result** (Feb 18): Used `config/crypto_perps_full_rules.yaml` (19-rule stack)
+- **0.76 result** (Feb 20): Used `config/crypto_perps_dynamic_universe_top30.yaml` (3-rule EWMAC-only stack)
+
+**Config Comparison:**
+
+| Metric | Full Rules (0.84) | Top30 (0.76) | Delta |
+|--------|-------------------|--------------|-------|
+| **Rules** | 19 rules | 3 rules | -84% |
+| **Families** | 7 families | 1 family (EWMAC) | -86% |
+| **Sharpe** | 0.8419 | 0.7633 | -9.3% |
+| **Annual Vol** | 17.94% | 21.56% | +20% |
+| **Avg Positions** | 24.9 | 16.8 | -32% |
+| **Transaction Costs** | 27.97 bps/yr | 38.82 bps/yr | +38% |
+| **Notional Capital** | $10,000 | $5,000 | -50% |
+
+**Conclusion:** No actual regression - the simplified `top30` config is a **test config**, not for production performance comparison. The lack of rule diversification (3 EWMAC vs 19 multi-family rules) leads to higher volatility and lower risk-adjusted returns.
+
+**Verification:** Re-ran backtest with correct config → **Sharpe 0.8419** ✅ (exact match to historical 0.84)
+
+**Deliverables:**
+- Updated `current-work.md` to clarify which config produces which performance
+- Documented correct baseline commands in "Useful Commands" section
+- Verified buffering has minimal impact (~1-2 bps Sharpe difference)
+
+**Status:** Issue resolved. System performing as expected with correct configuration.
+
+**Key Takeaway:** Always use `crypto_perps_full_rules.yaml` for production baseline comparisons, not `crypto_perps_dynamic_universe_top30.yaml`.
+
+---
+
+## Previous Session Summary (2026-02-19)
+
+Fixed **Mr Greedy Portfolio Alignment Issue** - KeyError resolution:
+
+- **Root cause identified**: Optimizer expects previous_positions to contain ALL instruments
+  in current optimization set, but filtered instruments from previous days were missing.
+  KeyErrors occurred when instruments were newly eligible or were filtered out yesterday.
+- **Fixed `systems/crypto_perps/greedy_portfolio.py`** (lines 318-345): Align previous_positions
+  with current set by adding zero entries for new/newly-eligible instruments before passing
+  to optimizer. This ensures the optimizer always has complete prior state.
+- **Enhanced exception logging** (lines 21-22, 184-198): Added traceback import and detailed
+  error logging to help diagnose future issues quickly.
+- **Created `scripts/debug_greedy_single_date.py`**: Diagnostic tool (362 lines) for single-date
+  testing and troubleshooting. Shows N vs M alignment, filtering breakdown, and step-by-step
+  validation through the optimization pipeline.
+- **Validation**: Zero KeyErrors on debug script (tested 2024-03-21) and smoke test (100k+ lines).
+  Optimizer running successfully on all dates. Alignment maintained: N == M throughout iteration.
+- **Deliverable**: `out/greedy_alignment_fix_summary.md` (comprehensive fix documentation)
+
+**Status**: Fix complete and validated. Ready for full-scale testing on 300+ instrument dataset.
+
+**Next steps**:
+1. Run full backtest to confirm fix at scale
+2. Calibrate shadow_cost parameter
+3. Compare performance vs two-stage baseline
+
+## Previous Session Summary (2026-02-18, Part 2)
+
+Implemented **Buffering in Backtests** to measure actual performance impact:
+
+- **Modified `scripts/run_dynamic_universe_backtest.py`**: Added `apply_position_buffering()`
+  function that simulates position inertia (buffers). Positions now only update when
+  |optimal - current| > buffer_threshold (buffer_size × avg_position).
+- **Created `scripts/compare_buffer_sweeps.py`**: Tool to compare unbuffered vs buffered
+  sweep results, showing ΔSharpe and ΔTurnover.
+- **Re-ran buffer sweep** with buffering enabled (buffer_size: 0.0, 0.05, 0.10, 0.15, 0.20)
+- **Key findings**:
+  - Buffering reduces turnover by 0-5.6% as expected (buffer=0.10 → -2.9% turnover)
+  - Sharpe impact is **minimal** (±0.02), within backtest noise
+  - Cost savings (~2-4 bps/yr) are offset by tracking error from delayed rebalancing
+  - Optimal buffer_size: **0.05-0.10** (tiny net benefit or neutral)
+- **Validation**: buffer_size=0.00 identical between unbuffered and buffered sweeps (proves correctness)
+- **Deliverable**: `out/buffer_sweep_buffered/BUFFER_ANALYSIS.md` (full analysis)
+
+**Decision**: Keep buffering **enabled** in backtest runner (deviates from pysystemtrade convention).
+Use buffer_size=0.10 as baseline. Backtests now simulate realistic trading with inertia.
+
+## Earlier Session Summary (2026-02-18, Part 1)
+
+Completed **Buffer Size Non-Impact Root Cause Analysis**:
+
+- **Created `scripts/diagnose_buffering.py`**: Post-processing diagnostic tool that loads
+  positions.csv from backtest runs, simulates buffering logic (inertia constraints), and
+  compares buffered vs unbuffered turnover. Validates buffer impact without re-running backtests.
+- **Created `scripts/analyze_buffer_sweep.py`**: Batch analysis wrapper that runs diagnostics
+  on all buffer_* directories and generates comparison table.
+- **Root cause confirmed**: Backtest runner originally called `get_notional_position()` which returns
+  optimal (unbuffered) positions. Buffers were designed for live trading only (pysystemtrade convention).
+- **Impact quantified**: Post-processing simulation showed buffers would reduce turnover by 0-7.2%
+- **Deliverables**: `out/buffer_sweep/FINDINGS.md` (initial report), `buffer_impact_analysis.json`
+
+**Note**: This analysis led to implementing actual buffering in backtests (see Part 2 above).
+
+## Earlier Session Summary (2026-02-18)
+
+Implemented **ResidualMomentum Fix + Empirical base_sr + Single-Stage Net-SR Selection**:
+
+- **Auto-loaded macro data**: `scripts/run_dynamic_universe_backtest.py` now auto-discovers
+  `data/macro_factors.parquet` relative to the dataset path. `--macro-data` is no longer
+  required — the runner logs whether macro data was found or not.
+- **Created `scripts/estimate_base_sr.py`**: Post-processing script that reads
+  `diagnostics.parquet` + price panel to estimate SR per unit absolute forecast
+  (base_sr) without re-running the system. See usage below.
+- **Removed Stage 1 cost filter** (`skip_stage1_cost_filter: true` in config): The
+  `dynamic_portfolio.py` portfolio stage now uses a data-availability mask instead of
+  `get_universe_eligibility_df()` when the flag is set. Stablecoins and high-cost
+  instruments rank out naturally via `net_sr → -∞`.
+- **Updated `config/crypto_perps_full_rules.yaml`**: Removed Stage 1 params
+  (`max_sr_cost_per_trade`, `max_sr_cost_annual`, `adv_window`, `min_history_days`,
+  `min_annual_vol`). Added `skip_stage1_cost_filter: true`.
+
+## Previous Session Summary (2026-02-17)
 
 Implemented **Full Carver-Style 45-Rule Trading Stack**:
 - Created `systems/crypto_perps/rules/rule_library.py` — 10 new rule functions
@@ -25,25 +234,66 @@ Implemented **Walk-Forward Dynamic Instrument Universe** system:
 
 ## Active Task
 
-Full 45-rule backtest integration complete. Next: run full backtest.
+**Buffering implementation completed** (2026-02-18). Backtests now apply position inertia via
+`apply_position_buffering()` function. Unbuffered vs buffered sweep comparison shows minimal
+Sharpe impact (±0.02) but successful turnover reduction (0-5.6%). See
+`out/buffer_sweep_buffered/BUFFER_ANALYSIS.md` for full analysis.
+
+**Decision**: Keep buffering **enabled** with buffer_size=0.10 as baseline. This deviates from
+pysystemtrade convention (buffers normally only in live trading) but provides more realistic
+backtest results.
 
 ## Next Steps
 
-1. **Run full backtest** with `crypto_perps_full_rules.yaml` on the 30x6yr dataset
+1. **Run full backtest** (macro data now auto-loaded, Stage 1 bypassed):
    ```bash
    python scripts/run_dynamic_universe_backtest.py \
      --config config/crypto_perps_full_rules.yaml \
-     --data data/example_crypto_perps_30x6yr_jagged.parquet \
-     --outdir out/full_rules_backtest
+     --data data/dataset_538registry_6yr_jagged.parquet \
+     --outdir out/net_sr_full
    ```
-2. **Per-instrument weight overrides** for BTC/ETH (no relmomentum/relcarry/
+2. **Estimate empirical base_sr** from fresh diagnostics:
+   ```bash
+   python scripts/estimate_base_sr.py \
+     --diagnostics out/net_sr_full/diagnostics.parquet \
+     --data data/dataset_538registry_6yr_jagged.parquet \
+     --capital 10000
+   ```
+   Update `base_sr:` in `config/crypto_perps_full_rules.yaml` with the printed value.
+3. **Re-run with empirical base_sr** and compare Sharpe vs 0.73 baseline.
+4. **Per-instrument weight overrides** for BTC/ETH (no relmomentum/relcarry/
    btc_lead_lag for BTC; mrinasset for BTC+ETH). Currently all instruments use
    the "default" flat weights. Requires either:
    - A custom `ForecastCombine` subclass that reads a `default` key in nested weights, or
    - Generating explicit weight dicts for every top-30 instrument in the YAML
-3. Address volume data quality issues
+5. Address volume data quality issues
 
-## Key Files Modified This Session
+## Key Files Created/Modified This Session (2026-02-18)
+
+### New Files (Part 2: Buffering Implementation)
+- `scripts/compare_buffer_sweeps.py` — Compares unbuffered vs buffered sweep results
+- `out/buffer_sweep_buffered/` — Buffered sweep results (5 buffer_size values)
+- `out/buffer_sweep_buffered/BUFFER_ANALYSIS.md` — Comprehensive analysis of buffering impact
+
+### New Files (Part 1: Buffer Investigation)
+- `scripts/diagnose_buffering.py` — Single-run diagnostic: simulates buffering on positions.csv
+- `scripts/analyze_buffer_sweep.py` — Batch analysis: runs diagnostic on all buffer_* dirs
+- `out/buffer_sweep/FINDINGS.md` — Initial root cause analysis report
+- `out/buffer_sweep/buffer_impact_analysis.json` — Quantitative results (0-7.2% turnover reduction)
+
+### New Files (Earlier in Session)
+- `scripts/estimate_base_sr.py` — Post-processing tool: diagnostics.parquet → base_sr estimate
+- `scripts/sweep_buffer_size.py` — Parameter sweep: runs full backtest with different buffer_size values
+
+### Modified Files
+- **`scripts/run_dynamic_universe_backtest.py`** — **MAJOR**: Added `apply_position_buffering()` function
+  and modified position extraction to apply buffering. Backtests now simulate position inertia.
+- `.claude/rules/current-work.md` — Updated with buffering implementation findings
+- `scripts/run_dynamic_universe_backtest.py` — Auto-discovers macro_factors.parquet (earlier)
+- `systems/provided/crypto_example/core/dynamic_portfolio.py` — skip_stage1_cost_filter (earlier)
+- `config/crypto_perps_full_rules.yaml` — skip_stage1_cost_filter: true (earlier)
+
+## Key Files Modified Last Session (2026-02-17)
 
 ### New Files
 - `systems/crypto_perps/rules/rule_library.py` — 10 rule functions
@@ -63,23 +313,70 @@ Full 45-rule backtest integration complete. Next: run full backtest.
 
 ## Useful Commands
 
+**IMPORTANT:** Always use `crypto_perps_full_rules.yaml` for production baseline comparisons (Sharpe 0.84).
+The `crypto_perps_dynamic_universe_top30.yaml` config is a simplified 3-rule test config (Sharpe 0.76), not for performance benchmarking.
+
 ```bash
-# Run full 45-rule backtest
+# ==============================================================================
+# BASELINE BACKTEST (Production: 19-rule stack, Sharpe 0.84)
+# ==============================================================================
 python scripts/run_dynamic_universe_backtest.py \
   --config config/crypto_perps_full_rules.yaml \
-  --data data/example_crypto_perps_30x6yr_jagged.parquet \
-  --outdir out/full_rules_backtest
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --outdir out/baseline_0.84
 
-# Smoke test (quick, 15 instruments)
+# Expected results:
+#   Sharpe: 0.84 | Vol: 17.9% | Avg Pos: 24.9 | Txn Costs: 28 bps/yr
+#   Rules: 19 across 7 families (EWMAC, Breakout, Normmom, Accel, Assettrend, Relmomentum, ResidualMomentum)
+#   Capital: $10,000 notional | Buffer: 10%
+
+# ==============================================================================
+# PARAMETER SWEEPS
+# ==============================================================================
+
+# Sweep buffer_size (position inertia threshold)
+# Runtime: ~5min per value × 5 values ≈ 25 minutes
+python scripts/sweep_buffer_size.py \
+  --config config/crypto_perps_full_rules.yaml \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --values 0.0 0.05 0.10 0.15 0.20 \
+  --outdir out/buffer_sweep
+
+# Diagnose buffer impact (single run)
+python scripts/diagnose_buffering.py \
+  --positions out/buffer_sweep/buffer_0.10/positions.csv \
+  --buffer-size 0.10 \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --capital 10000
+
+# Analyze all buffer sweep results (batch)
+python scripts/analyze_buffer_sweep.py \
+  --sweep-dir out/buffer_sweep \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --capital 10000 \
+  --output out/buffer_sweep/buffer_impact_analysis.json
+
+# Estimate empirical base_sr from diagnostics (run after backtest)
+python scripts/estimate_base_sr.py \
+  --diagnostics out/baseline_0.84/diagnostics.parquet \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --capital 10000
+
+# ==============================================================================
+# TESTING AND DEBUGGING
+# ==============================================================================
+
+# Smoke test (quick, 15 instruments, static universe)
 python scripts/run_dynamic_universe_backtest.py \
   --config config/crypto_perps_full_rules.yaml \
   --data data/example_crypto_perps_15x4yr.parquet \
   --outdir out/smoke_full_rules \
   --static-universe
 
-# Previous backtest
+# Simplified test config (3 EWMAC rules only - NOT for baseline comparison)
+# Expected Sharpe: 0.76 (lower due to lack of diversification)
 python scripts/run_dynamic_universe_backtest.py \
   --config config/crypto_perps_dynamic_universe_top30.yaml \
   --data data/dataset_538registry_6yr_jagged.parquet \
-  --outdir out/backtest_top30
+  --outdir out/test_top30_simplified
 ```

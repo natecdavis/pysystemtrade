@@ -97,7 +97,7 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
         # Get eligibility matrix from data layer (Stage 1: cost filter)
         eligibility_df = self.data.get_universe_eligibility_df(
             instruments=instrument_list,
-            dates=position_series_index
+            dates=position_series_index,
         )
 
         # Stage 2: Top-K Liquidity Selection with Hysteresis (if configured)
@@ -115,7 +115,7 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
 
     def _apply_top_k_selection(self, eligibility_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Apply Stage 2 Top-K liquidity selection with hysteresis.
+        Apply Stage 2 top-K ADV selection with hysteresis.
 
         Only runs if dynamic_universe.top_k is set in config.
         Stashes the tradable_over_time dict as self._tradable_over_time for
@@ -141,8 +141,16 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
         exit_buffer = du_config.get('exit_buffer', 10)
         adv_window = du_config.get('adv_window', 30)
 
+        # Read selection criterion (default: ADV)
+        selection_criterion = du_config.get('selection_criterion', 'adv')
+
+        if selection_criterion not in ['adv', 'forecast_magnitude']:
+            raise ValueError(f"Invalid selection_criterion: {selection_criterion}. "
+                             f"Must be 'adv' or 'forecast_magnitude'")
+
         self.log.info(
-            f"Stage 2: Top-K selection K={K}, entry<={K - entry_buffer}, exit>{K + exit_buffer}"
+            f"Stage 2: Top-K selection K={K}, entry<={K - entry_buffer}, exit>{K + exit_buffer}, "
+            f"criterion={selection_criterion}"
         )
 
         selector = TopKInstrumentSelector(
@@ -174,10 +182,28 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
                 .replace([float('inf'), float('-inf')], 0.0)
             )
 
+        # Get forecast data if using forecast-based selection
+        forecasts_df = None
+        if selection_criterion == 'forecast_magnitude':
+            self.log.info("Fetching combined forecasts for Stage 2 selection")
+            forecasts_dict = {}
+            for instrument in eligibility_df.columns:
+                try:
+                    forecast = self.parent.combForecast.get_combined_forecast(instrument)
+                    forecasts_dict[instrument] = forecast
+                except Exception as e:
+                    self.log.warning(f"Could not get forecast for {instrument}: {str(e)}")
+                    forecasts_dict[instrument] = pd.Series(0, index=eligibility_df.index)
+
+            forecasts_df = pd.DataFrame(forecasts_dict, index=eligibility_df.index)
+            self.log.info(f"Fetched forecasts for {len(forecasts_dict)} instruments")
+
         tradable_over_time = selector.get_tradable_over_time(
             eligible_df=eligibility_df,
             prices_df=prices_df,
             volumes_df=volumes_df,
+            selection_criterion=selection_criterion,
+            forecasts_df=forecasts_df,
         )
 
         # Apply manual pins: add pinned instruments to each date's tradable set

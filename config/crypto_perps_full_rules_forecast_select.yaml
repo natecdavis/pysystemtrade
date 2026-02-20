@@ -1,35 +1,16 @@
 # ============================================================================
-# CRYPTO PERPS — COST-FILTERED 19-RULE CONFIG
+# CRYPTO PERPS — FORECAST-BASED STAGE 2 SELECTION (TEST CONFIG)
 # ============================================================================
-# Created: 2026-02-17  |  Revised: 2026-02-17 (cost audit)
-# Purpose: Evidence-based rule trimming — two audit passes
+# Created: 2026-02-20
+# Purpose: Test forecast-magnitude-based Stage 2 selection vs ADV-based
 #
-# Pass 1 (predictive accuracy audit): 45 → 26 rules
-#   REMOVED — Carry family (zero IC at all horizons)
-#   REMOVED — Bad reversion (streversal_2/3, return_skew, mrinasset, illiquidity)
-#   REMOVED — Slow trend rules (ewmac_64, normmom_64, breakout_320, relmomentum_80)
+# CHANGE FROM BASE CONFIG (crypto_perps_full_rules.yaml):
+#   - selection_criterion: 'forecast_magnitude' (instead of 'adv')
 #
-# Pass 2 (cost audit — forecast_turnover × SR/trade Carver test): 26 → 19 rules
-#   Thresholds: SR/trade ≤ 0.01, Annual SR ≤ 0.13
-#   Fleet SR/trade (BTC+ETH anchor): 0.0030
+# Research Question: Does selecting top-K by |forecast| instead of by ADV
+#                    improve risk-adjusted returns?
 #
-#   REMOVED — btc_lead_lag_1/2:  480 rt/yr, ratio 4.1–4.3×, 100% instruments fail
-#                                 annual SR drag ~1.4 SR each — larger than full Sharpe
-#   REMOVED — streversal_1:      424 rt/yr, ratio 3.75×, 100% fail, drag 1.26 SR
-#   REMOVED — relmomentum_10:    132 rt/yr, 100% fail annual test on all 8 sample insts
-#   REMOVED — breakout_10:       132 rt/yr, 100% fail annual test
-#   REMOVED — ewmac_4:            77 rt/yr, 62% of instruments fail annual test
-#   REMOVED — normmom_4:          68 rt/yr, 37% fail — removed to be conservative
-#
-# Rule Budget (19 rules, 6 families × 16.667% each, equal within family):
-#   EWMAC ×3:        ewmac_8, ewmac_16, ewmac_32         (5.556% each)
-#   Breakout ×4:     breakout_20/40/80/160                (4.167% each)
-#   Normmom ×3:      normmom_8, normmom_16, normmom_32   (5.556% each)
-#   Accel ×3:        accel_16, accel_32, accel_64         (5.556% each)
-#   Assettrend ×4:   assettrend_8/16/32/64               (4.167% each)
-#   Relmomentum ×2:  relmomentum_20, relmomentum_40       (8.333% each)
-#
-# Sum = 9×(1/18) + 8×(1/24) + 2×(1/12) = 1/2 + 1/3 + 1/6 = 1.000
+# All other parameters identical to crypto_perps_full_rules.yaml
 # ============================================================================
 
 system:
@@ -62,9 +43,10 @@ pinned_instruments: []
 banned_instruments: []
 
 dynamic_universe:
+  # *** TEST CHANGE: Use forecast magnitude instead of ADV ***
   # Stage 2 selection criterion
-  # Options: 'adv' (liquidity-based, default) or 'forecast_magnitude' (signal-strength-based)
-  selection_criterion: 'adv'
+  # Options: 'adv' (liquidity-based) or 'forecast_magnitude' (signal-strength-based)
+  selection_criterion: 'forecast_magnitude'
 
   # Stage 1 — Carver SR cost / history / vol gates
   max_sr_cost_per_trade: 0.01
@@ -520,13 +502,13 @@ diagnostics:
 # ============================================================================
 # Run with:
 #   python scripts/run_dynamic_universe_backtest.py \
-#     --config config/crypto_perps_full_rules.yaml \
+#     --config config/crypto_perps_full_rules_forecast_select.yaml \
 #     --data data/dataset_538registry_6yr_jagged.parquet \
-#     --outdir out/full_rules_backtest
+#     --outdir out/stage2_comparison/forecast_magnitude
 #
-# Smoke test (2 instruments):
+# Compare to ADV baseline:
 #   python scripts/run_dynamic_universe_backtest.py \
 #     --config config/crypto_perps_full_rules.yaml \
-#     --data data/example_crypto_perps_2x.parquet \
-#     --outdir out/smoke_full_rules
+#     --data data/dataset_538registry_6yr_jagged.parquet \
+#     --outdir out/stage2_comparison/adv_baseline
 # ============================================================================

@@ -123,6 +123,45 @@ class TopKInstrumentSelector:
         # Sort descending by liquidity
         return pd.Series(adv_series).sort_values(ascending=False)
 
+    def compute_forecast_magnitude_metric(
+        self,
+        forecasts_df: pd.DataFrame,
+        date: pd.Timestamp,
+    ) -> pd.Series:
+        """
+        Compute forecast magnitude metric for all instruments at date.
+
+        Uses absolute value of combined forecast as ranking metric.
+        Higher |forecast| = stronger signal = higher rank.
+
+        Args:
+            forecasts_df: DataFrame of combined forecasts (instruments × dates)
+            date: Current date
+
+        Returns:
+            Series of |forecast| values, sorted descending by magnitude
+        """
+        forecast_mag_series = {}
+
+        for instrument in forecasts_df.columns:
+            try:
+                forecast_history = forecasts_df[instrument].loc[:date].dropna()
+
+                if len(forecast_history) > 0:
+                    # Use most recent forecast absolute value as ranking metric
+                    latest_forecast = forecast_history.iloc[-1]
+                    forecast_mag_series[instrument] = abs(latest_forecast)
+                else:
+                    # No forecast data available, assign zero (will rank last)
+                    forecast_mag_series[instrument] = 0.0
+
+            except Exception as e:
+                self.log.warning(f"Failed to compute forecast magnitude for {instrument}: {e}")
+                forecast_mag_series[instrument] = 0.0
+
+        # Sort descending by magnitude
+        return pd.Series(forecast_mag_series).sort_values(ascending=False)
+
     def select_tradable_set(
         self,
         eligible_candidates: List[str],
@@ -130,7 +169,9 @@ class TopKInstrumentSelector:
         prices_df: pd.DataFrame,
         volumes_df: pd.DataFrame,
         date: pd.Timestamp,
-        registry_volume_24h: Optional[Dict[str, float]] = None
+        registry_volume_24h: Optional[Dict[str, float]] = None,
+        selection_criterion: str = 'adv',
+        forecasts_df: Optional[pd.DataFrame] = None,
     ) -> Set[str]:
         """
         Select tradable set at date with hysteresis.
@@ -142,20 +183,32 @@ class TopKInstrumentSelector:
             volumes_df: DataFrame of volumes (for ADV calculation)
             date: Current date
             registry_volume_24h: Optional dict of {instrument: volume_24h} from registry
+            selection_criterion: Ranking criterion ('adv' or 'forecast_magnitude')
+            forecasts_df: DataFrame of forecasts (required if selection_criterion='forecast_magnitude')
 
         Returns:
             Updated tradable set
         """
-        # Compute liquidity metric (rolling ADV from Vision history)
-        liquidity_series = self.compute_liquidity_metric(
-            prices_df, volumes_df, date, registry_volume_24h
-        )
+        # Rank instruments by selected criterion
+        if selection_criterion == 'forecast_magnitude':
+            if forecasts_df is None:
+                raise ValueError("forecasts_df required when selection_criterion='forecast_magnitude'")
+
+            # Compute forecast magnitude ranking
+            ranking_series = self.compute_forecast_magnitude_metric(forecasts_df, date)
+            self.log.debug(f"Ranking by forecast magnitude at {date.date()}")
+        else:
+            # Default: ADV-based ranking (existing logic)
+            ranking_series = self.compute_liquidity_metric(
+                prices_df, volumes_df, date, registry_volume_24h
+            )
+            self.log.debug(f"Ranking by ADV at {date.date()}")
 
         # Filter to eligible candidates only
-        liquidity_series = liquidity_series[liquidity_series.index.isin(eligible_candidates)]
+        ranking_series = ranking_series[ranking_series.index.isin(eligible_candidates)]
 
-        # Rank by liquidity (1-indexed)
-        ranked = liquidity_series.sort_values(ascending=False)
+        # Rank by selected metric (1-indexed)
+        ranked = ranking_series.sort_values(ascending=False)
         ranks = {instr: i+1 for i, instr in enumerate(ranked.index)}
 
         # New tradable set (start with current)
@@ -199,7 +252,9 @@ class TopKInstrumentSelector:
         eligible_df: pd.DataFrame,
         prices_df: pd.DataFrame,
         volumes_df: pd.DataFrame,
-        registry_volume_24h: Optional[Dict[str, float]] = None
+        registry_volume_24h: Optional[Dict[str, float]] = None,
+        selection_criterion: str = 'adv',
+        forecasts_df: Optional[pd.DataFrame] = None,
     ) -> Dict[pd.Timestamp, Set[str]]:
         """
         Compute tradable set for each date in backtest period.
@@ -209,6 +264,8 @@ class TopKInstrumentSelector:
             prices_df: DataFrame of prices (dates × instruments)
             volumes_df: DataFrame of volumes (dates × instruments)
             registry_volume_24h: Optional dict of {instrument: volume_24h}
+            selection_criterion: Ranking criterion ('adv' or 'forecast_magnitude')
+            forecasts_df: DataFrame of forecasts (required if selection_criterion='forecast_magnitude')
 
         Returns:
             Dict mapping date -> set of tradable instruments
@@ -230,7 +287,9 @@ class TopKInstrumentSelector:
                 prices_df=prices_df,
                 volumes_df=volumes_df,
                 date=date,
-                registry_volume_24h=registry_volume_24h
+                registry_volume_24h=registry_volume_24h,
+                selection_criterion=selection_criterion,
+                forecasts_df=forecasts_df,
             )
 
             tradable_over_time[date] = current_tradable.copy()

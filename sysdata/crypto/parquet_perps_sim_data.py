@@ -818,6 +818,45 @@ class parquetCryptoPerpsSimData(simData):
             self.log.warning("Could not unstack funding_rate, returning empty DataFrame")
             return pd.DataFrame()
 
+    def get_annual_vol_df(self, instruments: List[str], vol_window: int = 35) -> pd.DataFrame:
+        """
+        Daily rolling annualised vol panel (dates × instruments).
+
+        Computes log-return volatility, annualised by sqrt(252).
+
+        Args:
+            instruments: List of instrument codes.
+            vol_window: Rolling window size in days (default 35).
+
+        Returns:
+            pd.DataFrame (dates × instruments) of annualised volatility.
+        """
+        prices = self._prices_df.reindex(columns=instruments)
+        log_ret = np.log(prices / prices.shift(1))
+        return log_ret.rolling(vol_window, min_periods=min(10, vol_window)).std() * np.sqrt(252)
+
+    def get_smoothed_funding_df(self, instruments: List[str], window: int = 45) -> pd.DataFrame:
+        """
+        Trailing-mean annualised funding rate panel (dates × instruments).
+
+        Returns the signed funding rate (positive = funding paid by longs).
+        Annualises by ×365 (daily funding rate × 365).
+
+        Args:
+            instruments: List of instrument codes.
+            window: Rolling mean window in days (default 45).
+
+        Returns:
+            pd.DataFrame (dates × instruments) of smoothed annualised funding rates.
+        """
+        try:
+            fr = self._meta_df['funding_rate'].unstack('instrument').reindex(columns=instruments)
+        except KeyError:
+            self.log.warning("funding_rate not in meta_df; returning zeros for smoothed funding")
+            idx = self._prices_df.index
+            return pd.DataFrame(0.0, index=idx, columns=instruments)
+        return fr.rolling(window, min_periods=min(10, window)).mean() * 365
+
     # =========================================================================
     # MACRO FACTOR DATA METHODS
     # Used by the residual_momentum rule family. All three methods ignore

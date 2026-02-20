@@ -359,6 +359,10 @@ def residual_momentum(
     Returns:
         Unscaled, uncapped forecast series.
     """
+    # Guard: return NaN if any macro series is unavailable (empty)
+    if len(spx_price) == 0 or len(dxy_price) == 0 or len(us10y_yield) == 0:
+        return pd.Series(np.nan, index=price.index)
+
     Lslow = Lfast * 4
 
     # Factor returns / changes (same for all instruments on a given date)

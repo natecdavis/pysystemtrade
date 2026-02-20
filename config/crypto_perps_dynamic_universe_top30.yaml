@@ -54,17 +54,17 @@ banned_instruments: []
 # Dynamic universe parameters (Phases 3-5)
 dynamic_universe:
   # Cost filters (Carver SR thresholds)
-  max_sr_cost_per_trade: 0.01  # Maximum 1% of annual SR per trade
-  max_sr_cost_annual: 0.13     # Maximum 13% of annual SR total
-  stack_turnover: 15.0         # Expected turnover (round-trips/year) for stack
-  adv_window: 30               # ADV calculation window (days)
-  fee_bps: 5                   # One-way fee in basis points
+  max_sr_cost_per_trade: 0.01
+  max_sr_cost_annual: 0.13
+  stack_turnover: 15.0
+  adv_window: 30
+  fee_bps: 5
+  min_history_days: 365
 
-  # Top-K selection with hysteresis (Phase 5)
-  top_k: 30                    # Target tradable size (K=30)
-  entry_buffer: 5              # Enter if rank <= 25 (conservative)
-  exit_buffer: 10              # Exit if rank > 40 (permissive)
-  min_history_days: 365        # Minimum data history to compute ADV
+  # Top-K selection with hysteresis
+  top_k: 30
+  entry_buffer: 5
+  exit_buffer: 10
 
   # Lifecycle filtering (Phase 3)
   # Uses manifest: envs/{env}/data/datasets/*.manifest.json
