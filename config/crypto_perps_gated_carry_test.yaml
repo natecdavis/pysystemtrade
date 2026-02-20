@@ -1,12 +1,12 @@
 # ============================================================================
-# CRYPTO PERPS — COST-FILTERED 22-RULE CONFIG (WITH OPTIMIZED GATED CARRY)
+# CRYPTO PERPS — GATED CARRY TEST CONFIG (22-RULE)
 # ============================================================================
-# Created: 2026-02-17  |  Revised: 2026-02-20 (gated carry optimized)
-# Purpose: Evidence-based rule trimming + trend-gated carry
-# Optimized: carry_weight=0.3, threshold=0.5 (16-config parameter sweep)
+# Created: 2026-02-20  |  Based on: crypto_perps_full_rules.yaml
+# Purpose: Test trend-gated vol-normalized carry rules
+# Purpose: Evidence-based rule trimming — two audit passes
 #
 # Pass 1 (predictive accuracy audit): 45 → 26 rules
-#   REMOVED — Carry family (negative IC when untreated)
+#   REMOVED — Carry family (zero IC at all horizons)
 #   REMOVED — Bad reversion (streversal_2/3, return_skew, mrinasset, illiquidity)
 #   REMOVED — Slow trend rules (ewmac_64, normmom_64, breakout_320, relmomentum_80)
 #
@@ -22,22 +22,15 @@
 #   REMOVED — ewmac_4:            77 rt/yr, 62% of instruments fail annual test
 #   REMOVED — normmom_4:          68 rt/yr, 37% fail — removed to be conservative
 #
-# Pass 3 (gated carry addition): 19 → 22 rules
-#   ADDED — Vol-normalized carry (3 rules, trend-gated)
-#   Initial test: Sharpe 0.84 → 0.87 (w_c=0.2, th=1.0)
-#   Optimized: Sharpe 0.84 → 0.89 (+6.5%, w_c=0.3, th=0.5)
-#   Performance: CAGR 14.6% → 17.3% (+18.8%), Vol 18.3% → 20.2% (+10%)
-#
-# Rule Budget (22 rules, 6 trend families + 1 carry family):
+# Rule Budget (19 rules, 6 families × 16.667% each, equal within family):
 #   EWMAC ×3:        ewmac_8, ewmac_16, ewmac_32         (5.556% each)
 #   Breakout ×4:     breakout_20/40/80/160                (4.167% each)
 #   Normmom ×3:      normmom_8, normmom_16, normmom_32   (5.556% each)
 #   Accel ×3:        accel_16, accel_32, accel_64         (5.556% each)
 #   Assettrend ×4:   assettrend_8/16/32/64               (4.167% each)
 #   Relmomentum ×2:  relmomentum_20, relmomentum_40       (8.333% each)
-#   Carry ×3:        vol_norm_carry_10/30/60             (1.000% each)
 #
-# Sum = (19 trend rules) + (3 carry rules @ 1% each) = 97% + 3% = 1.000
+# Sum = 9×(1/18) + 8×(1/24) + 2×(1/12) = 1/2 + 1/3 + 1/6 = 1.000
 # ============================================================================
 
 system:
@@ -517,11 +510,9 @@ forecast_weights:
   residual_momentum_32: 0.047619
   residual_momentum_64: 0.047619
 
-  # Vol-Normalized Carry: 3 rules × 1.0% = 3.0% (ENABLED with trend-gating)
-  # Traditional carry had negative IC (IC@5d = -0.009) due to fighting momentum
-  # Trend-gating solved this: only allow carry when sign(carry) == sign(trend)
-  # Optimized parameters: carry_weight=0.3, threshold=0.5 (from 16-config sweep)
-  # Performance: Sharpe 0.84 → 0.89 (+6.5%), CAGR 14.6% → 17.3% (+18.8%)
+  # Vol-Normalized Carry: 3 rules × 1.0% = 3.0% (ENABLED for testing)
+  # Trend-gated carry as additive sleeve (w_c = 0.2, threshold = 1.0)
+  # Expected to improve Sharpe via trend confirmation signal
   vol_norm_carry_10:  0.01
   vol_norm_carry_30:  0.01
   vol_norm_carry_60:  0.01
@@ -550,16 +541,16 @@ forecast_cap: 20.0
 #   4. Adjust carry_trend_gate_threshold (min trend strength, default 1.0)
 # ============================================================================
 
-use_gated_carry: true  # ENABLED: Trend-gated carry (Sharpe 0.84 → 0.89)
+use_gated_carry: true  # ENABLED: Trend-gated carry testing
 
 # Additive weight for carry sleeve (applied AFTER gating)
-# Optimal value from parameter sweep: 0.3 (tested 0.1, 0.2, 0.3)
-carry_weight: 0.3
+# Typical range: 0.1 to 0.3
+carry_weight: 0.2
 
 # Minimum absolute trend strength to allow carry
 # |trend| < threshold → carry zeroed (weak trend)
-# Optimal value from parameter sweep: 0.5 (tested 0.5, 1.0, 1.5, 2.0)
-carry_trend_gate_threshold: 0.5
+# Typical range: 0.5 to 2.0
+carry_trend_gate_threshold: 1.0
 
 # List of rules considered "trend" for gating logic
 # (These are summed to calculate trend strength)

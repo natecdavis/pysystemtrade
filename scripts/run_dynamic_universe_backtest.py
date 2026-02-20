@@ -37,6 +37,7 @@ from systems.crypto_perps.crypto_portfolio import CryptoPortfolios
 from systems.basesystem import System
 from systems.forecasting import Rules
 from systems.forecast_combine import ForecastCombine
+from systems.crypto_perps.forecast_combine_gated import ForecastCombineGated
 from systems.forecast_scale_cap import ForecastScaleCap
 from systems.rawdata import RawData
 from systems.positionsizing import PositionSizing
@@ -515,12 +516,21 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     else:
         portfolio_stage = CryptoPortfolios()
 
+    # Choose forecast combiner based on config
+    use_gated_carry = config.get_element_or_default('use_gated_carry', False)
+    if use_gated_carry:
+        combiner = ForecastCombineGated()
+        logger.info("  Using trend-gated carry combination")
+    else:
+        combiner = ForecastCombine()
+        logger.info("  Using standard forecast combination")
+
     system = System(
         stage_list=[
             Account(),
             portfolio_stage,
             PositionSizing(),
-            ForecastCombine(),
+            combiner,
             ForecastScaleCap(),
             Rules(),
             RawData(),

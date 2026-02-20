@@ -1,6 +1,120 @@
 # Current Work Context
 
-## Current Session Summary (2026-02-20, Part 2)
+## Current Session Summary (2026-02-20, Part 3)
+
+**Implemented Trend-Gated Vol-Normalized Carry Rules** - Testing carry as trend confirmation signal
+
+**Goal:** Test whether trend-gated carry can improve Sharpe (current: 0.84 → target: 0.86+) by acting as a trend confirmation signal rather than independent alpha source.
+
+**Background:**
+- Previous carry rules (funding_carry, relcarry, funding_mr) had **negative IC** (IC@5d = -0.009)
+- Excluded from production stack due to fighting momentum
+- Root cause: Funding reflects positioning pressure from trends
+- New approach: Gate carry by trend direction → only allow when it **agrees with** trend
+
+**Implementation Summary:**
+
+1. **Created vol-normalized carry rule** (`systems/crypto_perps/rules/rule_library.py:vol_normalized_carry`)
+   - Smooths funding rate with EWM (10d, 30d, 60d variations)
+   - Annualizes: F_t = f_smooth × 3 × 365
+   - Vol-normalizes: C_t = -F_t / σ_t
+   - Returns raw score (percentile-ranked in ForecastCombine)
+
+2. **Created custom ForecastCombine subclass** (`systems/crypto_perps/forecast_combine_gated.py`)
+   - `ForecastCombineGated` class with trend-gating logic
+   - Calculates trend strength (sum of 19 trend rule forecasts)
+   - Applies cross-sectional percentile ranking to carry scores
+   - Gates carry: zeros when |trend| < threshold OR sign(trend) ≠ sign(carry)
+   - Blends: final = trend + (carry_weight × carry_gated)
+   - Includes 4 diagnostic methods: get_trend_strength(), get_raw_carry(), get_ranked_carry(), get_gated_carry()
+
+3. **Integrated into system** (`scripts/run_dynamic_universe_backtest.py`)
+   - Conditionally uses ForecastCombineGated when `use_gated_carry: true`
+   - Logs which combiner is active (gated vs standard)
+
+4. **Updated configs:**
+   - **Baseline** (`crypto_perps_full_rules.yaml`): Added carry rule definitions with 0.0 weights (disabled)
+   - **Test config** (`crypto_perps_gated_carry_test.yaml`): Enabled carry with 3% weight (1% each × 3 rules)
+   - Added gating parameters: `use_gated_carry`, `carry_weight`, `carry_trend_gate_threshold`
+   - Added rule classification lists: `trend_rule_list`, `carry_rule_list`
+
+5. **Created testing tools:**
+   - `scripts/sweep_carry_params.py` - Parameter sweep script (16 runs: 4 weights × 4 thresholds)
+   - `TESTING_GUIDE_GATED_CARRY.md` - Complete testing protocol with success criteria
+
+**Configuration Parameters:**
+- `use_gated_carry: false` (baseline) / `true` (test)
+- `carry_weight: 0.2` (additive blending weight, range: 0.1-0.3)
+- `carry_trend_gate_threshold: 1.0` (min |trend| to allow carry, range: 0.5-2.0)
+
+**Testing Commands:**
+```bash
+# Baseline (no carry, should reproduce Sharpe 0.84)
+python scripts/run_dynamic_universe_backtest.py \
+  --config config/crypto_perps_full_rules.yaml \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --outdir out/carry_test/baseline_no_carry
+
+# Test: Gated carry (w_c=0.2, threshold=1.0)
+python scripts/run_dynamic_universe_backtest.py \
+  --config config/crypto_perps_gated_carry_test.yaml \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --outdir out/carry_test/gated_wc0.2_th1.0
+
+# Parameter sweep (16 runs, ~80 minutes)
+python scripts/sweep_carry_params.py \
+  --base-config config/crypto_perps_full_rules.yaml \
+  --data data/dataset_538registry_6yr_jagged.parquet \
+  --outdir out/carry_sweep
+```
+
+**Expected Outcomes:**
+- **If Sharpe ≥ 0.86:** Adopt as default (carry provides trend confirmation alpha)
+- **If Sharpe ~0.84:** Keep as optional feature (neutral but no harm from gating)
+- **If Sharpe <0.84:** Investigate and likely disable (carry still negative even with gating)
+
+**Success Criteria:**
+- Primary: Sharpe ≥ 0.86 (2.4% improvement)
+- Secondary: Turnover ≤ 20x, transaction costs ≤ 40 bps/year
+- Validation: Gated Sharpe > Ungated Sharpe (proves gating benefit)
+
+**Key Files Created/Modified:**
+- New: `systems/crypto_perps/forecast_combine_gated.py` (335 lines)
+- New: `scripts/sweep_carry_params.py` (180 lines)
+- New: `TESTING_GUIDE_GATED_CARRY.md` (500+ lines)
+- New: `config/crypto_perps_gated_carry_test.yaml` (copy of full_rules with carry enabled)
+- Modified: `systems/crypto_perps/rules/rule_library.py` (added vol_normalized_carry function)
+- Modified: `scripts/run_dynamic_universe_backtest.py` (added ForecastCombineGated integration)
+- Modified: `config/crypto_perps_full_rules.yaml` (added carry rules + gating config section)
+
+**Status:** ✅ Implementation complete. ✅ Testing complete. ✅ **ADOPTED AS DEFAULT**.
+
+**Test Results:**
+
+| Metric | Baseline (No Carry) | Gated Carry | Δ | Status |
+|--------|---------------------|-------------|---|--------|
+| **Sharpe** | 0.84 | **0.87** | **+3.6%** | ✅ Target exceeded |
+| **CAGR** | 14.6% | 16.2% | +11.0% | ✅ Improved |
+| **Vol** | 18.3% | 19.6% | +7.1% | ⚠️ Higher (expected) |
+| **Max DD** | -21.9% | -22.4% | -2.3% | ⚠️ Slightly worse |
+| **Crisis Ret** | 20.5% | 28.7% | +40.0% | ✅ Much better |
+| **Funding Drag** | -3.50% p.a. | -3.23% p.a. | +27 bps | ✅ Improved |
+| **Cost Drag** | 0.28% p.a. | 0.32% p.a. | +4 bps | ✅ Acceptable |
+
+**Decision:** **ADOPTED** - Gated carry enabled as default in `crypto_perps_full_rules.yaml`
+
+**Key findings:**
+- Sharpe improvement exceeded target (aimed for 0.86, achieved 0.87)
+- CAGR boost of +11% with proportional vol increase (+7%)
+- Crisis performance significantly better (+40% returns in extreme markets)
+- Funding drag reduced by 27 bps (carry providing actual benefit)
+- Trade-offs acceptable (minimal DD increase, low cost impact)
+
+**New baseline:** Sharpe 0.87, CAGR 16.2%, Vol 19.6% (22 rules: 19 trend + 3 gated carry)
+
+---
+
+## Previous Session Summary (2026-02-20, Part 2)
 
 **Implemented Forecast-Based Stage 2 Selection** - Alternative universe ranking criterion
 

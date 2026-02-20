@@ -188,6 +188,43 @@ def funding_mr(
     return signal
 
 
+def vol_normalized_carry(
+    funding_rates: pd.Series,
+    vol: pd.Series,
+    smooth_days: int = 30,
+    vol_floor: float = 0.01,
+) -> pd.Series:
+    """
+    Vol-normalized carry: smoothed funding rate normalized by price volatility.
+
+    This rule returns the raw carry score per instrument. Cross-sectional
+    percentile ranking will be applied in the ForecastCombineGated stage,
+    where all instruments' scores can be compared simultaneously.
+
+    The score is negated so that high positive funding (expensive to hold long)
+    → negative score → short bias.
+
+    Args:
+        funding_rates: Raw 8-hourly funding rate series (data.get_funding_rate).
+            Typical scale: 0.0001 = 0.01% per 8h.
+        vol: Daily price volatility — unit, not % (rawdata.daily_returns_volatility).
+        smooth_days: EWM span for smoothing funding (default 30).
+        vol_floor: Minimum volatility floor to avoid division by zero (default 0.01).
+
+    Returns:
+        Unscaled carry score (raw, will be percentile-ranked in ForecastCombine).
+    """
+    # Smooth and annualize funding (3 payments/day × 365 days)
+    ann_funding = funding_rates * 3 * 365
+    f_smooth = ann_funding.ewm(span=smooth_days, min_periods=1).mean()
+
+    # Vol-normalize (negated so positive funding → short bias)
+    vol_filled = vol.ffill().replace(0.0, np.nan).ffill().clip(lower=vol_floor)
+    carry_score = -f_smooth / vol_filled
+
+    return carry_score
+
+
 # ============================================================================
 # CONVERGENT SUB-B: SHORT-TERM / STRUCTURAL RULES
 # ============================================================================
