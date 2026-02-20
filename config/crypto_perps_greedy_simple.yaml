@@ -1,0 +1,69 @@
+# ============================================================================
+# CRYPTO PERPS — MR GREEDY SIMPLE TEST CONFIG
+# ============================================================================
+# Simplified config with just EWMAC rules for testing greedy portfolio
+# ============================================================================
+
+system:
+  capital: 5000.0
+  vol_target_ann: 0.25
+  gross_leverage_cap: 2.0
+  idm_cap: 2.5
+  min_position_frac: 0.03
+  allow_jagged: true
+
+percentage_vol_target: 25.0
+notional_trading_capital: 10000.0
+min_notional_position: 25.0
+
+use_instrument_div_mult_estimates: True
+use_forecast_scale_estimates: True
+use_forecast_div_mult_estimates: True
+
+# ============================================================================
+# MR GREEDY PARAMETERS
+# ============================================================================
+greedy_params:
+  shadow_cost: 100
+  tracking_error_buffer: 0.0125
+  correlation_span: 60
+  min_history_days: 30
+  long_only: true
+  max_position_fraction: 0.25
+
+# ============================================================================
+# DATA ACQUISITION
+# ============================================================================
+data_acquisition:
+  auto_discover: true
+  dataset_path: data/dataset_538registry_6yr_jagged.parquet
+
+pinned_instruments: []
+banned_instruments: []
+
+# ============================================================================
+# TRADING RULES — SIMPLIFIED (EWMAC ONLY)
+# ============================================================================
+
+trading_rules:
+  ewmac_8:
+    function: systems.provided.rules.ewmac.ewmac_calc_vol
+    other_args: {Lfast: 8, Lslow: 32}
+  ewmac_16:
+    function: systems.provided.rules.ewmac.ewmac_calc_vol
+    other_args: {Lfast: 16, Lslow: 64}
+  ewmac_32:
+    function: systems.provided.rules.ewmac.ewmac_calc_vol
+    other_args: {Lfast: 32, Lslow: 128}
+
+# ============================================================================
+# FORECAST COMBINE — EQUAL WEIGHTS
+# ============================================================================
+forecast_weights:
+  ewmac_8: 0.3333
+  ewmac_16: 0.3333
+  ewmac_32: 0.3334
+
+use_forecast_scale_estimates: True
+use_forecast_div_mult_estimates: True
+use_instrument_div_mult_estimates: True
