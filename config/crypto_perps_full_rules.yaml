@@ -3,7 +3,7 @@
 # ============================================================================
 # Created: 2026-02-17  |  Revised: 2026-02-20 (gated carry optimized)
 # Purpose: Evidence-based rule trimming + trend-gated carry
-# Optimized: carry_weight=0.3, threshold=0.5 (16-config parameter sweep)
+# Optimized: carry_weight=1.0, threshold=0.5 (extended 8-weight sweep)
 #
 # Pass 1 (predictive accuracy audit): 45 → 26 rules
 #   REMOVED — Carry family (negative IC when untreated)
@@ -25,8 +25,8 @@
 # Pass 3 (gated carry addition): 19 → 22 rules
 #   ADDED — Vol-normalized carry (3 rules, trend-gated)
 #   Initial test: Sharpe 0.84 → 0.87 (w_c=0.2, th=1.0)
-#   Optimized: Sharpe 0.84 → 0.89 (+6.5%, w_c=0.3, th=0.5)
-#   Performance: CAGR 14.6% → 17.3% (+18.8%), Vol 18.3% → 20.2% (+10%)
+#   Optimized: Sharpe 0.84 → 0.95 (+13.1%, w_c=1.0, th=0.5)
+#   Performance: CAGR 14.6% → 21.2% (+45.2%), Vol 18.3% → 23.0% (+25.7%)
 #
 # Rule Budget (22 rules, 6 trend families + 1 carry family):
 #   EWMAC ×3:        ewmac_8, ewmac_16, ewmac_32         (5.556% each)
@@ -520,8 +520,8 @@ forecast_weights:
   # Vol-Normalized Carry: 3 rules × 1.0% = 3.0% (ENABLED with trend-gating)
   # Traditional carry had negative IC (IC@5d = -0.009) due to fighting momentum
   # Trend-gating solved this: only allow carry when sign(carry) == sign(trend)
-  # Optimized parameters: carry_weight=0.3, threshold=0.5 (from 16-config sweep)
-  # Performance: Sharpe 0.84 → 0.89 (+6.5%), CAGR 14.6% → 17.3% (+18.8%)
+  # Optimized parameters: carry_weight=1.0, threshold=0.5 (from extended 8-weight sweep)
+  # Performance: Sharpe 0.84 → 0.95 (+13.1%), CAGR 14.6% → 21.2% (+45.2%)
   vol_norm_carry_10:  0.01
   vol_norm_carry_30:  0.01
   vol_norm_carry_60:  0.01
@@ -541,7 +541,7 @@ forecast_cap: 20.0
 #   1. Carry rules are percentile-ranked cross-sectionally
 #   2. Carry is gated by trend strength: zeroed when |trend| < threshold
 #   3. Carry is zeroed when sign(trend) ≠ sign(carry) (no fighting trend)
-#   4. Carry is blended with small weight w_c ∈ [0.1, 0.3]
+#   4. Carry is blended additively with weight w_c (optimal: 1.0)
 #
 # To enable gated carry testing:
 #   1. Set use_gated_carry: true
@@ -550,11 +550,11 @@ forecast_cap: 20.0
 #   4. Adjust carry_trend_gate_threshold (min trend strength, default 1.0)
 # ============================================================================
 
-use_gated_carry: true  # ENABLED: Trend-gated carry (Sharpe 0.84 → 0.89)
+use_gated_carry: true  # ENABLED: Trend-gated carry (Sharpe 0.84 → 0.95)
 
 # Additive weight for carry sleeve (applied AFTER gating)
-# Optimal value from parameter sweep: 0.3 (tested 0.1, 0.2, 0.3)
-carry_weight: 0.3
+# Optimal value from extended sweep: 1.0 (tested 0.3, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 4.76)
+carry_weight: 1.0
 
 # Minimum absolute trend strength to allow carry
 # |trend| < threshold → carry zeroed (weak trend)

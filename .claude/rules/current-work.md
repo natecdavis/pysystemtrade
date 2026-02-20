@@ -1,6 +1,72 @@
 # Current Work Context
 
-## Current Session Summary (2026-02-20, Part 3)
+## Current Session Summary (2026-02-20, Part 4)
+
+**Extended Carry Weight Parameter Sweep** - Optimizing carry influence
+
+**Goal:** Test higher carry_weight values to determine if carry can be scaled up beyond the initial optimum (0.3) to provide greater contribution to the combined forecast.
+
+**Research Question:** Can increasing carry_weight beyond 0.3 further improve Sharpe? Specifically, test up to carry_weight ≈ 4.76, which would give carry equal effective weight as one trend family (14.286%).
+
+**Implementation:**
+
+1. **Created extended sweep script** (`scripts/sweep_carry_weight.py`):
+   - Tests 8 carry_weight values: [0.3, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 4.76]
+   - Fixed threshold at 0.5 (optimal from previous sweep)
+   - Total runtime: ~40 minutes (8 configs × 5 min each)
+
+2. **Created analysis script** (`scripts/analyze_carry_weight_sweep.py`):
+   - Generates detailed markdown report with recommendation
+   - Compares optimal vs baseline (carry_weight=0.3)
+   - Analyzes trend in Sharpe across weight range
+   - Calculates effective carry weights relative to trend families
+
+**Results:**
+
+| carry_weight | Sharpe | CAGR | Vol | MaxDD | Turnover | Status |
+|--------------|--------|------|-----|-------|----------|--------|
+| **1.00** | **0.9510** | 21.22% | 23.02% | -23.90% | 15.21x | ✅ **OPTIMAL** |
+| 3.00 | 0.9428 | 21.48% | 23.59% | -25.38% | 15.28x | Good (plateau) |
+| 2.00 | 0.9403 | 21.30% | 23.47% | -25.46% | 15.28x | Good (plateau) |
+| 0.50 | 0.9337 | 19.34% | 21.40% | -22.99% | 14.65x | Moderate |
+| 0.30 | 0.8917 | 17.33% | 20.24% | -22.74% | 14.78x | Previous optimum |
+
+**Key Findings:**
+
+- **Peak Sharpe at 1.0:** 0.9510 (+6.6% vs 0.30)
+- **Plateau at 1.5-4.76:** Sharpe stays ~0.94 (robust, slightly below peak)
+- **Sharp drop below 1.0:** Sharpe falls significantly at lower weights
+- **Interpretation:** Carry provides strong additive alpha at 1.0 (3% effective weight, ~21% of one trend family)
+
+**Comparison vs Previous Optimum (carry_weight=0.3):**
+
+| Metric | Previous (0.3) | Optimal (1.0) | Δ | Status |
+|--------|----------------|---------------|---|--------|
+| **Sharpe** | 0.8917 | **0.9510** | **+6.6%** | ✅ Excellent |
+| **CAGR** | 17.33% | 21.22% | +3.88% | ✅ Excellent |
+| **Vol** | 20.24% | 23.02% | +2.79% | ⚠️ Higher (proportional) |
+| **Max DD** | -22.74% | -23.90% | -1.16% | ⚠️ Slightly worse |
+| **Turnover** | 14.78x | 15.21x | +0.43x | ✅ Minimal impact |
+
+**Decision:** ✅ **ADOPTED** - carry_weight=1.0 as new default
+
+**Deliverables:**
+- ✅ `scripts/sweep_carry_weight.py` - Extended parameter sweep (8 weights)
+- ✅ `scripts/analyze_carry_weight_sweep.py` - Analysis tool with recommendations
+- ✅ `out/carry_weight_sweep/SWEEP_ANALYSIS.md` - Full analysis report
+- ✅ Updated `config/crypto_perps_full_rules.yaml` with carry_weight=1.0
+
+**New Baseline Performance:**
+- **Sharpe:** 0.95 (up from 0.84 baseline, +13.1%)
+- **CAGR:** 21.2% (up from 14.6%, +45.2%)
+- **Vol:** 23.0% (up from 18.3%, +25.7%)
+- **System:** 22 rules (19 trend + 3 gated carry)
+
+**Status:** ✅ Complete. Extended sweep confirmed carry_weight=1.0 is optimal. Config updated and ready for production use.
+
+---
+
+## Previous Session Summary (2026-02-20, Part 3)
 
 **Implemented Trend-Gated Vol-Normalized Carry Rules** - Testing carry as trend confirmation signal
 
