@@ -1,6 +1,65 @@
 # Current Work Context
 
-## Current Session Summary (2026-02-21)
+## Current Session Summary (2026-02-21, Part 6)
+
+**Phase 2 Planning Complete** - Ready to implement true OI data overlay
+
+**Status:** ✅ Phase 1 Complete & Committed, 📋 Phase 2 Planned & Ready
+
+**What Was Accomplished:**
+
+1. **Factorial testing resolved confound** (morning session)
+   - Discovered relcarry was confounded with overlay in original tests
+   - Ran 2×2 factorial design: baseline, overlay only, relcarry only, combined
+   - Results: Overlay helps (+0.37% Sharpe), relcarry hurts (-0.30% Sharpe)
+
+2. **Acute crash analysis validated overlay** (mid-day)
+   - Analyzed 3 crash events: May 2021, June 2022, Nov 2022
+   - Overlay provides +0.47% average improvement in 3-7 day crashes
+   - Confirmed overlay provides real crash protection
+
+3. **Final decision: Adopt Overlay Only** (afternoon)
+   - Configuration: Test B (overlay only, no relcarry)
+   - Simpler than combined, nearly identical performance
+   - Already in production config (use_oi_overlay: true)
+
+4. **Committed and pushed** (late afternoon)
+   - Commit: 9cdcf3a4 "Add OI regime overlay for crash protection"
+   - 23 files, 8608+ lines added
+   - Pushed to origin/develop ✅
+
+5. **Phase 2 planned** (evening)
+   - Created comprehensive implementation plan
+   - Goal: Test if true OI/Volume ratio beats funding rate proxy
+   - Timeline: 3 weeks (1 week data acquisition, 2 weeks implementation/testing)
+   - Next step: Download Binance OI data
+
+**Key Files:**
+- `PHASE2_OI_DATA_PLAN.md` - Complete Phase 2 implementation plan
+- `out/factorial_tests/FINAL_DECISION.md` - Phase 1 final decision (not committed, .gitignore)
+- `out/factorial_tests/FACTORIAL_RESULTS.md` - Full factorial analysis (not committed)
+- `config/crypto_perps_full_rules.yaml` - Production config (overlay enabled) ✅
+
+**Current System Performance:**
+- Sharpe: 0.9916 (up from 0.9879 baseline, +0.37%)
+- Crash Protection: +0.47% average in acute events
+- Net Benefit: +27.6 bps/yr after costs
+- Configuration: 22 rules + OI overlay (funding proxy) + dynamic universe
+
+**Phase 2 Next Steps:**
+1. Create download automation script (`scripts/download_binance_oi_data.py`)
+2. Download historical OI data from Binance Public Data Archive
+3. Convert CSV to parquet format
+4. Validate data quality (coverage, gaps, alignment)
+5. Implement OI/Volume ratio overlay mode
+6. Compare vs funding proxy (full backtest + acute crashes)
+7. Decide: adopt OI/Volume if ≥ +0.5% Sharpe improvement
+
+**Status:** ✅ Safe to clear context - all work committed, Phase 2 plan documented
+
+---
+
+## Previous Session Summary (2026-02-21, Part 5)
 
 **Acute Crash Analysis & OI Overlay Adoption** - Final decision on Phase 1/1.5 overlays
 
