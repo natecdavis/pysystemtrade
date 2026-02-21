@@ -34,6 +34,10 @@ from sysdata.config.configdata import Config
 from sysdata.crypto.parquet_perps_sim_data import parquetCryptoPerpsSimData
 from systems.provided.crypto_example.core.dynamic_portfolio import CryptoDynamicPortfolio
 from systems.crypto_perps.crypto_portfolio import CryptoPortfolios
+from systems.crypto_perps.crypto_portfolio_oi_overlay import (
+    CryptoPortfolioWithOIOverlay,
+    CryptoDynamicPortfolioWithOIOverlay,
+)
 from systems.basesystem import System
 from systems.forecasting import Rules
 from systems.forecast_combine import ForecastCombine
@@ -511,10 +515,22 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
 
     # Create system with dynamic portfolio
     logger.info("Creating system...")
+    use_oi_overlay = config.get_element_or_default('use_oi_overlay', False)
+
     if use_dynamic_universe:
-        portfolio_stage = CryptoDynamicPortfolio()
+        if use_oi_overlay:
+            portfolio_stage = CryptoDynamicPortfolioWithOIOverlay()
+            logger.info("  Using dynamic portfolio with OI regime overlay")
+        else:
+            portfolio_stage = CryptoDynamicPortfolio()
+            logger.info("  Using dynamic portfolio")
     else:
-        portfolio_stage = CryptoPortfolios()
+        if use_oi_overlay:
+            portfolio_stage = CryptoPortfolioWithOIOverlay()
+            logger.info("  Using static portfolio with OI regime overlay")
+        else:
+            portfolio_stage = CryptoPortfolios()
+            logger.info("  Using static portfolio")
 
     # Choose forecast combiner based on config
     use_gated_carry = config.get_element_or_default('use_gated_carry', False)

@@ -667,6 +667,145 @@ class parquetCryptoPerpsSimData(simData):
         self._median_funding_cache = median_series
         return self._median_funding_cache
 
+    def get_oi_regime_multiplier(
+        self,
+        instrument_code: str,
+        lookback: int = 90,
+        threshold: float = 2.0,
+        min_scale: float = 0.5,
+        base_position: pd.Series = None,
+        trend_forecast: pd.Series = None,
+        trend_aware: bool = False,
+    ) -> pd.Series:
+        """
+        Position scaler based on funding rate z-score (OI proxy for Phase 1 MVP).
+
+        Uses funding rate as a proxy for open interest regime. High positive/negative
+        funding indicates crowded positioning and elevated liquidation cascade risk.
+
+        The multiplier scales positions down when |z-score| exceeds threshold:
+            - Normal funding (|z| < threshold)   → multiplier = 1.0 (no scaling)
+            - Extreme funding (|z| ≥ threshold)  → multiplier ∈ [min_scale, 1.0]
+
+        Linear interpolation between threshold and threshold + sensitivity range.
+
+        Phase 1: Uses funding_rate (already in dataset, zero new data acquisition)
+        Phase 1.5: Trend-aware mode - only reduces counter-trend positions
+        Phase 2+: Will be extended to use true OI/Volume ratio when available
+
+        Args:
+            instrument_code: Instrument code
+            lookback: Rolling window for z-score calculation (days)
+            threshold: Z-score threshold where scaling begins (σ units)
+            min_scale: Minimum position multiplier (0.5 = max 50% reduction)
+            base_position: Current position series (for trend-aware mode)
+            trend_forecast: Trend forecast series (for trend-aware mode)
+            trend_aware: If True, only reduce counter-trend positions (Phase 1.5)
+
+        Returns:
+            pd.Series with values in [min_scale, 1.0]
+                - 1.0 = normal regime (no scaling)
+                - min_scale = extreme regime (max reduction)
+
+        Trend-Aware Mode (trend_aware=True):
+            Only applies scaling when position fights the trend:
+            - Position aligned with trend → multiplier = 1.0 (keep position)
+            - Position fights trend → multiplier ∈ [min_scale, 1.0] (allow reduction)
+
+            This avoids whipsaw during bounces (trend keeps profitable positions intact).
+
+        Example:
+            lookback=90, threshold=2.0, min_scale=0.5:
+                z=0.0  → mult=1.0 (no scaling)
+                z=2.0  → mult=1.0 (threshold, scaling starts)
+                z=3.0  → mult=0.5 (max scaling)
+                z=4.0+ → mult=0.5 (capped at min_scale)
+
+            Trend-aware example:
+                position=+100, trend_forecast=+10 → aligned → mult=1.0 (keep)
+                position=+100, trend_forecast=-10 → counter-trend → allow scaling
+        """
+        # Get funding rate (8-hourly, fractional)
+        funding = self.get_funding_rate(instrument_code)
+
+        if len(funding) == 0:
+            self.log.warning(
+                f"{instrument_code}: No funding data, OI multiplier = 1.0 (no scaling)"
+            )
+            # Return series of 1.0 with same index as price data
+            prices = self.daily_prices(instrument_code)
+            return pd.Series(1.0, index=prices.index)
+
+        # Annualize: funding paid 3x per day (8-hourly) × 365 days
+        funding_ann = funding * 3 * 365
+
+        # Rolling mean and std for z-score
+        rolling_mean = funding_ann.rolling(lookback, min_periods=30).mean()
+        rolling_std = funding_ann.rolling(lookback, min_periods=30).std()
+
+        # Avoid division by zero
+        rolling_std = rolling_std.replace(0.0, 0.01)
+
+        # Z-score (standardized funding rate)
+        z_score = (funding_ann - rolling_mean) / rolling_std
+
+        # Absolute z-score (bidirectional: extreme long OR short funding triggers scaling)
+        z_abs = z_score.abs()
+
+        # Linear scaling: multiplier decreases from 1.0 → min_scale as z increases
+        # Sensitivity: how much multiplier decreases per σ above threshold
+        sensitivity = (1.0 - min_scale) / threshold
+
+        # Calculate base multiplier (same as original logic)
+        # When z_abs < threshold: mult = 1.0 (no scaling)
+        # When z_abs ≥ threshold: mult = 1.0 - (z_abs - threshold) × sensitivity
+        base_multiplier = 1.0 - (z_abs - threshold) * sensitivity
+        base_multiplier = base_multiplier.clip(lower=min_scale, upper=1.0)
+        base_multiplier = base_multiplier.fillna(1.0)
+
+        # Apply trend-aware logic if enabled
+        if trend_aware and base_position is not None and trend_forecast is not None:
+            # Align all series to common index
+            common_index = base_position.index.intersection(trend_forecast.index).intersection(base_multiplier.index)
+
+            if len(common_index) == 0:
+                self.log.warning(
+                    f"{instrument_code}: No common dates for trend-aware overlay, using base multiplier"
+                )
+                return base_multiplier
+
+            # Subset to common index
+            pos = base_position.reindex(common_index)
+            trend = trend_forecast.reindex(common_index)
+            mult = base_multiplier.reindex(common_index)
+
+            # Calculate position-trend alignment
+            # Aligned: both positive OR both negative (product > 0)
+            # Counter-trend: opposite signs (product < 0)
+            alignment = pos * trend
+
+            # Only apply scaling when position fights trend (alignment <= 0)
+            # When aligned (alignment > 0), set multiplier to 1.0 (no scaling)
+            trend_aware_multiplier = pd.Series(1.0, index=common_index)
+            counter_trend_mask = alignment <= 0
+            trend_aware_multiplier.loc[counter_trend_mask] = mult.loc[counter_trend_mask]
+
+            # Log trend-aware behavior
+            n_aligned = (alignment > 0).sum()
+            n_counter = (alignment <= 0).sum()
+            n_scaled = ((counter_trend_mask) & (mult < 1.0)).sum()
+
+            self.log.debug(
+                f"{instrument_code}: Trend-aware overlay | "
+                f"aligned={n_aligned} | counter-trend={n_counter} | scaled={n_scaled}",
+                instrument_code=instrument_code,
+            )
+
+            return trend_aware_multiplier
+        else:
+            # Standard (bidirectional) mode - scale on any extreme funding
+            return base_multiplier
+
     def get_btc_price(self, instrument_code: str) -> pd.Series:
         """
         BTC daily price series, available from the earliest date in the dataset.

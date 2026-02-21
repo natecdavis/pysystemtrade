@@ -1,9 +1,9 @@
 # ============================================================================
-# CRYPTO PERPS — COST-FILTERED 22-RULE CONFIG (WITH OI OVERLAY)
+# CRYPTO PERPS — COST-FILTERED 22-RULE CONFIG (WITH OPTIMIZED GATED CARRY)
 # ============================================================================
-# Created: 2026-02-17  |  Revised: 2026-02-21 (OI overlay adopted)
-# Purpose: Evidence-based rule trimming + trend-gated carry + OI regime overlay
-# Optimized: carry_weight=1.0, threshold=0.5, min_history=15d, OI overlay enabled
+# Created: 2026-02-17  |  Revised: 2026-02-20 (gated carry optimized)
+# Purpose: Evidence-based rule trimming + trend-gated carry
+# Optimized: carry_weight=1.0, threshold=0.5 (extended 8-weight sweep)
 #
 # Pass 1 (predictive accuracy audit): 45 → 26 rules
 #   REMOVED — Carry family (negative IC when untreated)
@@ -533,6 +533,13 @@ forecast_weights:
   vol_norm_carry_30:  0.01
   vol_norm_carry_60:  0.01
 
+  # Relcarry (Crowding Signal): 3 rules × 2.0% = 6.0% (TESTING crowding only)
+  # Contrarian positioning signal: fade when funding is extreme relative to median
+  # Expected IC < -0.05 (negative = contrarian), correlation with trend < 0.3
+  relcarry_30:  0.02
+  relcarry_60:  0.02
+  relcarry_125: 0.02
+
   # Removed entirely (cost audit):
   #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each
   #   streversal_1:     424 rt/yr, annual drag 1.26 SR
@@ -602,7 +609,7 @@ carry_rule_list:
   - vol_norm_carry_60
 
 # ============================================================================
-# OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
+# OI REGIME OVERLAY CONFIGURATION (PHASE 1 MVP - DISABLED BY DEFAULT)
 # ============================================================================
 # Defensive position scaling based on funding rate z-score (OI proxy).
 #
@@ -611,37 +618,28 @@ carry_rule_list:
 #   - High positive/negative funding → crowded positioning → cascade risk
 #   - Multiplier range: [min_scale, 1.0]
 #
-# Phase 1 (Standard Overlay): Uses funding_rate as OI proxy
-# Phase 1.5 (Trend-Aware): Tested and REJECTED (worse than standard)
-# Phase 2 (Future): True OI/Volume ratio (optional enhancement)
+# Phase 1 (MVP): Uses funding_rate as OI proxy (zero new data acquisition)
+# Phase 2+: Will use true OI/Volume ratio when OI data is available
 #
-# ADOPTION DECISION (2026-02-21):
-# ✅ Standard overlay ADOPTED based on acute crash analysis
-# ❌ Trend-aware overlay REJECTED (no improvement vs standard)
+# Expected impact (from plan):
+#   - MaxDD reduction: 1-2% (e.g., -23.9% → -22.5%)
+#   - Sharpe: neutral to +1% (defensive overlay, not alpha source)
+#   - Crisis protection: better performance during leverage cascades
 #
-# Performance (6-year backtest, 2020-2026):
-#   Sharpe:          0.9879 (baseline) → 0.9933 (standard) = +0.55% ✅
-#   Annual Vol:      22.42% (baseline) → 21.55% (standard) = -3.9% ✅
-#   Max DD:          -23.72% (baseline) → -22.59% (standard) = +1.1% ✅
-#   Turnover:        15.35x (baseline) → 18.28x (standard) = +19.1% ⚠️
-#   Transaction Cost: 45 bps/yr (baseline) → 54 bps/yr (standard) = +21% ⚠️
-#
-# Acute Crash Protection (3 events: May 2021, June 2022, Nov 2022):
-#   Average return delta: +0.59% vs baseline ✅
-#   Crash wins: 2 out of 3 events ✅
-#   Drawdown improvement: ALL 3 events (+0.41% avg) ✅
-#
-# Analysis: out/oi_trend_aware/ACUTE_CRASH_FINDINGS.md
+# Testing configurations:
+#   - Baseline:      use_oi_overlay: false (current system, Sharpe 0.99)
+#   - Overlay only:  use_oi_overlay: true, relcarry weights 0.00
+#   - Crowding only: use_oi_overlay: false, relcarry weights 0.02
+#   - Combined:      use_oi_overlay: true, relcarry weights 0.02
 # ============================================================================
 
-use_oi_overlay: true  # ENABLED: Standard overlay (ADOPTED 2026-02-21)
+use_oi_overlay: false  # DISABLED: OI regime overlay (testing in Phase 1)
 
 # OI overlay parameters (only used when use_oi_overlay: true)
 oi_overlay_params:
   lookback: 90           # Rolling window for funding z-score (days)
   threshold: 2.0         # Z-score threshold where scaling begins (σ units)
   min_scale: 0.5         # Minimum position multiplier (0.5 = max 50% reduction)
-  trend_aware: false     # DISABLED: Trend-aware mode (rejected after testing)
 
 # ============================================================================
 # SIZING AND CONSTRAINTS
