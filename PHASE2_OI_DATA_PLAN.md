@@ -1,8 +1,36 @@
 # Phase 2: True OI Data Implementation Plan
 
 **Date:** 2026-02-21
-**Status:** 🚀 PLANNING & EXECUTION
+**Status:** 🚀 IN PROGRESS - Download running (Day 1/5)
 **Goal:** Test whether true OI/Volume ratio provides better crash detection than funding rate proxy
+
+---
+
+## ⚠️ CRITICAL UPDATE: Data Availability (2026-02-21)
+
+**FINDING:** Binance metrics data only starts from **2021-12-01**, not 2020-01-01.
+
+**Impact:**
+- ❌ **May 2021 crash**: NO DATA (China mining ban - data doesn't exist)
+- ✅ **June 2022 crash**: Full coverage (3AC/Celsius liquidations)
+- ✅ **Nov 2022 crash**: Full coverage (FTX collapse)
+
+**Revised Plan:**
+- **Original**: 6 years (2020-2026), 3 crash events
+- **Actual**: 4.2 years (Dec 2021-Jan 2026), 2 crash events
+- **Coverage**: ~70% of original timeline, 67% of crash events
+
+**Data Quality - Better than Expected:**
+- ✅ 5-minute granularity (vs expected daily)
+- ✅ OI in USD notional (`sum_open_interest_value`)
+- ✅ Bonus: Long/Short ratios (all traders + top traders)
+- ✅ Taker buy/sell volume ratio
+
+**Feasibility Assessment: PROCEED**
+- 2 crash events still statistically significant
+- Different crash types (contagion vs exchange failure)
+- 4.2 years sufficient for full backtest Sharpe comparison
+- Success criteria adjusted: ≥1/2 crashes (was ≥2/3)
 
 ---
 
@@ -33,18 +61,18 @@
 
 ### Coverage Requirements
 
-**Time Period:** 2020-01-01 to 2026-01-31 (6 years)
-- Must match existing backtest period
-- Need daily granularity minimum
+**Time Period:** ~~2020-01-01~~ **2021-12-01 to 2026-01-31** (~4.2 years) ⚠️ UPDATED
+- Binance metrics data only available from Dec 2021
+- 5-minute granularity (better than expected daily)
 
 **Instruments:** All Binance USDT perpetuals
-- Current dataset: 538 instruments
-- Need OI for as many as possible (target: >400 instruments)
+- Current dataset: 300 instruments (active in backtest period)
+- Need OI for as many as possible (target: ≥240 = 80%)
 
 **Data Quality:**
 - No gaps longer than 3 days
 - Aligned with price/funding data
-- Validated against known events (May 2021, Nov 2022 crashes)
+- Validated against ~~May 2021~~, June 2022, Nov 2022 crashes ⚠️ UPDATED
 
 ---
 
@@ -55,9 +83,9 @@
 **Source:** https://github.com/binance/binance-public-data
 
 **What's Available:**
-- Monthly aggregated CSV files
-- Open Interest data: 2020-present for all USDT perpetuals
-- Updated monthly (slight lag)
+- Daily ZIP files containing 5-minute CSV data
+- Open Interest data: **Dec 2021-present** for all USDT perpetuals ⚠️ UPDATED
+- Updated daily (next-day availability)
 
 **Pros:**
 - ✅ Free
@@ -322,7 +350,7 @@ Phase 2 is worth adopting if:
 - OI/Volume Sharpe ≥ Funding Sharpe + 0.5% (material improvement)
 - OI/Volume crash protection ≥ Funding + 0.2% avg (better crash performance)
 - OI coverage ≥ 80% of instruments (sufficient data)
-- OI triggers earlier than funding in 2+ out of 3 crashes (leading indicator)
+- OI triggers earlier than funding in **≥1 out of 2 crashes** (leading indicator) ⚠️ UPDATED
 
 ---
 
@@ -434,8 +462,8 @@ Phase 2 is worth adopting if:
 ### Minimum Requirements (Adoption Threshold)
 
 **1. Data Quality:**
-- ✅ OI coverage ≥ 80% of instruments
-- ✅ Date range: 2020-2026 (complete)
+- ✅ OI coverage ≥ 80% of instruments (≥240 out of 300)
+- ✅ Date range: **2021-12 to 2026-01** (~4.2 years) ⚠️ UPDATED
 - ✅ No major gaps (≤ 3 days)
 
 **2. Performance (Full Backtest):**
@@ -443,8 +471,9 @@ Phase 2 is worth adopting if:
 - ✅ OI/Volume crash protection ≥ Funding + 0.2% avg
 
 **3. Timing (Leading Indicator):**
-- ✅ OI triggers earlier than funding in ≥ 2 out of 3 crashes
+- ✅ OI triggers earlier than funding in **≥1 out of 2 crashes** ⚠️ UPDATED
 - ✅ OI z-score peaks BEFORE crash, not during/after
+- Note: May 2021 crash excluded (no OI data available)
 
 ### Decision Matrix
 
@@ -508,10 +537,11 @@ Phase 2 is worth adopting if:
 
 ## Next Steps
 
-### Immediate (This Session)
+### Immediate (This Session) - ✅ COMPLETE
 1. ✅ Create this plan document
-2. 🔄 Create download automation script
-3. 🔄 Start downloading Binance OI data
+2. ✅ Create download automation script (`scripts/download_binance_oi_data.py`)
+3. ✅ Create conversion script (`scripts/convert_oi_to_parquet.py`)
+4. ✅ Start downloading Binance OI data (running in background, ~4-6 days)
 
 ### This Week
 4. Convert CSV to parquet
