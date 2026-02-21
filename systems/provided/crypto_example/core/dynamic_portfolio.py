@@ -140,6 +140,7 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
         entry_buffer = du_config.get('entry_buffer', 5)
         exit_buffer = du_config.get('exit_buffer', 10)
         adv_window = du_config.get('adv_window', 30)
+        min_history_topk = du_config.get('min_history_days_topk', 365)
 
         # Read selection criterion (default: ADV)
         selection_criterion = du_config.get('selection_criterion', 'adv')
@@ -150,7 +151,7 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
 
         self.log.info(
             f"Stage 2: Top-K selection K={K}, entry<={K - entry_buffer}, exit>{K + exit_buffer}, "
-            f"criterion={selection_criterion}"
+            f"criterion={selection_criterion}, min_history={min_history_topk}d"
         )
 
         selector = TopKInstrumentSelector(
@@ -158,6 +159,7 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
             entry_buffer=entry_buffer,
             exit_buffer=exit_buffer,
             adv_window=adv_window,
+            min_history_days=min_history_topk,
             log=self.log,
         )
 

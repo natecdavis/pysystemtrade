@@ -1,6 +1,102 @@
 # Current Work Context
 
-## Current Session Summary (2026-02-20, Part 4)
+## Current Session Summary (2026-02-20, Part 5)
+
+**Minimum History Requirement Optimization** - Testing early instrument entry
+
+**Goal:** Test whether lowering the minimum history requirement for instruments improves Sharpe by capturing high-performing instruments earlier in their lifecycle.
+
+**Research Question:** Does reducing the threshold from 365 days to 15 days (Alternative 1) or 270 days (Alternative 2) improve risk-adjusted returns? Can we capture launch momentum without sacrificing data quality?
+
+**Implementation:**
+
+1. **Made minimum history configurable** (`sysdata/crypto/dynamic_universe.py`):
+   - Added `MIN_HISTORY_ALL_RULES = 270` constant
+   - Added `min_history_mode` parameter ('any_rule' = 15d, 'all_rules' = 270d)
+   - Modified filtering logic to use configurable threshold
+
+2. **Wired config parameter** (`sysdata/crypto/parquet_perps_sim_data.py`):
+   - Pass `min_history_rule_requirement` from config to DynamicUniverseManager
+
+3. **Updated TopK selector** (`systems/provided/crypto_example/core/dynamic_portfolio.py`):
+   - Read `min_history_days_topk` from config
+   - Made ADV calculation threshold configurable
+
+4. **Created test configurations:**
+   - `crypto_perps_test_365d_baseline.yaml` - Current system (365d)
+   - `crypto_perps_test_15d_any_rule.yaml` - Early entry (15d)
+   - `crypto_perps_test_270d_all_rules.yaml` - Conservative (270d)
+
+5. **Ran comprehensive backtests** (6-year period, 2020-2026):
+   - All three alternatives tested on same dataset (dataset_538registry_6yr_jagged.parquet)
+   - Runtime filtering via configurable thresholds
+
+**Results:**
+
+| Config | Min History | Sharpe | CAGR | Vol | MaxDD | Δ Sharpe |
+|--------|-------------|--------|------|-----|-------|----------|
+| Baseline | 365d | 0.9510 | 21.22% | 23.02% | -23.90% | - |
+| **Alt 1** | **15d** | **0.9879** | **21.70%** | **22.42%** | **-23.72%** | **+3.88%** ✅ |
+| Alt 2 | 270d | 0.9277 | 20.67% | 23.14% | -23.52% | -2.46% ❌ |
+
+**Key Findings:**
+
+- **Alternative 1 EXCEEDED adoption threshold:** +3.88% Sharpe vs +2.1% requirement
+- **Lower volatility with more instruments:** 22.42% vs 23.02% (diversification benefit)
+- **Better crisis performance:** +51.2% return in 2022 bear (vs +50.2% baseline)
+- **Lower funding drag:** -247.5 bps/yr vs -271.2 bps/yr (funding arbitrage)
+- **Minimal turnover increase:** 15.35x vs 15.21x (+0.9%)
+- **Natural quality filter:** Only +5.9% more instruments despite 15d eligibility (TopK + cost filters effective)
+
+**Why Alternative 1 Worked:**
+
+1. **Early trend capture** - Launch momentum in months 1-9 (fast rules effective with 15-50 days)
+2. **Diversification benefits** - +1.8 positions on average, uncorrelated to mature majors
+3. **Funding rate arbitrage** - Younger perpetuals less crowded, better funding profiles
+4. **Quality filtering intact** - TopK ADV ranking + cost filters excluded low-quality launches
+
+**Why Alternative 2 Failed:**
+
+- **Missed launch momentum** - 270d excludes highest-momentum period (months 1-9)
+- **Minimal expansion** - Only -0.1 positions vs baseline (26% threshold reduction insufficient)
+- **Rule coverage irrelevant** - ForecastCombine auto-weights handle partial coverage well
+
+**Decision:** ✅ **ADOPTED ALTERNATIVE 1** - Updated production config with 15-day threshold
+
+**Comparison vs Previous Baseline (365d, carry_weight=1.0):**
+
+| Metric | Previous (365d) | New (15d) | Δ | Status |
+|--------|-----------------|-----------|---|--------|
+| **Sharpe** | 0.9510 | **0.9879** | **+3.88%** | ✅ Excellent |
+| **CAGR** | 21.22% | **21.70%** | **+2.26%** | ✅ Excellent |
+| **Vol** | 23.02% | **22.42%** | **-2.61%** | ✅ Lower (better) |
+| **Max DD** | -23.90% | **-23.72%** | **+0.75%** | ✅ Shallower |
+| **Avg Positions** | 30.8 | **32.6** | **+5.9%** | ✅ More diverse |
+| **Turnover** | 15.21x | 15.35x | +0.9% | ✅ Minimal |
+| **Cost Drag** | -314.6 bps | **-292.7 bps** | **+7.0%** | ✅ Lower costs |
+
+**New Baseline Performance:**
+- **Sharpe:** 0.99 (up from 0.95, +4.2%)
+- **CAGR:** 21.7% (up from 21.2%, +2.4%)
+- **Vol:** 22.4% (down from 23.0%, -2.6%)
+- **System:** 22 rules (19 trend + 3 gated carry), 15-day minimum history
+
+**Deliverables:**
+- ✅ `sysdata/crypto/dynamic_universe.py` - Configurable threshold logic
+- ✅ `sysdata/crypto/parquet_perps_sim_data.py` - Config parameter wiring
+- ✅ `systems/provided/crypto_example/core/dynamic_portfolio.py` - TopK threshold config
+- ✅ `config/crypto_perps_test_365d_baseline.yaml` - Baseline test config
+- ✅ `config/crypto_perps_test_15d_any_rule.yaml` - Alternative 1 config
+- ✅ `config/crypto_perps_test_270d_all_rules.yaml` - Alternative 2 config
+- ✅ `scripts/verify_min_history_config.py` - Verification script (all tests passed)
+- ✅ `out/min_history_test/ANALYSIS_REPORT.md` - Comprehensive 3000-word analysis
+- ✅ `config/crypto_perps_full_rules.yaml` - **UPDATED** with 15-day threshold
+
+**Status:** ✅ Complete. Minimum history optimization adopted. New baseline: Sharpe 0.99, CAGR 21.7%.
+
+---
+
+## Previous Session Summary (2026-02-20, Part 4)
 
 **Extended Carry Weight Parameter Sweep** - Optimizing carry influence
 

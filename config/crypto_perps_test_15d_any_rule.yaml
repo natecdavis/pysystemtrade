@@ -1,0 +1,333 @@
+# ============================================================================
+# ALTERNATIVE 1 TEST CONFIG — 15-day minimum history ("at least one rule")
+# ============================================================================
+# Created: 2026-02-20
+# Purpose: Test early entry with partial rule coverage
+# Hypothesis: Young instruments may capture launch momentum with fast rules
+# Dataset: data/dataset_538registry_6yr_15d.parquet
+#
+# Key differences from baseline:
+#   - min_history_days_topk: 15 (vs 365)
+#   - min_history_rule_requirement: 'any_rule' (15 days)
+#   - Dataset includes instruments with just 15+ days of history
+#
+# Expected impact:
+#   - More instruments in universe (~50-58 vs ~38)
+#   - Young instruments have partial rule coverage (1-10 rules active)
+#   - ForecastCombine auto-weights available rules
+#   - Higher turnover (new instruments entering/exiting)
+#   - Potentially higher transaction costs (lower liquidity)
+#   - Risk: Higher volatility, survivorship bias, data quality issues
+#   - Opportunity: Early trend capture, momentum in launch phase
+# ============================================================================
+
+system:
+  capital: 5000.0
+  vol_target_ann: 0.25
+  gross_leverage_cap: 2.0
+  idm_cap: 2.5
+  min_position_frac: 0.03
+  allow_jagged: true
+
+percentage_vol_target: 25.0
+notional_trading_capital: 10000.0
+min_notional_position: 25.0
+
+use_instrument_div_mult_estimates: True
+use_forecast_scale_estimates: True
+use_forecast_div_mult_estimates: True
+
+data_acquisition:
+  auto_discover: true
+  dataset_path: data/dataset_538registry_6yr_jagged.parquet
+
+pinned_instruments: []
+banned_instruments: []
+
+dynamic_universe:
+  # Stage 2 selection criterion
+  selection_criterion: 'adv'
+
+  # Stage 1 — Carver SR cost / history / vol gates
+  max_sr_cost_per_trade: 0.01
+  max_sr_cost_annual: 0.13
+  stack_turnover: 15.0
+  adv_window: 30
+  fee_bps: 5
+  vol_window: 35
+
+  # Minimum history configuration (ALTERNATIVE 1: 15 days)
+  min_history_days_topk: 15  # TopK ADV calculation threshold
+  min_history_rule_requirement: 'any_rule'  # DynamicUniverseManager mode (15 days)
+
+  min_annual_vol: 0.20
+
+  # Stage 2 — Top-K selection with hysteresis
+  top_k: 30
+  entry_buffer: 5
+  exit_buffer: 10
+
+# ============================================================================
+# TRADING RULES — 22 RULES (19 trend + 3 gated carry)
+# ============================================================================
+
+trading_rules:
+  # EWMAC (3 rules)
+  ewmac_8:
+    function: systems.provided.rules.ewmac.ewmac_calc_vol
+    other_args: {Lfast: 8, Lslow: 32}
+  ewmac_16:
+    function: systems.provided.rules.ewmac.ewmac_calc_vol
+    other_args: {Lfast: 16, Lslow: 64}
+  ewmac_32:
+    function: systems.provided.rules.ewmac.ewmac_calc_vol
+    other_args: {Lfast: 32, Lslow: 128}
+
+  # Breakout (4 rules)
+  breakout_20:
+    function: systems.provided.rules.breakout.breakout
+    other_args: {lookback: 20}
+  breakout_40:
+    function: systems.provided.rules.breakout.breakout
+    other_args: {lookback: 40}
+  breakout_80:
+    function: systems.provided.rules.breakout.breakout
+    other_args: {lookback: 80}
+  breakout_160:
+    function: systems.provided.rules.breakout.breakout
+    other_args: {lookback: 160}
+
+  # Normmom (3 rules)
+  normmom_8:
+    function: systems.crypto_perps.rules.rule_library.normmom
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {Lfast: 8}
+  normmom_16:
+    function: systems.crypto_perps.rules.rule_library.normmom
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {Lfast: 16}
+  normmom_32:
+    function: systems.crypto_perps.rules.rule_library.normmom
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {Lfast: 32}
+
+  # Accel (3 rules)
+  accel_16:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {Lfast: 16}
+  accel_32:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {Lfast: 32}
+  accel_64:
+    function: systems.provided.rules.accel.accel
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {Lfast: 64}
+
+  # Assettrend (4 rules)
+  assettrend_8:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+      - "data.get_asset_class_index_price"
+    other_args: {Lfast: 8}
+  assettrend_16:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+      - "data.get_asset_class_index_price"
+    other_args: {Lfast: 16}
+  assettrend_32:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+      - "data.get_asset_class_index_price"
+    other_args: {Lfast: 32}
+  assettrend_64:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+      - "data.get_asset_class_index_price"
+    other_args: {Lfast: 64}
+
+  # Relmomentum (2 rules)
+  relmomentum_20:
+    function: systems.provided.rules.rel_mom.relative_momentum
+    data:
+      - "data.get_normalised_price_this_instrument"
+      - "data.get_normalised_price_for_asset_class"
+    other_args: {horizon: 20}
+  relmomentum_40:
+    function: systems.provided.rules.rel_mom.relative_momentum
+    data:
+      - "data.get_normalised_price_this_instrument"
+      - "data.get_normalised_price_for_asset_class"
+    other_args: {horizon: 40}
+
+  # ResidualMomentum (3 rules)
+  residual_momentum_16:
+    function: systems.crypto_perps.rules.rule_library.residual_momentum
+    data:
+      - "data.daily_prices"
+      - "data.get_spx_price"
+      - "data.get_dxy_price"
+      - "data.get_us10y_yield"
+    other_args: {Lfast: 16, reg_window: 60}
+  residual_momentum_32:
+    function: systems.crypto_perps.rules.rule_library.residual_momentum
+    data:
+      - "data.daily_prices"
+      - "data.get_spx_price"
+      - "data.get_dxy_price"
+      - "data.get_us10y_yield"
+    other_args: {Lfast: 32, reg_window: 60}
+  residual_momentum_64:
+    function: systems.crypto_perps.rules.rule_library.residual_momentum
+    data:
+      - "data.daily_prices"
+      - "data.get_spx_price"
+      - "data.get_dxy_price"
+      - "data.get_us10y_yield"
+    other_args: {Lfast: 64, reg_window: 60}
+
+  # Vol-Normalized Carry (3 rules, trend-gated)
+  vol_norm_carry_10:
+    function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
+    data:
+      - "data.get_funding_rate"
+      - "rawdata.daily_returns_volatility"
+    other_args: {smooth_days: 10, vol_floor: 0.01}
+  vol_norm_carry_30:
+    function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
+    data:
+      - "data.get_funding_rate"
+      - "rawdata.daily_returns_volatility"
+    other_args: {smooth_days: 30, vol_floor: 0.01}
+  vol_norm_carry_60:
+    function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
+    data:
+      - "data.get_funding_rate"
+      - "rawdata.daily_returns_volatility"
+    other_args: {smooth_days: 60, vol_floor: 0.01}
+
+# ============================================================================
+# FORECAST WEIGHTS — 22 RULES
+# ============================================================================
+
+forecast_weights:
+  # EWMAC: 3 rules × 4.762% = 14.286%
+  ewmac_8:   0.047619
+  ewmac_16:  0.047619
+  ewmac_32:  0.047619
+
+  # Breakout: 4 rules × 3.571% = 14.286%
+  breakout_20:  0.035714
+  breakout_40:  0.035714
+  breakout_80:  0.035714
+  breakout_160: 0.035714
+
+  # Normmom: 3 rules × 4.762% = 14.286%
+  normmom_8:   0.047619
+  normmom_16:  0.047619
+  normmom_32:  0.047619
+
+  # Accel: 3 rules × 4.762% = 14.286%
+  accel_16:  0.047619
+  accel_32:  0.047619
+  accel_64:  0.047619
+
+  # Assettrend: 4 rules × 3.571% = 14.286%
+  assettrend_8:  0.035714
+  assettrend_16: 0.035714
+  assettrend_32: 0.035714
+  assettrend_64: 0.035714
+
+  # Relmomentum: 2 rules × 7.143% = 14.286%
+  relmomentum_20: 0.071429
+  relmomentum_40: 0.071429
+
+  # ResidualMomentum: 3 rules × 4.762% = 14.286%
+  residual_momentum_16: 0.047619
+  residual_momentum_32: 0.047619
+  residual_momentum_64: 0.047619
+
+  # Vol-Normalized Carry: 3 rules × 1.0% = 3.0%
+  vol_norm_carry_10:  0.01
+  vol_norm_carry_30:  0.01
+  vol_norm_carry_60:  0.01
+
+forecast_cap: 20.0
+
+# ============================================================================
+# TREND-GATED CARRY CONFIGURATION
+# ============================================================================
+
+use_gated_carry: true
+carry_weight: 1.0
+carry_trend_gate_threshold: 0.5
+
+trend_rule_list:
+  - ewmac_8
+  - ewmac_16
+  - ewmac_32
+  - normmom_8
+  - normmom_16
+  - normmom_32
+  - breakout_20
+  - breakout_40
+  - breakout_80
+  - breakout_160
+  - accel_16
+  - accel_32
+  - accel_64
+  - assettrend_8
+  - assettrend_16
+  - assettrend_32
+  - assettrend_64
+  - relmomentum_20
+  - relmomentum_40
+  - residual_momentum_16
+  - residual_momentum_32
+  - residual_momentum_64
+
+carry_rule_list:
+  - vol_norm_carry_10
+  - vol_norm_carry_30
+  - vol_norm_carry_60
+
+# ============================================================================
+# SIZING AND CONSTRAINTS
+# ============================================================================
+
+sizing:
+  vol_days: 35
+
+constraints:
+  correlation_span: 60
+  correlation_min_periods: 20
+
+execution:
+  buffer_frac: 0.1
+
+costs:
+  spread_estimate: 0.0005
+  taker_fee_frac: 0.0005
+
+output:
+  equity_curve_file: "equity_curve.csv"
+  positions_file: "positions.csv"
+  pnl_breakdown_file: "pnl_breakdown.csv"
+  write_diagnostics: true
+  diagnostics_file: "diagnostics.parquet"
+
+diagnostics:
+  enabled: true

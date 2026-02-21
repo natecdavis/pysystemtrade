@@ -492,6 +492,7 @@ class parquetCryptoPerpsSimData(simData):
             forecast_weights=config.get('forecast_weights'),
             min_annual_vol=config.get('min_annual_vol', 0.0),
             vol_window=config.get('vol_window', 35),
+            min_history_mode=config.get('min_history_rule_requirement', 'any_rule'),
             log=self.log,
         )
 

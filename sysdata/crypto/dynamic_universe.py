@@ -47,6 +47,9 @@ RULE_MIN_HISTORY = {
 # Minimum history for ANY rule to work
 MIN_HISTORY_ANY_RULE = min(RULE_MIN_HISTORY.values())
 
+# Minimum history for ALL rules to work
+MIN_HISTORY_ALL_RULES = max(RULE_MIN_HISTORY.values())
+
 
 class DynamicUniverseManager:
     """
@@ -66,6 +69,7 @@ class DynamicUniverseManager:
         forecast_weights: Optional[Dict[str, float]] = None,
         min_annual_vol: float = 0.0,
         vol_window: int = 35,
+        min_history_mode: str = 'any_rule',
         log=get_logger("DynamicUniverseManager"),
     ):
         """
@@ -79,6 +83,8 @@ class DynamicUniverseManager:
                             Rejects stablecoins and semi-pegged tokens.
             vol_window: Rolling window (days) for volatility calculation used in
                         SR cost and vol floor filters (default 35).
+            min_history_mode: Minimum history requirement mode (default 'any_rule').
+                              Options: 'any_rule' (15 days), 'all_rules' (270 days).
             log: Logger instance
         """
         self._cost_estimator = cost_estimator
@@ -87,6 +93,17 @@ class DynamicUniverseManager:
         self._min_annual_vol = min_annual_vol
         self._vol_window = vol_window
         self._log = log
+
+        # Set minimum history threshold based on mode
+        if min_history_mode == 'all_rules':
+            self._min_history_days = MIN_HISTORY_ALL_RULES  # 270 days
+        elif min_history_mode == 'any_rule':
+            self._min_history_days = MIN_HISTORY_ANY_RULE  # 15 days
+        else:
+            raise ValueError(
+                f"Invalid min_history_mode: {min_history_mode}. "
+                f"Must be 'any_rule' or 'all_rules'"
+            )
 
         # Calculate turnover from weights if provided
         if forecast_weights is not None:
@@ -263,7 +280,7 @@ class DynamicUniverseManager:
         # Get prices up to date
         valid_prices = prices[prices.index <= date]
 
-        if len(valid_prices) < MIN_HISTORY_ANY_RULE:
+        if len(valid_prices) < self._min_history_days:
             return False
 
         return True
@@ -306,7 +323,7 @@ class DynamicUniverseManager:
         cum_count = pd.Series(range(1, len(prices) + 1), index=prices.index)
 
         # True when we have enough history
-        return cum_count >= MIN_HISTORY_ANY_RULE
+        return cum_count >= self._min_history_days
 
     def _get_vol_floor_series(
         self,

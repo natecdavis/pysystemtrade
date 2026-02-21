@@ -81,7 +81,14 @@ dynamic_universe:
   adv_window: 30
   fee_bps: 5
   vol_window: 35
-  min_history_days: 365
+
+  # Minimum history configuration (OPTIMIZED: 15 days, validated 2026-02-20)
+  # Previous: 365 days (Sharpe 0.95)
+  # Current:  15 days (Sharpe 0.99, +3.88% improvement)
+  # See: out/min_history_test/ANALYSIS_REPORT.md for full justification
+  min_history_days_topk: 15  # TopK ADV calculation threshold
+  min_history_rule_requirement: 'any_rule'  # DynamicUniverseManager mode (15 days)
+
   min_annual_vol: 0.20   # Rejects stablecoins and semi-pegged tokens
 
   # Stage 2 — Top-K selection with hysteresis (criterion specified above)
