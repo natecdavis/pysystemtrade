@@ -93,23 +93,33 @@ class ForecastCombineGated(ForecastCombine):
         # Get raw carry scores (sum of weighted carry forecasts)
         carry_raw = weighted_forecasts[carry_cols].sum(axis=1)
 
-        # Apply cross-sectional percentile ranking to carry
-        carry_ranked = self._apply_percentile_ranking_to_carry(carry_raw, instrument_code)
+        # carry_gate_mode controls how carry is combined:
+        #   'additive_sleeve' (default): percentile-rank carry, add with carry_weight multiplier
+        #   'weighted': gate carry_raw directly, carry contributes via its forecast_weight
+        carry_gate_mode = config.get_element_or_default('carry_gate_mode', 'additive_sleeve')
 
-        # Apply trend gate: zero carry when trend is weak or opposite sign
-        carry_gated = carry_ranked.copy()
+        if carry_gate_mode == 'weighted':
+            # Equal-weight mode: no percentile ranking, gate carry_raw directly
+            carry_for_gate = carry_raw
+        else:
+            # Additive sleeve mode: cross-sectional percentile ranking
+            carry_for_gate = self._apply_percentile_ranking_to_carry(carry_raw, instrument_code)
 
         # Gate condition: abs(trend) < threshold OR sign mismatch
         weak_trend_mask = abs(trend_strength) < trend_gate_threshold
-        sign_mismatch_mask = np.sign(trend_strength) != np.sign(carry_ranked)
+        sign_mismatch_mask = np.sign(trend_strength) != np.sign(carry_for_gate)
         gate_mask = weak_trend_mask | sign_mismatch_mask
 
+        carry_gated = carry_for_gate.copy()
         carry_gated[gate_mask] = 0.0
 
-        # Reconstruct combined forecast: trend + (carry_weight × carry_gated)
-        # Note: trend forecasts keep their original weights, carry is additive
         trend_forecast = trend_strength
-        final_forecast_raw = trend_forecast + (carry_weight * carry_gated)
+        if carry_gate_mode == 'weighted':
+            # Carry contributes via its forecast_weight allocation, no extra multiplier
+            final_forecast_raw = trend_forecast + carry_gated
+        else:
+            # Additive sleeve: carry_weight scales the percentile-ranked carry
+            final_forecast_raw = trend_forecast + (carry_weight * carry_gated)
 
         # Additive sector sleeve: final += sector_weight × mean(sector_forecasts)
         # Sector forecasts come directly from ForecastScaleCap (already scaled+capped, ±20).

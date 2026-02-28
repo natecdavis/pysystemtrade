@@ -656,7 +656,7 @@ sector_rule_list:
   - sector_momentum_20
   - sector_momentum_40
 
-sector_weight: 0.10  # ADOPTED: Sharpe 0.99→1.006 (+1.5%), IC@5d=0.087 (best family)
+sector_weight: 0.0  # PAUSED: additive test passed (+1.5% Sharpe) but reverted for simplicity
 
 # ============================================================================
 # OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
