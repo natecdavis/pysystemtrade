@@ -82,6 +82,7 @@ class parquetCryptoPerpsSimData(simData):
         use_dynamic_universe: bool = False,
         dynamic_universe_config: dict = arg_not_supplied,
         macro_data_path: str = arg_not_supplied,
+        oi_data_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -114,6 +115,20 @@ class parquetCryptoPerpsSimData(simData):
             self._macro_df = pd.read_parquet(macro_data_path)
             self.log.info(
                 f"Loaded macro factors from {macro_data_path}: {list(self._macro_df.columns)}"
+            )
+
+        # Load OI data if path provided (used by Phase 2 OI/Volume overlay)
+        # OI parquet has columns: date, instrument (no _PERP suffix), open_interest
+        self._oi_df: Optional[pd.DataFrame] = None
+        if oi_data_path is not arg_not_supplied:
+            raw = pd.read_parquet(oi_data_path)
+            raw['date'] = pd.to_datetime(raw['date']).dt.normalize()
+            # Pivot to wide format: index=date, columns=instrument (bare names, no _PERP)
+            self._oi_df = raw.set_index(['date', 'instrument'])['open_interest'].unstack('instrument')
+            self.log.info(
+                f"Loaded OI data from {oi_data_path}: "
+                f"{self._oi_df.shape[1]} instruments, "
+                f"{self._oi_df.index.min().date()} to {self._oi_df.index.max().date()}"
             )
 
         self.log.info(
@@ -667,6 +682,82 @@ class parquetCryptoPerpsSimData(simData):
         self._median_funding_cache = median_series
         return self._median_funding_cache
 
+    def get_open_interest(self, instrument_code: str) -> pd.Series:
+        """
+        Get daily open interest (USD notional) for an instrument.
+
+        Looks up the bare instrument name (strips _PERP suffix) in the OI dataset.
+        Returns empty series if OI data is not loaded or instrument not found.
+
+        Args:
+            instrument_code: Instrument code (e.g., 'BTCUSDT_PERP')
+
+        Returns:
+            pd.Series with datetime index and USD notional OI values
+        """
+        if self._oi_df is None:
+            return pd.Series(dtype=float)
+
+        # Strip _PERP suffix: OI data uses bare names (BTCUSDT, not BTCUSDT_PERP)
+        bare_code = instrument_code.replace('_PERP', '')
+
+        if bare_code not in self._oi_df.columns:
+            return pd.Series(dtype=float)
+
+        return self._oi_df[bare_code].dropna()
+
+    def get_oi_volume_ratio(self, instrument_code: str, window: int = 7) -> pd.Series:
+        """
+        Calculate OI/Volume ratio as a leverage indicator.
+
+        High OI/Volume → large outstanding positions relative to trading activity
+        → elevated leverage → higher liquidation cascade risk.
+
+        Uses ADV (average daily volume notional) from the main dataset as the
+        volume denominator. ADV is already a smoothed metric, so this naturally
+        gives a stable leverage ratio without additional smoothing.
+
+        Args:
+            instrument_code: Instrument code (e.g., 'BTCUSDT_PERP')
+            window: Rolling window for volume smoothing (days). Default 7.
+                    Since adv_notional is already smoothed, this adds minimal
+                    extra stability.
+
+        Returns:
+            pd.Series with datetime index and OI/Volume ratio values
+        """
+        oi = self.get_open_interest(instrument_code)
+
+        if len(oi) == 0:
+            return pd.Series(dtype=float)
+
+        # Get ADV from main dataset metadata
+        try:
+            meta = self._meta_df.xs(instrument_code, level='instrument')
+            adv = meta['adv_notional'].dropna()
+        except (KeyError, Exception):
+            return pd.Series(dtype=float)
+
+        if len(adv) == 0:
+            return pd.Series(dtype=float)
+
+        # Align OI and ADV to common dates
+        common_idx = oi.index.intersection(adv.index)
+        if len(common_idx) == 0:
+            return pd.Series(dtype=float)
+
+        oi_aligned = oi.reindex(common_idx)
+        adv_aligned = adv.reindex(common_idx)
+
+        # Apply rolling window to ADV for extra smoothness
+        adv_smoothed = adv_aligned.rolling(window, min_periods=max(window // 2, 1)).mean()
+
+        # Compute ratio, clipping ADV to avoid division by near-zero
+        min_adv = adv_smoothed[adv_smoothed > 0].quantile(0.05) if (adv_smoothed > 0).any() else 1e6
+        ratio = oi_aligned / adv_smoothed.clip(lower=max(min_adv, 1e6))
+
+        return ratio.dropna()
+
     def get_oi_regime_multiplier(
         self,
         instrument_code: str,
@@ -676,6 +767,8 @@ class parquetCryptoPerpsSimData(simData):
         base_position: pd.Series = None,
         trend_forecast: pd.Series = None,
         trend_aware: bool = False,
+        mode: str = 'funding',
+        oi_volume_window: int = 7,
     ) -> pd.Series:
         """
         Position scaler based on funding rate z-score (OI proxy for Phase 1 MVP).
@@ -689,9 +782,9 @@ class parquetCryptoPerpsSimData(simData):
 
         Linear interpolation between threshold and threshold + sensitivity range.
 
-        Phase 1: Uses funding_rate (already in dataset, zero new data acquisition)
-        Phase 1.5: Trend-aware mode - only reduces counter-trend positions
-        Phase 2+: Will be extended to use true OI/Volume ratio when available
+        Phase 1:   mode='funding'   — funding rate z-score (no new data required)
+        Phase 1.5: trend_aware=True — only reduces counter-trend positions
+        Phase 2:   mode='oi_volume' — OI/Volume ratio z-score (requires OI data)
 
         Args:
             instrument_code: Instrument code
@@ -701,6 +794,8 @@ class parquetCryptoPerpsSimData(simData):
             base_position: Current position series (for trend-aware mode)
             trend_forecast: Trend forecast series (for trend-aware mode)
             trend_aware: If True, only reduce counter-trend positions (Phase 1.5)
+            mode: Signal source — 'funding' (Phase 1) or 'oi_volume' (Phase 2)
+            oi_volume_window: Rolling window for ADV smoothing in oi_volume mode
 
         Returns:
             pd.Series with values in [min_scale, 1.0]
@@ -725,29 +820,37 @@ class parquetCryptoPerpsSimData(simData):
                 position=+100, trend_forecast=+10 → aligned → mult=1.0 (keep)
                 position=+100, trend_forecast=-10 → counter-trend → allow scaling
         """
-        # Get funding rate (8-hourly, fractional)
-        funding = self.get_funding_rate(instrument_code)
+        # Build the signal series depending on mode
+        if mode == 'oi_volume':
+            signal = self.get_oi_volume_ratio(instrument_code, window=oi_volume_window)
+            if len(signal) == 0:
+                # No OI data — fall back to funding proxy and warn
+                self.log.warning(
+                    f"{instrument_code}: No OI data for oi_volume mode, "
+                    f"falling back to funding proxy"
+                )
+                mode = 'funding'
 
-        if len(funding) == 0:
-            self.log.warning(
-                f"{instrument_code}: No funding data, OI multiplier = 1.0 (no scaling)"
-            )
-            # Return series of 1.0 with same index as price data
-            prices = self.daily_prices(instrument_code)
-            return pd.Series(1.0, index=prices.index)
-
-        # Annualize: funding paid 3x per day (8-hourly) × 365 days
-        funding_ann = funding * 3 * 365
+        if mode == 'funding':
+            funding = self.get_funding_rate(instrument_code)
+            if len(funding) == 0:
+                self.log.warning(
+                    f"{instrument_code}: No funding data, OI multiplier = 1.0 (no scaling)"
+                )
+                prices = self.daily_prices(instrument_code)
+                return pd.Series(1.0, index=prices.index)
+            # Annualize: funding paid 3x per day (8-hourly) × 365 days
+            signal = funding * 3 * 365
 
         # Rolling mean and std for z-score
-        rolling_mean = funding_ann.rolling(lookback, min_periods=30).mean()
-        rolling_std = funding_ann.rolling(lookback, min_periods=30).std()
+        rolling_mean = signal.rolling(lookback, min_periods=30).mean()
+        rolling_std = signal.rolling(lookback, min_periods=30).std()
 
         # Avoid division by zero
         rolling_std = rolling_std.replace(0.0, 0.01)
 
-        # Z-score (standardized funding rate)
-        z_score = (funding_ann - rolling_mean) / rolling_std
+        # Z-score (standardized signal)
+        z_score = (signal - rolling_mean) / rolling_std
 
         # Absolute z-score (bidirectional: extreme long OR short funding triggers scaling)
         z_abs = z_score.abs()

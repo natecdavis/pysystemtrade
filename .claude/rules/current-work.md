@@ -1,6 +1,63 @@
 # Current Work Context
 
-## Current Session Summary (2026-02-21, Part 6)
+## Current Session Summary (2026-02-27)
+
+**Phase 2 OI Data — Complete & Rejected**
+
+**Status:** ✅ Phase 1 & 2 both complete. Production config unchanged.
+
+**What Was Accomplished:**
+
+1. **Resumed Binance OI download** (background, ~49 hours total runtime)
+   - 300/300 symbols downloaded from Binance Public Data Archive
+   - 39,531 zip files, 417 MB raw data
+
+2. **Converted to parquet** (`scripts/convert_oi_to_parquet.py`)
+   - 290,125 daily rows saved to `data/binance_oi_processed.parquet` (7 MB)
+   - Fixed mixed timestamp format issue for ICPUSDT and TLMUSDT
+
+3. **Validated data quality** (`scripts/validate_oi_data.py`)
+   - All 4 checks passed: coverage 100%, gaps 97% ok, signal quality (FTX 5/5), sanity
+   - Key finding: strong OI leading signal before FTX collapse (z=3.4–3.9)
+
+4. **Implemented Phase 2** (Steps 2, 3, 4)
+   - `get_open_interest()` and `get_oi_volume_ratio()` added to sim data class
+   - `get_oi_regime_multiplier()` extended with `mode='funding'|'oi_volume'`
+   - Auto-discovery of `binance_oi_processed.parquet` in backtest runner
+   - Test configs: `phase2_test_funding.yaml`, `phase2_test_oi_volume.yaml`
+
+5. **Ran 3-way comparison backtest**
+   - Baseline / Phase 1 funding / Phase 2 OI/Volume
+   - Result: OI/Volume **neutral to worse** vs funding proxy
+
+6. **Decision: REJECT Phase 2, keep funding proxy**
+   - See `out/phase2/DECISION.md`
+
+**Phase 2 Backtest Results:**
+
+| Config | Sharpe | CAGR | Vol | MaxDD | Crisis Ret |
+|--------|--------|------|-----|-------|------------|
+| Funding proxy (Phase 1) | **0.99** | **21.3%** | **21.9%** | **-22.9%** | **53.4%** |
+| OI/Volume (Phase 2) | 0.99 | 21.5% | 22.2% | -23.6% | 50.4% |
+
+**Why Funding Wins:**
+Funding rate is the OI signal, just market-priced. It's more direct and immediate
+than raw OI/ADV ratio. OI/Volume adds noise from ADV variation and partial coverage.
+
+**Production Config (unchanged):**
+- `config/crypto_perps_full_rules.yaml` — `mode: funding` explicitly added
+- Sharpe: 0.99, CAGR: 21.3%, MaxDD: -22.9%
+
+**Key Files:**
+- `data/binance_oi_processed.parquet` — OI data (available for future research)
+- `out/phase2/DECISION.md` — Full decision rationale
+- `scripts/validate_oi_data.py` — Data quality validator (new)
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-02-21, Part 6)
 
 **Phase 2 Planning Complete** - Ready to implement true OI data overlay
 

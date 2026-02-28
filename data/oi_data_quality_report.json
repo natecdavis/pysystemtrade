@@ -1,0 +1,155 @@
+{
+  "overall_passed": true,
+  "coverage": {
+    "bt_instruments": 300,
+    "oi_instruments": 300,
+    "covered": 300,
+    "missing": [],
+    "coverage_pct": 100.0,
+    "avg_days_per_instrument": 967.1,
+    "median_days_per_instrument": 862.5,
+    "low_coverage_count": 96,
+    "passed": true
+  },
+  "gaps": {
+    "largest_gap_days": 388,
+    "avg_max_gap_days": 6.4,
+    "pct_instruments_gap_ok": 97.0,
+    "instruments_with_large_gaps": [
+      [
+        "CVCUSDT",
+        388
+      ],
+      [
+        "CVXUSDT",
+        372
+      ],
+      [
+        "CTKUSDT",
+        288
+      ],
+      [
+        "TLMUSDT",
+        254
+      ],
+      [
+        "ICPUSDT",
+        253
+      ],
+      [
+        "LITUSDT",
+        200
+      ],
+      [
+        "SLPUSDT",
+        101
+      ],
+      [
+        "AERGOUSDT",
+        19
+      ],
+      [
+        "MAVIAUSDT",
+        15
+      ]
+    ],
+    "passed": true
+  },
+  "signal_quality": {
+    "events_with_signal": 1,
+    "events": {
+      "june_2022_3ac": {
+        "label": "June 2022 (3AC/Celsius)",
+        "instruments_analyzed": 5,
+        "elevated_count": 0,
+        "per_instrument": {
+          "BTCUSDT": {
+            "pre_crash_peak_z": 0.672,
+            "pre_crash_peak_date": "2022-05-03",
+            "crash_peak_z": -1.111,
+            "elevated_before_crash": false,
+            "leads_crash": true
+          },
+          "ETHUSDT": {
+            "pre_crash_peak_z": -0.116,
+            "pre_crash_peak_date": "2022-05-04",
+            "crash_peak_z": -0.277,
+            "elevated_before_crash": false,
+            "leads_crash": false
+          },
+          "SOLUSDT": {
+            "pre_crash_peak_z": -0.64,
+            "pre_crash_peak_date": "2022-06-06",
+            "crash_peak_z": -0.327,
+            "elevated_before_crash": false,
+            "leads_crash": false
+          },
+          "BNBUSDT": {
+            "pre_crash_peak_z": 0.677,
+            "pre_crash_peak_date": "2022-05-25",
+            "crash_peak_z": -0.912,
+            "elevated_before_crash": false,
+            "leads_crash": true
+          },
+          "ADAUSDT": {
+            "pre_crash_peak_z": 0.214,
+            "pre_crash_peak_date": "2022-06-08",
+            "crash_peak_z": -0.807,
+            "elevated_before_crash": false,
+            "leads_crash": false
+          }
+        }
+      },
+      "nov_2022_ftx": {
+        "label": "Nov 2022 (FTX Collapse)",
+        "instruments_analyzed": 5,
+        "elevated_count": 5,
+        "per_instrument": {
+          "BTCUSDT": {
+            "pre_crash_peak_z": 3.679,
+            "pre_crash_peak_date": "2022-10-04",
+            "crash_peak_z": -1.393,
+            "elevated_before_crash": true,
+            "leads_crash": true
+          },
+          "ETHUSDT": {
+            "pre_crash_peak_z": 1.835,
+            "pre_crash_peak_date": "2022-10-26",
+            "crash_peak_z": -0.936,
+            "elevated_before_crash": true,
+            "leads_crash": true
+          },
+          "SOLUSDT": {
+            "pre_crash_peak_z": 3.694,
+            "pre_crash_peak_date": "2022-11-07",
+            "crash_peak_z": 2.977,
+            "elevated_before_crash": true,
+            "leads_crash": true
+          },
+          "BNBUSDT": {
+            "pre_crash_peak_z": 3.912,
+            "pre_crash_peak_date": "2022-11-04",
+            "crash_peak_z": 0.805,
+            "elevated_before_crash": true,
+            "leads_crash": true
+          },
+          "ADAUSDT": {
+            "pre_crash_peak_z": 3.342,
+            "pre_crash_peak_date": "2022-10-25",
+            "crash_peak_z": -1.999,
+            "elevated_before_crash": true,
+            "leads_crash": true
+          }
+        }
+      }
+    },
+    "passed": true
+  },
+  "sanity": {
+    "negative_oi_count": 0,
+    "zero_oi_count": 603,
+    "zero_oi_pct": 0.21,
+    "extreme_jumps": 20,
+    "passed": "True"
+  }
+}

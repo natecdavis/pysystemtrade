@@ -158,8 +158,8 @@ class OIDataConverter:
 
         logger.debug(f"{symbol}: {len(combined):,} 5-min rows from {len(zip_files)} files")
 
-        # Parse timestamp
-        combined['create_time'] = pd.to_datetime(combined['create_time'])
+        # Parse timestamp (some symbols have mixed formats, e.g. ICPUSDT, TLMUSDT)
+        combined['create_time'] = pd.to_datetime(combined['create_time'], format='mixed')
 
         # Extract date
         combined['date'] = combined['create_time'].dt.date

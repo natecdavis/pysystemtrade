@@ -634,15 +634,16 @@ carry_rule_list:
 # Analysis: out/oi_trend_aware/ACUTE_CRASH_FINDINGS.md
 # ============================================================================
 
-use_oi_overlay: true  # ENABLED: Standard overlay (ADOPTED 2026-02-21)
+use_oi_overlay: true  # Phase 2 comparison: true OI/Volume ratio overlay
 
-# OI overlay parameters (only used when use_oi_overlay: true)
+# OI overlay parameters
 oi_overlay_params:
-  mode: funding          # Phase 1 proxy retained: Phase 2 OI/Volume tested, no improvement
-  lookback: 90           # Rolling window for funding z-score (days)
-  threshold: 2.0         # Z-score threshold where scaling begins (σ units)
-  min_scale: 0.5         # Minimum position multiplier (0.5 = max 50% reduction)
-  trend_aware: false     # DISABLED: Trend-aware mode (rejected after testing)
+  mode: oi_volume        # Phase 2: true OI/Volume ratio z-score
+  lookback: 90
+  threshold: 2.0
+  min_scale: 0.5
+  trend_aware: false
+  oi_volume_window: 7    # Rolling window for ADV smoothing
 
 # ============================================================================
 # SIZING AND CONSTRAINTS

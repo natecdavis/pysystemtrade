@@ -65,6 +65,8 @@ def apply_oi_overlay(portfolio_instance, instrument_code: str, base_position: pd
             base_position=base_position if trend_aware else None,
             trend_forecast=trend_forecast if trend_aware else None,
             trend_aware=trend_aware,
+            mode=params.get('mode', 'funding'),
+            oi_volume_window=params.get('oi_volume_window', 7),
         )
 
         # Align multiplier with base position index
@@ -78,7 +80,8 @@ def apply_oi_overlay(portfolio_instance, instrument_code: str, base_position: pd
         min_multiplier = float(oi_multiplier.min())
         pct_scaled = float((oi_multiplier < 1.0).sum() / max(len(oi_multiplier), 1) * 100)
 
-        mode_str = "trend-aware" if trend_aware else "standard"
+        overlay_mode = params.get('mode', 'funding')
+        mode_str = f"{overlay_mode}+trend-aware" if trend_aware else overlay_mode
         portfolio_instance.log.debug(
             f"{instrument_code}: OI overlay ({mode_str}) applied | "
             f"avg_mult={avg_multiplier:.3f} | min_mult={min_multiplier:.3f} | "

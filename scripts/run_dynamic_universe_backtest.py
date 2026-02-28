@@ -500,6 +500,17 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     macro_kwarg = (
         macro_data_path if macro_data_path is not None else _arg_not_supplied
     )
+
+    # Auto-discover OI data if not explicitly provided
+    oi_data_path = None
+    oi_candidate = Path(data_path).parent / 'binance_oi_processed.parquet'
+    if oi_candidate.exists():
+        oi_data_path = str(oi_candidate)
+        logger.info(f"Auto-discovered OI data: {oi_data_path}")
+    else:
+        logger.info("binance_oi_processed.parquet not found — OI overlay will use funding proxy")
+    oi_kwarg = oi_data_path if oi_data_path is not None else _arg_not_supplied
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
@@ -507,6 +518,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         use_dynamic_universe=use_dynamic_universe,
         dynamic_universe_config=dynamic_universe_config,
         macro_data_path=macro_kwarg,
+        oi_data_path=oi_kwarg,
     )
 
     instruments = data.get_instrument_list()
