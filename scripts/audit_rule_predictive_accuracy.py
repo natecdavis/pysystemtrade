@@ -37,9 +37,10 @@ from systems.accounts.accounts_stage import Account
 
 logging.basicConfig(level=logging.WARNING)
 
-CONFIG_PATH  = "config/crypto_perps_full_rules.yaml"
-DATA_PATH    = "data/dataset_538registry_6yr_jagged.parquet"
-MACRO_PATH   = "data/macro_factors.parquet"
+CONFIG_PATH   = "config/crypto_perps_full_rules.yaml"
+DATA_PATH     = "data/dataset_538registry_6yr_jagged.parquet"
+MACRO_PATH    = "data/macro_factors.parquet"
+SECTOR_MAP_PATH = "data/sector_map.json"
 
 # Larger sample for statistical power; mix of large/mid/small cap, different histories
 SAMPLE_INSTS = [
@@ -77,6 +78,12 @@ RULE_FAMILY = {
     "residual_momentum_16": "resmom",
     "residual_momentum_32": "resmom",
     "residual_momentum_64": "resmom",
+    "sector_momentum_10": "sector",
+    "sector_momentum_20": "sector",
+    "sector_momentum_40": "sector",
+    "vol_norm_carry_10": "carry",
+    "vol_norm_carry_30": "carry",
+    "vol_norm_carry_60": "carry",
 }
 
 
@@ -87,7 +94,8 @@ def build_system():
         cfg_dict = yaml.safe_load(f)
     config = Config(cfg_dict)
     macro_kwarg = MACRO_PATH if _Path(MACRO_PATH).exists() else _ans
-    data = parquetCryptoPerpsSimData(DATA_PATH, macro_data_path=macro_kwarg)
+    sector_kwarg = SECTOR_MAP_PATH if _Path(SECTOR_MAP_PATH).exists() else _ans
+    data = parquetCryptoPerpsSimData(DATA_PATH, macro_data_path=macro_kwarg, sector_map_path=sector_kwarg)
     return System(
         [RawData(), Rules(), ForecastScaleCap(), ForecastCombine(),
          PositionSizing(), CryptoDynamicPortfolio(), Account()],
@@ -197,7 +205,7 @@ def main():
     print(sep)
 
     for rank, row in df.iterrows():
-        fam_icon = {"trend": "↗", "carry": "⟺", "reversion": "↩"}.get(row["family"], "?")
+        fam_icon = {"trend": "↗", "carry": "⟺", "reversion": "↩", "resmom": "∿", "sector": "⊕"}.get(row["family"], "?")
         def fmt(v, decimals=4):
             return f"{v:.{decimals}f}" if not np.isnan(v) else "   NaN"
         print(
@@ -215,7 +223,7 @@ def main():
     fam_summary = df.groupby("family")[["ic_1d","ic_5d","ic_21d","tstat_5d"]].mean()
     fam_summary = fam_summary.sort_values("ic_5d", ascending=False)
     for fam, row in fam_summary.iterrows():
-        icon = {"trend": "↗", "carry": "⟺", "reversion": "↩"}.get(fam, "?")
+        icon = {"trend": "↗", "carry": "⟺", "reversion": "↩", "resmom": "∿", "sector": "⊕"}.get(fam, "?")
         n_rules = (df["family"] == fam).sum()
         print(f"  {icon} {fam:<12}  IC@1d={row['ic_1d']:.4f}  IC@5d={row['ic_5d']:.4f}  IC@21d={row['ic_21d']:.4f}  t@5d={row['tstat_5d']:.1f}  (n={n_rules})")
 

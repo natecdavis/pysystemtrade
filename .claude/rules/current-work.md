@@ -1,6 +1,49 @@
 # Current Work Context
 
-## Current Session Summary (2026-02-27)
+## Current Session Summary (2026-02-28)
+
+**Sector Momentum Additive Sleeve — Adopted**
+
+**Status:** ✅ Adopted. New production Sharpe: 1.006.
+
+**What Was Accomplished:**
+
+1. **Re-classified sector map** (`data/sector_map.json`)
+   - Fixed CATEGORY_MAP priority bug: L1 before DeFi (BTC/ETH/SOL were wrongly in DeFi)
+   - Used log data from prior CoinGecko scrape (no API re-fetch needed)
+   - 78 tickers reclassified; BTC/ETH/SOL/ADA/APT/AVAX/BNB/DOT all → L1
+   - Fixed NaN crash: `get_sector_index_price()` now returns `pd.Series(np.nan, index=prices.index)` not empty series
+
+2. **Tested budget-cutting approach** (10% from trend → sector)
+   - Result: Sharpe 0.96 vs baseline 0.99 (-3.0%) — REJECTED
+   - Root cause: sector correlated with assettrend; taking from trend dilutes more than sector adds
+
+3. **IC audit** (`scripts/audit_rule_predictive_accuracy.py`)
+   - Sector family IC@5d=0.087 (best family, beats trend 0.055)
+   - sector_momentum_20 ranks #4/54 rules
+
+4. **Tested additive approach** (sector as sleeve on top, `sector_weight=0.10`)
+   - `ForecastCombineGated`: `final = trend + carry_weight×carry + sector_weight×mean(sector_forecasts)`
+   - Sector forecasts pulled directly from ForecastScaleCap (bypasses normalization)
+   - Result: Sharpe 1.006 vs baseline 0.992 (+1.5%) — ADOPTED
+
+**Backtest Results:**
+
+| Config | Sharpe | CAGR | Vol | MaxDD | Crisis Ret |
+|--------|--------|------|-----|-------|------------|
+| Baseline (22 rules) | 0.992 | 21.3% | 21.9% | -22.9% | 53.4% |
+| **+Sector sleeve (additive)** | **1.006** | **22.4%** | **22.6%** | **-24.5%** | **55.4%** |
+
+**Production Config:**
+- `config/crypto_perps_full_rules.yaml` — `sector_weight: 0.10`, `sector_rule_list: [10/20/40]`
+- `systems/crypto_perps/forecast_combine_gated.py` — sector sleeve in `get_combined_forecast()`
+- `data/sector_map.json` — committed, 300 instruments classified
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-02-27)
 
 **Phase 2 OI Data — Complete & Rejected**
 

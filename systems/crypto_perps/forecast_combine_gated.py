@@ -111,6 +111,28 @@ class ForecastCombineGated(ForecastCombine):
         trend_forecast = trend_strength
         final_forecast_raw = trend_forecast + (carry_weight * carry_gated)
 
+        # Additive sector sleeve: final += sector_weight × mean(sector_forecasts)
+        # Sector forecasts come directly from ForecastScaleCap (already scaled+capped, ±20).
+        # They bypass forecast_weights normalisation entirely so trend budget is untouched.
+        sector_rules = config.get_element_or_default('sector_rule_list', [])
+        sector_weight = config.get_element_or_default('sector_weight', 0.0)
+        if sector_rules and sector_weight > 0:
+            sector_series = []
+            for rule in sector_rules:
+                try:
+                    fc = self.parent.forecastScaleCap.get_capped_forecast(
+                        instrument_code, rule
+                    )
+                    if fc is not None and not fc.dropna().empty:
+                        sector_series.append(fc.reindex(final_forecast_raw.index))
+                except Exception:
+                    pass
+            if sector_series:
+                sector_avg = pd.concat(sector_series, axis=1).mean(axis=1)
+                # NaN where all sector forecasts are NaN (Other sector or <3 peers)
+                sector_avg = sector_avg.fillna(0.0)
+                final_forecast_raw = final_forecast_raw + sector_weight * sector_avg
+
         # Apply FDM and capping (existing logic)
         fdm = self.get_forecast_diversification_multiplier(instrument_code).reindex(
             final_forecast_raw.index

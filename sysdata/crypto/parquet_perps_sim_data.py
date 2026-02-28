@@ -19,7 +19,8 @@ Key design principles:
 """
 
 import datetime
-from typing import List, Optional, Dict
+import json
+from typing import List, Optional, Dict, Tuple
 from pathlib import Path
 
 import pandas as pd
@@ -83,6 +84,7 @@ class parquetCryptoPerpsSimData(simData):
         dynamic_universe_config: dict = arg_not_supplied,
         macro_data_path: str = arg_not_supplied,
         oi_data_path: str = arg_not_supplied,
+        sector_map_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -129,6 +131,17 @@ class parquetCryptoPerpsSimData(simData):
                 f"Loaded OI data from {oi_data_path}: "
                 f"{self._oi_df.shape[1]} instruments, "
                 f"{self._oi_df.index.min().date()} to {self._oi_df.index.max().date()}"
+            )
+
+        # Load sector map if path provided (used by sector_momentum rule family)
+        # Format: {"BTCUSDT_PERP": "L1", "ETHUSDT_PERP": "L1", ...}
+        self._sector_map: Optional[Dict[str, str]] = None
+        if sector_map_path is not arg_not_supplied:
+            with open(sector_map_path) as f:
+                self._sector_map = json.load(f)
+            self.log.info(
+                f"Loaded sector map from {sector_map_path}: "
+                f"{len(self._sector_map)} instruments"
             )
 
         self.log.info(
@@ -597,6 +610,46 @@ class parquetCryptoPerpsSimData(simData):
     # Referenced in trading rule YAML via ``data.method_name``
     # =========================================================================
 
+    def _compute_adv_weighted_index(
+        self,
+        prices: pd.DataFrame,
+        adv: pd.DataFrame,
+    ) -> pd.Series:
+        """
+        Shared helper: build ADV-weighted price index rebased to 100 at first valid date.
+
+        Used by both ``get_asset_class_index_price`` (whole-market index) and
+        ``get_sector_index_price`` (sector-specific ex-self index).
+
+        Args:
+            prices: dates × instruments close prices (NaN where not yet listed).
+            adv: dates × instruments ADV notional (aligned to same index as prices).
+
+        Returns:
+            pd.Series with the same DatetimeIndex as prices, rebased to 100 at first valid.
+        """
+        adv_aligned = adv.reindex(prices.index, method="ffill")
+        adv_smooth = adv_aligned.rolling(30, min_periods=5).mean()
+
+        # Zero-out ADV where price is missing so those instruments don't contribute
+        adv_smooth = adv_smooth.where(prices.notna(), other=0.0)
+        adv_smooth = adv_smooth.clip(lower=0.0)
+
+        # Normalise weights row-wise
+        row_sums = adv_smooth.sum(axis=1).replace(0.0, np.nan)
+        weights = adv_smooth.div(row_sums, axis=0)
+
+        # Weighted average price
+        index_price = (prices * weights).sum(axis=1)
+        index_price = index_price.replace(0.0, np.nan).dropna()
+
+        # Rebase to 100 at first valid date
+        first_valid = index_price.first_valid_index()
+        if first_valid is not None:
+            index_price = index_price / index_price[first_valid] * 100.0
+
+        return index_price
+
     def get_asset_class_index_price(self, instrument_code: str) -> pd.Series:
         """
         ADV-weighted crypto asset-class price index, rebased to 100 at first date.
@@ -626,28 +679,98 @@ class parquetCryptoPerpsSimData(simData):
             )
             adv_wide = pd.DataFrame(1.0, index=prices.index, columns=prices.columns)
 
-        adv_wide = adv_wide.reindex(prices.index, method="ffill")
-        adv_smooth = adv_wide.rolling(30, min_periods=5).mean()
-
-        # Zero-out ADV where price is missing so those instruments don't contribute
-        adv_smooth = adv_smooth.where(prices.notna(), other=0.0)
-        adv_smooth = adv_smooth.clip(lower=0.0)
-
-        # Normalise weights row-wise
-        row_sums = adv_smooth.sum(axis=1).replace(0.0, np.nan)
-        weights = adv_smooth.div(row_sums, axis=0)
-
-        # Weighted average price
-        index_price = (prices * weights).sum(axis=1)
-        index_price = index_price.replace(0.0, np.nan).dropna()
-
-        # Rebase to 100 at first valid date
-        first_valid = index_price.first_valid_index()
-        if first_valid is not None:
-            index_price = index_price / index_price[first_valid] * 100.0
-
-        self._asset_index_cache = index_price
+        self._asset_index_cache = self._compute_adv_weighted_index(prices, adv_wide)
         return self._asset_index_cache
+
+    def _build_sector_components(self) -> Dict[str, Dict[str, Tuple[pd.Series, pd.Series]]]:
+        """
+        Pre-build price and ADV series per sector for efficient ex-self lookup.
+
+        Called once on first ``get_sector_index_price`` invocation and cached.
+
+        Returns:
+            {sector: {instrument_code: (price_series, adv_series)}}
+        """
+        components: Dict[str, Dict[str, Tuple[pd.Series, pd.Series]]] = {}
+
+        if self._sector_map is None:
+            return components
+
+        # Build ADV panel once
+        try:
+            adv_wide = self._meta_df["adv_notional"].unstack("instrument")
+        except KeyError:
+            # Fall back to equal-weight (all ADV = 1.0)
+            adv_wide = pd.DataFrame(1.0, index=self._prices_df.index, columns=self._prices_df.columns)
+
+        for instrument_code, sector in self._sector_map.items():
+            if sector == "Other":
+                continue
+            if instrument_code not in self._prices_df.columns:
+                continue
+
+            price_series = self._prices_df[instrument_code]
+            adv_series = adv_wide.get(instrument_code, pd.Series(1.0, index=self._prices_df.index))
+
+            if sector not in components:
+                components[sector] = {}
+            components[sector][instrument_code] = (price_series, adv_series)
+
+        return components
+
+    def get_sector_index_price(self, instrument_code: str) -> pd.Series:
+        """
+        ADV-weighted sector price index for instrument_code's sector, EXCLUDING
+        the queried instrument itself (ex-self computation prevents self-reference).
+
+        Returns empty pd.Series if:
+        - Sector map not loaded (sector_map_path not provided at construction)
+        - Instrument classified as 'Other'
+        - Sector has fewer than 3 members after excluding self
+
+        Caches pre-built sector component data on first call.
+
+        Args:
+            instrument_code: Instrument code (e.g. 'UNIUSDT_PERP')
+
+        Returns:
+            pd.Series rebased to 100 at first valid date, same DatetimeIndex
+            as the price panel. Empty Series if sector data unavailable.
+        """
+        # NaN-filled series with the price panel's DatetimeIndex.
+        # Must use the price panel's index, NOT an empty series, because
+        # pysystemtrade's robust_vol_calc does `vol_min.iloc[0] = 0.0` which
+        # crashes on a zero-length series.
+        _nan_series = pd.Series(np.nan, index=self._prices_df.index)
+
+        if self._sector_map is None:
+            return _nan_series
+
+        sector = self._sector_map.get(instrument_code, "Other")
+        if sector == "Other":
+            return _nan_series
+
+        # Build cache on first call
+        if not hasattr(self, "_sector_components_cache"):
+            self._sector_components_cache = self._build_sector_components()
+
+        components = self._sector_components_cache.get(sector, {})
+        # Ex-self: exclude the queried instrument from its own sector index
+        peers = {k: v for k, v in components.items() if k != instrument_code}
+
+        if len(peers) < 3:
+            # Fewer than 3 peers → NaN forecast → rule contributes nothing
+            return _nan_series
+
+        # Build DataFrames for the shared helper
+        prices_df = pd.DataFrame(
+            {code: series[0] for code, series in peers.items()}
+        )
+        adv_df = pd.DataFrame(
+            {code: series[1] for code, series in peers.items()}
+        )
+
+        return self._compute_adv_weighted_index(prices_df, adv_df)
 
     def get_cross_sectional_median_funding(self, instrument_code: str) -> pd.Series:
         """

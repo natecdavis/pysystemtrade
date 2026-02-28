@@ -511,6 +511,16 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         logger.info("binance_oi_processed.parquet not found — OI overlay will use funding proxy")
     oi_kwarg = oi_data_path if oi_data_path is not None else _arg_not_supplied
 
+    # Auto-discover sector map if not explicitly provided
+    sector_map_path = None
+    sector_candidate = Path(data_path).parent / 'sector_map.json'
+    if sector_candidate.exists():
+        sector_map_path = str(sector_candidate)
+        logger.info(f"Auto-discovered sector map: {sector_candidate}")
+    else:
+        logger.info("sector_map.json not found — sector_momentum rules will produce NaN forecasts")
+    sector_kwarg = sector_map_path if sector_map_path is not None else _arg_not_supplied
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
@@ -519,6 +529,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         dynamic_universe_config=dynamic_universe_config,
         macro_data_path=macro_kwarg,
         oi_data_path=oi_kwarg,
+        sector_map_path=sector_kwarg,
     )
 
     instruments = data.get_instrument_list()

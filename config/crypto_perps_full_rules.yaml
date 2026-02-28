@@ -1,9 +1,12 @@
 # ============================================================================
-# CRYPTO PERPS — COST-FILTERED 22-RULE CONFIG (WITH OI OVERLAY)
+# CRYPTO PERPS — COST-FILTERED 22-RULE CONFIG (WITH OI OVERLAY + SECTOR SLEEVE)
 # ============================================================================
 # Created: 2026-02-17  |  Revised: 2026-02-21 (OI overlay adopted)
+#                        Revised: 2026-02-28 (sector momentum additive sleeve ADOPTED)
 # Purpose: Evidence-based rule trimming + trend-gated carry + OI regime overlay
+#          + sector momentum additive sleeve
 # Optimized: carry_weight=1.0, threshold=0.5, min_history=15d, OI overlay enabled
+#            sector_weight=0.10 (additive, no budget taken from trend rules)
 #
 # Pass 1 (predictive accuracy audit): 45 → 26 rules
 #   REMOVED — Carry family (negative IC when untreated)
@@ -22,22 +25,35 @@
 #   REMOVED — ewmac_4:            77 rt/yr, 62% of instruments fail annual test
 #   REMOVED — normmom_4:          68 rt/yr, 37% fail — removed to be conservative
 #
-# Pass 3 (gated carry addition): 19 → 22 rules
+# Pass 3 (gated carry addition): 19 → 22 rules (ADOPTED)
 #   ADDED — Vol-normalized carry (3 rules, trend-gated)
 #   Initial test: Sharpe 0.84 → 0.87 (w_c=0.2, th=1.0)
 #   Optimized: Sharpe 0.84 → 0.95 (+13.1%, w_c=1.0, th=0.5)
 #   Performance: CAGR 14.6% → 21.2% (+45.2%), Vol 18.3% → 23.0% (+25.7%)
 #
-# Rule Budget (22 rules, 6 trend families + 1 carry family):
-#   EWMAC ×3:        ewmac_8, ewmac_16, ewmac_32         (5.556% each)
-#   Breakout ×4:     breakout_20/40/80/160                (4.167% each)
-#   Normmom ×3:      normmom_8, normmom_16, normmom_32   (5.556% each)
-#   Accel ×3:        accel_16, accel_32, accel_64         (5.556% each)
-#   Assettrend ×4:   assettrend_8/16/32/64               (4.167% each)
-#   Relmomentum ×2:  relmomentum_20, relmomentum_40       (8.333% each)
-#   Carry ×3:        vol_norm_carry_10/30/60             (1.000% each)
+# Pass 4 (sector momentum additive sleeve): ADOPTED (2026-02-28)
+#   ADDED — Sector momentum (3 rules) as additive sleeve on top of trend+carry.
+#   Budget-cutting approach (10% from trend) tested first → Sharpe -3.0% REJECTED.
+#   IC audit: sector family IC@5d=0.087 (best family), sector_momentum_20 ranks #4/54.
+#   Additive approach (sector_weight=0.10, no trend budget cut) → Sharpe +1.5% ADOPTED.
+#   Implementation: ForecastCombineGated pulls sector forecasts directly from
+#   ForecastScaleCap (±20 scale), averages 3 rules, adds sector_weight × avg.
+#   Trend/carry weights completely untouched. Sector map: data/sector_map.json.
+#   Result: Sharpe 0.99 → 1.006, CAGR 21.3% → 22.4%, Crisis 53.4% → 55.4%
 #
-# Sum = (19 trend rules) + (3 carry rules @ 1% each) = 97% + 3% = 1.000
+# Rule Budget (22 rules, 7 families):
+#   EWMAC ×3:           ewmac_8, ewmac_16, ewmac_32          (4.762% each)
+#   Breakout ×4:        breakout_20/40/80/160                 (3.571% each)
+#   Normmom ×3:         normmom_8, normmom_16, normmom_32    (4.762% each)
+#   Accel ×3:           accel_16, accel_32, accel_64          (4.762% each)
+#   Assettrend ×4:      assettrend_8/16/32/64                (3.571% each)
+#   Relmomentum ×2:     relmomentum_20, relmomentum_40        (7.143% each)
+#   ResidualMomentum ×3:resmom_16/32/64                      (4.762% each)
+#   Carry ×3:           vol_norm_carry_10/30/60              (1.000% each, additive)
+#   Sector ×3:          sector_momentum_10/20/40             (additive, w=0.10)
+#
+# Weight budget: 22 trend rules = 100% (sum=1.0) + carry = 3% additive + sector = 10% additive
+# (ForecastCombine normalises trend; carry_weight and sector_weight control additive sleeves)
 # ============================================================================
 
 system:
@@ -430,6 +446,31 @@ trading_rules:
     other_args: {Lfast: 64, reg_window: 60}
 
   # --------------------------------------------------------------------------
+  # DIVERGENT — SectorMomentum (3 variations)
+  # Within-sector relative momentum using sector-specific ADV-weighted index.
+  # Reuses the assettrend function — sector-specific index injected via data method.
+  # Ex-self computation: each instrument's index excludes itself.
+  # Requires data/sector_map.json (run scripts/build_sector_map.py once).
+  # Returns NaN forecast for 'Other' instruments or if sector_map not loaded.
+  # Sectors: L1, L2, DeFi, Meme, AI, Gaming, Infra, Exchange (≥3 members required)
+  # --------------------------------------------------------------------------
+  sector_momentum_10:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+      - "data.get_sector_index_price"
+    other_args: {Lfast: 10}
+  sector_momentum_20:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+      - "data.get_sector_index_price"
+    other_args: {Lfast: 20}
+  sector_momentum_40:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+      - "data.get_sector_index_price"
+    other_args: {Lfast: 40}
+
+  # --------------------------------------------------------------------------
   # CARRY — Vol-Normalized (3 variations, EXPERIMENTAL)
   # Vol-normalized funding carry with trend-gating (disabled by default)
   # Previous carry rules had negative IC (IC@5d = -0.009) and were excluded.
@@ -458,9 +499,10 @@ trading_rules:
     other_args: {smooth_days: 60, vol_floor: 0.01}
 
 # ============================================================================
-# FORECAST WEIGHTS — DEFAULT PROFILE  (revised 2026-02-18 after IC audit)
+# FORECAST WEIGHTS — DEFAULT PROFILE  (22 trend rules, 7 families)
 # ============================================================================
-# 7 equal families × 1/7 each (~14.286% per family)
+# 7 families, equal family budget (1/7 each), equal weight within family.
+# Carry stays fixed at 1% each (3% total, additive via ForecastCombineGated).
 #
 # IC audit results (15 sample instruments, dataset_538registry_6yr_jagged):
 #   resmom    IC@5d=0.0767  t=2.8  ← #1 family (beats all trend families)
@@ -468,16 +510,13 @@ trading_rules:
 #   carry     IC@5d=-0.009         ← excluded (negative IC, per previous audit)
 #   reversion IC@5d=-0.018         ← excluded (negative IC, per previous audit)
 #
-# Per-family budget allocation:
-#   ewmac         1/7 ÷ 3 rules = 1/21  ≈ 4.762% each
-#   breakout      1/7 ÷ 4 rules = 1/28  ≈ 3.571% each
-#   normmom       1/7 ÷ 3 rules = 1/21  ≈ 4.762% each
-#   accel         1/7 ÷ 3 rules = 1/21  ≈ 4.762% each
-#   assettrend    1/7 ÷ 4 rules = 1/28  ≈ 3.571% each
-#   relmomentum   1/7 ÷ 2 rules = 1/14  ≈ 7.143% each
-#   resmom        1/7 ÷ 3 rules = 1/21  ≈ 4.762% each
+# Sector momentum (tested 2026-02-28): Sharpe 0.96 vs 0.99 baseline (-3.0%) → REJECTED
+# Root cause: top-K dynamic portfolio (~30 instruments) has 0-5 members per sector;
+# most sector indices return NaN, wasting the budget taken from trend rules.
 #
-# Sum = 12×(1/21) + 8×(1/28) + 2×(1/14) = 4/7 + 2/7 + 1/7 = 1.000 ✓
+# Budget allocation:
+#   22 trend rules = 1/7 per family = 100% total
+#   vol_norm_carry_10/30/60: 1.000% each (additive, gated by carry_weight param)
 # ============================================================================
 
 forecast_weights:
@@ -487,7 +526,7 @@ forecast_weights:
   ewmac_16:  0.047619
   ewmac_32:  0.047619
 
-  # Breakout: 4 rules × 3.571% = 14.286%
+  # Breakout: 4 rules × 3.571% = 14.284%
   # (breakout_10 removed: 132 rt/yr, 100% fail)
   breakout_20:  0.035714
   breakout_40:  0.035714
@@ -505,7 +544,7 @@ forecast_weights:
   accel_32:  0.047619
   accel_64:  0.047619
 
-  # Assettrend: 4 rules × 3.571% = 14.286%
+  # Assettrend: 4 rules × 3.571% = 14.284%
   assettrend_8:  0.035714
   assettrend_16: 0.035714
   assettrend_32: 0.035714
@@ -519,10 +558,15 @@ forecast_weights:
   # ResidualMomentum: 3 rules × 4.762% = 14.286%
   # IC audit 2026-02-18: resmom is #1 family (IC@5d=0.077, t=2.8, IC@21d=0.112)
   # Ranks: resmom_16=#7, resmom_32=#13, resmom_64=#14 out of 48 rules
-  # Turnover expected to be ≤ comparable EWMAC (residuals are smoother series)
   residual_momentum_16: 0.047619
   residual_momentum_32: 0.047619
   residual_momentum_64: 0.047619
+
+  # SectorMomentum — TESTED & REJECTED (2026-02-28): Sharpe 0.96 vs 0.99 baseline (-3.0%)
+  # Rules removed from weights. Code and data/sector_map.json preserved for future research.
+  # sector_momentum_10: 0.0
+  # sector_momentum_20: 0.0
+  # sector_momentum_40: 0.0
 
   # Vol-Normalized Carry: 3 rules × 1.0% = 3.0% (ENABLED with trend-gating)
   # Traditional carry had negative IC (IC@5d = -0.009) due to fighting momentum
@@ -600,6 +644,19 @@ carry_rule_list:
   - vol_norm_carry_10
   - vol_norm_carry_30
   - vol_norm_carry_60
+
+# Additive sector momentum sleeve (no budget taken from trend rules)
+# Added AFTER trend+carry combination: final += sector_weight × mean(sector_forecasts)
+# sector_forecasts are pulled directly from ForecastScaleCap (±20 scale, already capped)
+# IC audit (2026-02-28): sector family IC@5d=0.087, IC@21d=0.155 — ranks #1 family
+# sector_weight: effective fractional contribution relative to avg trend forecast (~5 units)
+#   0.05 → ~5% additive  |  0.10 → ~10% additive  |  0.20 → ~20% additive
+sector_rule_list:
+  - sector_momentum_10
+  - sector_momentum_20
+  - sector_momentum_40
+
+sector_weight: 0.10  # ADOPTED: Sharpe 0.99→1.006 (+1.5%), IC@5d=0.087 (best family)
 
 # ============================================================================
 # OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
