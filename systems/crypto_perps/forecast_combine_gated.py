@@ -143,6 +143,16 @@ class ForecastCombineGated(ForecastCombine):
                 sector_avg = sector_avg.fillna(0.0)
                 final_forecast_raw = final_forecast_raw + sector_weight * sector_avg
 
+        # XS Carry sleeve: cross-sectional funding rank, ungated
+        # Long low-funding (cheap/negative carry), short high-funding (crowded longs)
+        # Independent of trend direction — crowdedness signal, not momentum confirmation
+        xscarry_weight = config.get_element_or_default('xscarry_weight', 0.0)
+        if xscarry_weight != 0.0:
+            xscarry_lookback = config.get_element_or_default('xscarry_lookback', 30)
+            xscarry_fc = self._get_xscarry_forecast(instrument_code, lookback=xscarry_lookback)
+            xscarry_fc = xscarry_fc.reindex(final_forecast_raw.index).fillna(0.0)
+            final_forecast_raw = final_forecast_raw + xscarry_weight * xscarry_fc
+
         # Forecast tilt: constant offset to bias toward more predictive direction
         # Positive offset → long bias; negative → short bias
         # Applied after all sleeves, before FDM and ±20 cap
@@ -161,6 +171,53 @@ class ForecastCombineGated(ForecastCombine):
         final_forecast = mapping_func(final_multiplied, **kwargs)
 
         return final_forecast
+
+    def _get_xscarry_panel(self, lookback: int = 30) -> pd.DataFrame:
+        """
+        Build cross-sectional funding carry forecast panel (cached).
+
+        Loads smoothed funding rates for all instruments, ranks cross-sectionally,
+        maps percentile → ±20 forecast. Cached per lookback value.
+
+        Sign convention:
+          - Highest funding (pct≈1.0) → forecast = -20  → SHORT (over-owned)
+          - Lowest funding  (pct≈0.0) → forecast = +20  → LONG  (cheap/under-owned)
+          - Median          (pct=0.5) → forecast = 0    → neutral
+        """
+        cache_key = f'_xscarry_panel_{lookback}'
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+
+        instrument_list = self.parent.data.get_instrument_list()
+        funding_dict = {}
+        for instr in instrument_list:
+            try:
+                fr = self.parent.data.get_funding_rate(instr)
+                if fr is None or len(fr.dropna()) < 10:
+                    continue
+                fr_ann = fr * 3 * 365          # annualise 8-hourly funding to annual rate
+                fr_smooth = fr_ann.ewm(span=lookback, min_periods=1).mean()
+                funding_dict[instr] = fr_smooth
+            except Exception:
+                continue
+
+        if not funding_dict:
+            setattr(self, cache_key, pd.DataFrame())
+            return pd.DataFrame()
+
+        funding_df = pd.DataFrame(funding_dict)
+        pct_rank = funding_df.rank(axis=1, pct=True)       # vectorised cross-sectional rank
+        forecast_panel = -40.0 * (pct_rank - 0.5)          # map [0,1] → [+20,−20]
+
+        setattr(self, cache_key, forecast_panel)
+        return forecast_panel
+
+    def _get_xscarry_forecast(self, instrument_code: str, lookback: int = 30) -> pd.Series:
+        """Return cross-sectional funding carry forecast for one instrument (±20 scale)."""
+        panel = self._get_xscarry_panel(lookback)
+        if panel.empty or instrument_code not in panel.columns:
+            return pd.Series(dtype=float)
+        return panel[instrument_code]
 
     def _apply_percentile_ranking_to_carry(
         self, carry_raw: pd.Series, instrument_code: str
