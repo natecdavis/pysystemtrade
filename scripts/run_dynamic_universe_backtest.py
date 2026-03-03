@@ -521,6 +521,16 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         logger.info("sector_map.json not found — sector_momentum rules will produce NaN forecasts")
     sector_kwarg = sector_map_path if sector_map_path is not None else _arg_not_supplied
 
+    # Auto-discover Fear & Greed index if not explicitly provided
+    fg_data_path = None
+    fg_candidate = Path(data_path).parent / 'fg_index.parquet'
+    if fg_candidate.exists():
+        fg_data_path = str(fg_candidate)
+        logger.info(f"Auto-discovered F&G index: {fg_candidate}")
+    else:
+        logger.info("fg_index.parquet not found — F&G overlay disabled (run scripts/download_fg_index.py)")
+    fg_kwarg = fg_data_path if fg_data_path is not None else _arg_not_supplied
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
@@ -530,6 +540,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         macro_data_path=macro_kwarg,
         oi_data_path=oi_kwarg,
         sector_map_path=sector_kwarg,
+        fg_data_path=fg_kwarg,
     )
 
     instruments = data.get_instrument_list()
@@ -539,18 +550,28 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     # Create system with dynamic portfolio
     logger.info("Creating system...")
     use_oi_overlay = config.get_element_or_default('use_oi_overlay', False)
+    use_fg_overlay = config.get_element_or_default('use_fg_overlay', False)
+    use_any_overlay = use_oi_overlay or use_fg_overlay
 
     if use_dynamic_universe:
-        if use_oi_overlay:
+        if use_any_overlay:
             portfolio_stage = CryptoDynamicPortfolioWithOIOverlay()
-            logger.info("  Using dynamic portfolio with OI regime overlay")
+            overlay_desc = " + ".join(filter(None, [
+                "OI" if use_oi_overlay else "",
+                "F&G" if use_fg_overlay else "",
+            ]))
+            logger.info(f"  Using dynamic portfolio with overlay(s): {overlay_desc}")
         else:
             portfolio_stage = CryptoDynamicPortfolio()
             logger.info("  Using dynamic portfolio")
     else:
-        if use_oi_overlay:
+        if use_any_overlay:
             portfolio_stage = CryptoPortfolioWithOIOverlay()
-            logger.info("  Using static portfolio with OI regime overlay")
+            overlay_desc = " + ".join(filter(None, [
+                "OI" if use_oi_overlay else "",
+                "F&G" if use_fg_overlay else "",
+            ]))
+            logger.info(f"  Using static portfolio with overlay(s): {overlay_desc}")
         else:
             portfolio_stage = CryptoPortfolios()
             logger.info("  Using static portfolio")

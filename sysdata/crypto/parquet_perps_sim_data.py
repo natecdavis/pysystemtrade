@@ -85,6 +85,7 @@ class parquetCryptoPerpsSimData(simData):
         macro_data_path: str = arg_not_supplied,
         oi_data_path: str = arg_not_supplied,
         sector_map_path: str = arg_not_supplied,
+        fg_data_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -142,6 +143,18 @@ class parquetCryptoPerpsSimData(simData):
             self.log.info(
                 f"Loaded sector map from {sector_map_path}: "
                 f"{len(self._sector_map)} instruments"
+            )
+
+        # Load Fear & Greed index if path provided (used by F&G regime overlay)
+        # Parquet columns: fg_value (int 0-100), classification (str); index: date
+        self._fg_df: Optional[pd.DataFrame] = None
+        if fg_data_path is not arg_not_supplied and Path(fg_data_path).exists():
+            self._fg_df = pd.read_parquet(fg_data_path)
+            self._fg_df.index = pd.DatetimeIndex(self._fg_df.index).normalize()
+            self.log.info(
+                f"Loaded F&G index from {fg_data_path}: "
+                f"{len(self._fg_df)} days, "
+                f"{self._fg_df.index.min().date()} to {self._fg_df.index.max().date()}"
             )
 
         self.log.info(
@@ -1031,6 +1044,66 @@ class parquetCryptoPerpsSimData(simData):
         else:
             # Standard (bidirectional) mode - scale on any extreme funding
             return base_multiplier
+
+    def get_fg_index(self) -> pd.Series:
+        """
+        Return the Fear & Greed Index as a daily pd.Series (values 0–100).
+
+        Returns an empty Series if no F&G data was loaded.
+
+        Returns:
+            pd.Series with DatetimeIndex and float values in [0, 100].
+        """
+        if self._fg_df is None:
+            return pd.Series(dtype=float)
+        return self._fg_df['fg_value'].astype(float)
+
+    def get_fg_regime_multiplier(
+        self,
+        greed_threshold: int = 75,
+        fear_threshold: int = 25,
+        min_scale: float = 0.5,
+    ) -> pd.Series:
+        """
+        Position scaler based on the Fear & Greed Index.
+
+        Contrarian scaling: greed indicates crowded/bubble conditions where we
+        reduce exposure; fear indicates panic where trend signals are reliable
+        and we do NOT suppress positions.
+
+        Multiplier logic:
+            F&G > greed_threshold → linear scale-down from 1.0 → min_scale as F&G → 100
+            F&G ≤ greed_threshold → 1.0 (no scaling)
+
+        Note: fear zone (F&G < fear_threshold) currently returns 1.0 (no boost).
+        A fear boost can be added in a future iteration if greed-only filter proves effective.
+
+        Args:
+            greed_threshold: F&G level above which scaling begins (default: 75 = Greed zone)
+            fear_threshold:  F&G level below which we do nothing (default: 25, reserved)
+            min_scale:       Minimum multiplier in extreme greed (default: 0.5 = 50% of position)
+
+        Returns:
+            pd.Series with DatetimeIndex, values in [min_scale, 1.0].
+            Returns 1.0 constant if no F&G data loaded.
+        """
+        fg = self.get_fg_index()
+        if fg.empty:
+            return pd.Series(dtype=float)
+
+        multiplier = pd.Series(1.0, index=fg.index)
+
+        # Greed zone: linear scale-down from threshold to 100
+        greed_mask = fg > greed_threshold
+        if greed_mask.any():
+            scale = 1.0 - (fg - greed_threshold) / (100 - greed_threshold) * (1.0 - min_scale)
+            multiplier[greed_mask] = scale[greed_mask].clip(lower=min_scale, upper=1.0)
+
+        # Strip timezone so that reindex() works against tz-naive position indexes
+        if multiplier.index.tz is not None:
+            multiplier.index = multiplier.index.tz_localize(None)
+
+        return multiplier
 
     def get_btc_price(self, instrument_code: str) -> pd.Series:
         """

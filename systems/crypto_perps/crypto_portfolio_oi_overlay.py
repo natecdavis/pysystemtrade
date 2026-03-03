@@ -99,6 +99,67 @@ def apply_oi_overlay(portfolio_instance, instrument_code: str, base_position: pd
         return base_position
 
 
+def apply_fg_overlay(portfolio_instance, instrument_code: str, base_position: pd.Series) -> pd.Series:
+    """
+    Helper function to apply Fear & Greed regime overlay to a position series.
+
+    Contrarian scaling: reduces positions during extreme greed (crowded/bubble conditions).
+    Does not suppress positions during extreme fear (trend signals remain reliable).
+
+    Separated as a function so it can be reused by both static and dynamic portfolio classes.
+
+    Args:
+        portfolio_instance: Instance of portfolio stage (with config, parent, log)
+        instrument_code: Instrument code (same multiplier for all — F&G is a global index)
+        base_position: Base position series (after OI overlay)
+
+    Returns:
+        pd.Series of positions scaled by F&G regime multiplier
+    """
+    if not portfolio_instance.config.get_element_or_default('use_fg_overlay', False):
+        return base_position
+
+    try:
+        params = portfolio_instance.config.get_element_or_default('fg_overlay_params', {})
+        fg_multiplier = portfolio_instance.parent.data.get_fg_regime_multiplier(
+            greed_threshold=params.get('greed_threshold', 75),
+            fear_threshold=params.get('fear_threshold', 25),
+            min_scale=params.get('min_scale', 0.5),
+        )
+
+        if fg_multiplier.empty:
+            portfolio_instance.log.warning(
+                f"{instrument_code}: F&G overlay enabled but no data loaded — skipping",
+                instrument_code=instrument_code,
+            )
+            return base_position
+
+        # Align multiplier with base position index (forward-fill gaps)
+        fg_multiplier = fg_multiplier.reindex(base_position.index, method='ffill').fillna(1.0)
+
+        scaled_position = base_position * fg_multiplier
+
+        # Log summary statistics (debug level to avoid noise)
+        avg_multiplier = float(fg_multiplier.mean())
+        min_multiplier = float(fg_multiplier.min())
+        pct_scaled = float((fg_multiplier < 1.0).sum() / max(len(fg_multiplier), 1) * 100)
+        portfolio_instance.log.debug(
+            f"{instrument_code}: F&G overlay applied | "
+            f"avg_mult={avg_multiplier:.3f} | min_mult={min_multiplier:.3f} | "
+            f"scaled_days={pct_scaled:.1f}%",
+            instrument_code=instrument_code,
+        )
+
+        return scaled_position
+
+    except Exception as e:
+        portfolio_instance.log.warning(
+            f"{instrument_code}: F&G overlay failed ({e}), returning unscaled position",
+            instrument_code=instrument_code,
+        )
+        return base_position
+
+
 class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
     """
     Portfolio stage with OI regime overlay for defensive position scaling.
@@ -139,8 +200,10 @@ class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
         # Get base position (with lot-size rounding + min notional filter)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply OI overlay using helper function
-        return apply_oi_overlay(self, instrument_code, base_position)
+        # Apply OI overlay, then F&G overlay in sequence
+        position = apply_oi_overlay(self, instrument_code, base_position)
+        position = apply_fg_overlay(self, instrument_code, position)
+        return position
 
 
 class CryptoDynamicPortfolioWithOIOverlay(CryptoDynamicPortfolio):
@@ -170,5 +233,7 @@ class CryptoDynamicPortfolioWithOIOverlay(CryptoDynamicPortfolio):
         # Get base position (with dynamic universe + lot-size rounding + min notional)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply OI overlay using helper function
-        return apply_oi_overlay(self, instrument_code, base_position)
+        # Apply OI overlay, then F&G overlay in sequence
+        position = apply_oi_overlay(self, instrument_code, base_position)
+        position = apply_fg_overlay(self, instrument_code, position)
+        return position

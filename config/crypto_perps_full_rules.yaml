@@ -737,6 +737,39 @@ oi_overlay_params:
   trend_aware: false     # DISABLED: Trend-aware mode (rejected after testing)
 
 # ============================================================================
+# FEAR & GREED REGIME OVERLAY CONFIGURATION
+# ============================================================================
+# Contrarian sentiment overlay: scale down positions during extreme greed.
+#
+# Source: alternative.me Fear & Greed Index (0–100, daily, available from 2018)
+#   0–24   = Extreme Fear   (panic — trend signals reliable, no suppression)
+#   25–49  = Fear
+#   50     = Neutral
+#   51–74  = Greed
+#   75–100 = Extreme Greed  (crowded/bubble — scale down positions)
+#
+# Logic:
+#   F&G ≤ greed_threshold → multiplier = 1.0 (no scaling)
+#   F&G > greed_threshold → linear scale-down from 1.0 → min_scale as F&G → 100
+#
+# Applied AFTER OI overlay:
+#   position = base × oi_multiplier × fg_multiplier
+#
+# Data download: python scripts/download_fg_index.py → data/fg_index.parquet
+# Auto-discovered from data/ directory alongside parquet dataset.
+#
+# Status: Testing pending. Set use_fg_overlay: true after sweep confirms benefit.
+# ============================================================================
+
+use_fg_overlay: false  # default off until sweep complete
+
+# F&G overlay parameters (only used when use_fg_overlay: true)
+fg_overlay_params:
+  greed_threshold: 75   # F&G > 75 → start scaling down (Greed / Extreme Greed zone)
+  fear_threshold: 25    # F&G < 25 → no action (fear = trend signals reliable)
+  min_scale: 0.5        # Maximum scale-down (0.5 = 50% of normal position at F&G=100)
+
+# ============================================================================
 # SIZING AND CONSTRAINTS
 # ============================================================================
 
