@@ -1,6 +1,108 @@
 # Current Work Context
 
-## Current Session Summary (2026-03-02)
+## Current Session Summary (2026-03-03)
+
+**Fear & Greed Overlay — Implemented & Rejected**
+
+**Status:** ✅ Complete. `use_fg_overlay: false` confirmed. Production Sharpe: 1.08 (unchanged).
+
+**What Was Accomplished:**
+
+1. **Downloaded F&G data** (`scripts/download_fg_index.py` → `data/fg_index.parquet`)
+   - 2949 daily records, 2018-02-01 to 2026-03-03, alternative.me API
+   - Classifications: Fear 842, Greed 790, Extreme Fear 644, Neutral 392, Extreme Greed 281
+
+2. **Implemented overlay infrastructure** (`use_fg_overlay: false` by default)
+   - `get_fg_index()` + `get_fg_regime_multiplier()` in `parquet_perps_sim_data.py`
+   - `apply_fg_overlay()` in `crypto_portfolio_oi_overlay.py` (after OI overlay)
+   - Auto-discover `fg_index.parquet` in backtest runner
+   - Portfolio stage activated by `use_oi_overlay OR use_fg_overlay`
+
+3. **Critical bug fixed during testing:** F&G index UTC-tz vs position tz-naive → `reindex()` all-NaN → multiplier silently 1.0. Fixed: `get_fg_regime_multiplier()` calls `.tz_localize(None)` before return.
+
+4. **Ran 2D sweep** (`scripts/sweep_fg_params.py`): thresholds [70, 75, 80] × scales [0.5, 0.7]
+
+**Sweep Results:**
+
+| Threshold | MinScale | Sharpe | Calmar | CAGR  | MaxDD   | ΔSharpe |
+|-----------|----------|--------|--------|-------|---------|---------|
+| baseline  | —        | 1.0816 | 1.1354 | 21.5% | -18.93% | — |
+| 70        | 0.50     | 1.0809 | 1.1162 | 20.6% | -18.48% | -0.07% |
+| 70        | 0.70     | 1.0731 | 1.1036 | 20.8% | -18.81% | -0.85% |
+| 75        | 0.50     | 1.0772 | 1.1162 | 20.9% | -18.73% | -0.40% |
+| **75**    | **0.70** | **1.0847** | **1.1377** | **21.2%** | **-18.67%** | **+0.29%** |
+| 80        | 0.50     | 1.0834 | 1.1253 | 21.3% | -18.92% | +0.16% |
+| 80        | 0.70     | 1.0849 | 1.1329 | 21.4% | -18.91% | +0.30% |
+
+**Decision:** ❌ **REJECT** — best ΔSharpe = +0.30% (far below ≥+1% threshold).
+
+**Why it fails:**
+- F&G > 75 fires only 9.5% of days (281/2949) — too infrequent to matter
+- Lot-size discretization absorbs small multipliers: -0.003×0.74=-0.00222 rounds toward -0.002 or -0.003
+- Tight thresholds (70) cut CAGR by 0.86% — suppresses good greed-zone trades
+- Calmar non-monotone → genuine signal exists, but effect size is below adoption threshold
+
+**Production Config (unchanged):**
+- `use_fg_overlay: false` in `config/crypto_perps_full_rules.yaml`
+- Sharpe: **1.08**, CAGR: 21.5%, MaxDD: **-18.93%**, Calmar: **1.14**
+
+**Commit:** `3a6117a0` — pushed to `origin/develop`
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-03-02)
+
+**XSCarry — Cross-Sectional Funding Carry Sleeve — Adopted**
+
+**Status:** ✅ Complete. `xscarry_weight: 1.0`. New production Sharpe: 1.08.
+
+**What Was Accomplished:**
+
+1. **Implemented XSCarry sleeve** (`systems/crypto_perps/forecast_combine_gated.py`)
+   - `_get_xscarry_panel(lookback)`: builds funding rate panel for all instruments, vectorized cross-sectional rank via `funding_df.rank(axis=1, pct=True)`, maps to ±20 forecast, cached per lookback
+   - `_get_xscarry_forecast(instrument_code, lookback)`: per-instrument lookup from cached panel
+   - Sleeve inserted after sector sleeve, before tilt: `final += xscarry_weight × xscarry_forecast`
+   - `config/crypto_perps_full_rules.yaml`: `xscarry_weight: 1.0`, `xscarry_lookback: 30`
+
+2. **Weight sweep** (`scripts/sweep_xscarry_weight.py`) — ran weights [0, 0.2, 0.5, 1.0, 2.0, 3.0]
+
+**XSCarry Weight Sweep Results:**
+
+| Weight | Sharpe | Calmar | CAGR  | Vol    | MaxDD   | Crisis Ret | ΔSharpe |
+|--------|--------|--------|-------|--------|---------|------------|---------|
+| 0.00   | 0.9916 | 0.9304 | 21.3% | 21.89% | -22.90% | 53.4%      | baseline |
+| 0.20   | 1.0023 | 1.0335 | 21.5% | 21.75% | -20.76% | 50.4%      | +1.1%   |
+| 0.50   | 1.0548 | 1.0636 | 22.2% | 21.12% | -20.87% | 44.0%      | +6.4%   |
+| **1.00** | **1.0816** | **1.1354** | **21.5%** | **19.82%** | **-18.93%** | 28.1% | **+9.1%** |
+| 2.00   | 0.9746 | 0.9280 | 16.6% | 17.29% | -17.89% | 12.1%      | -1.7%   |
+| 3.00   | 0.7970 | 0.5632 | 12.7% | 16.80% | -22.59% | 4.9%       | -19.6%  |
+
+**Decision:** ✅ **ADOPT weight=1.0** — best Sharpe, best Calmar, best MaxDD improvement.
+
+**Why weight=1.0 wins:**
+- Sharpe +9.1%, Calmar +22%, MaxDD improves from -22.9% → -18.9% (4pp better)
+- Calmar is non-monotone (peaks at 1.0, collapses at 2.0+) → genuine crowdedness signal
+- Crisis return drop (53% → 28%) reflects less 2022 bear outperformance, not increased risk — MaxDD is the correct risk metric and it improved
+- Weight=2.0 is the cliff: CAGR drops to 16.6%, signal degrades. 1.0 is a clean peak.
+
+**How XSCarry differs from existing gated carry:**
+- **Gated carry** (`vol_norm_carry_10/30/60`): vol-normalized, percentile-ranked, zeroed when sign ≠ trend
+- **XSCarry**: raw funding rate, percentile-ranked, **never zeroed** — fires regardless of trend direction
+- Both derive from funding rates but measure different things: gated carry = trend confirmation; XSCarry = crowdedness arbitrage
+
+**Production Config:**
+- `config/crypto_perps_full_rules.yaml` — `xscarry_weight: 1.0`, `xscarry_lookback: 30`
+- Sharpe: **1.08**, CAGR: 21.5%, MaxDD: **-18.93%**, Calmar: **1.14**, Vol: 19.82%
+
+**Commit:** `175d3322` — pushed to `origin/develop`
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-03-02)
 
 **Long/Short Asymmetry Analysis + Forecast Tilt — Analyzed & Rejected**
 
