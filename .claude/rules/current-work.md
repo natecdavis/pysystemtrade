@@ -1,6 +1,54 @@
 # Current Work Context
 
-## Current Session Summary (2026-02-28)
+## Current Session Summary (2026-03-02)
+
+**Long/Short Asymmetry Analysis + Forecast Tilt — Analyzed & Rejected**
+
+**Status:** ✅ Complete. `forecast_tilt_offset: 0.0` kept. Production Sharpe unchanged at 0.99.
+
+**What Was Accomplished:**
+
+1. **Asymmetry analysis script** (`scripts/analyze_long_short_asymmetry.py`)
+   - Uses existing backtest outputs — no rebuild needed
+   - 3 analyses: P&L decomposition by direction, forecast IC by direction, BTC regime split
+   - Result: Long Sharpe 0.803 vs Short Sharpe 0.597 (ratio 1.345 > 1.2 → tilt warranted by rule)
+
+2. **Tilt infrastructure** added to codebase
+   - `systems/crypto_perps/forecast_combine_gated.py`: `forecast_tilt_offset` applied after all sleeves, before FDM
+   - `config/crypto_perps_full_rules.yaml`: `forecast_tilt_offset: 0.0` (default off)
+
+3. **Sweep script** (`scripts/sweep_tilt_offset.py`) — ran offsets [0, +1, +2, +3, +5]
+
+**Tilt Sweep Results:**
+
+| Offset | Sharpe | Calmar | CAGR  | Vol   | MaxDD   | Crisis Ret | ΔSharpe | ΔCalmar |
+|--------|--------|--------|-------|-------|---------|------------|---------|---------|
+| +0.0   | 0.9916 | 0.9304 | 21.3% | 21.9% | -22.9%  | 53.4%      | baseline| —       |
+| +1.0   | 0.9869 | 0.8817 | 21.6% | 22.4% | -24.5%  | 51.3%      | -0.47%  | -0.049  |
+| +2.0   | 0.9796 | 0.8103 | 22.0% | 23.1% | -27.2%  | 47.8%      | -1.20%  | -0.120  |
+| +3.0   | 0.9834 | 0.7700 | 22.8% | 23.7% | -29.6%  | 43.7%      | -0.82%  | -0.160  |
+| +5.0   | 0.9626 | 0.7286 | 23.5% | 25.3% | -32.3%  | 34.8%      | -2.90%  | -0.202  |
+
+**Decision:** ✅ **KEEP offset=0.0** — all tilts rejected.
+
+**Why tilt fails (root cause):**
+- The L/S Sharpe asymmetry is a **natural feature** (bull asset class, system already sizes longs bigger via position sizing), not an exploitable signal edge
+- A constant offset adds raw leverage, not smarter signal — CAGR rises but vol rises in step
+- Calmar collapses monotonically (0.930 → 0.729) as MaxDD widens badly
+- 2022 bear crisis return destroyed: +53.4% → +34.8% at offset=+5 (shorts during crash are essential)
+- `±20` cap clips strong long signals while forcing weak ones to stay long through drawdowns
+
+**Key finding:** The IC split (positive/negative forecast days) is also uninformative — IC within each directional subset is negative while overall IC is positive, meaning signal *sign* is predictive but magnitude within direction is noise. The P&L Sharpe split is the correct diagnostic, but it reflects structural positioning, not an edge a constant tilt can harvest.
+
+**Production Config (unchanged):**
+- `config/crypto_perps_full_rules.yaml` — `forecast_tilt_offset: 0.0`
+- Sharpe: 0.99, CAGR: 21.3%, MaxDD: -22.9%, Calmar: 0.93
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-02-28)
 
 **Sector Momentum Additive Sleeve — Adopted**
 

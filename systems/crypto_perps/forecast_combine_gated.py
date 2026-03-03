@@ -143,6 +143,13 @@ class ForecastCombineGated(ForecastCombine):
                 sector_avg = sector_avg.fillna(0.0)
                 final_forecast_raw = final_forecast_raw + sector_weight * sector_avg
 
+        # Forecast tilt: constant offset to bias toward more predictive direction
+        # Positive offset → long bias; negative → short bias
+        # Applied after all sleeves, before FDM and ±20 cap
+        forecast_tilt_offset = config.get_element_or_default('forecast_tilt_offset', 0.0)
+        if forecast_tilt_offset != 0.0:
+            final_forecast_raw = final_forecast_raw + forecast_tilt_offset
+
         # Apply FDM and capping (existing logic)
         fdm = self.get_forecast_diversification_multiplier(instrument_code).reindex(
             final_forecast_raw.index

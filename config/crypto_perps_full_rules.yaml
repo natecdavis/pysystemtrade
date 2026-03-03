@@ -659,6 +659,21 @@ sector_rule_list:
 sector_weight: 0.0  # PAUSED: additive test passed (+1.5% Sharpe) but reverted for simplicity
 
 # ============================================================================
+# FORECAST TILT — LONG/SHORT BIAS OFFSET
+# ============================================================================
+# Shifts the combined forecast by a constant before FDM and ±20 cap.
+# Positive → long bias; negative → short bias.
+#
+# Calibration (2026-03-02): Long/Short Sharpe asymmetry confirmed:
+#   Long Sharpe:  0.803  |  Short Sharpe:  0.597  |  Ratio: 1.345 (> 1.2 → tilt warranted)
+#   Bear market: Short Sharpe = -0.339 (short leg loses money in downtrends!)
+# Suggested offsets to test: [+1.0, +2.0, +3.0, +5.0]
+# Adoption criteria: Sharpe +1%, crisis return drop < 5pp, MaxDD < +3pp
+#
+# 0.0 = symmetric (default, no tilt) — reproduces baseline Sharpe exactly
+forecast_tilt_offset: 0.0
+
+# ============================================================================
 # OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
 # ============================================================================
 # Defensive position scaling based on funding rate z-score (OI proxy).
