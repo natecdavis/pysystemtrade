@@ -531,6 +531,16 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         logger.info("fg_index.parquet not found — F&G overlay disabled (run scripts/download_fg_index.py)")
     fg_kwarg = fg_data_path if fg_data_path is not None else _arg_not_supplied
 
+    # Auto-discover MVRV index if not explicitly provided
+    mvrv_data_path = None
+    mvrv_candidate = Path(data_path).parent / 'mvrv_index.parquet'
+    if mvrv_candidate.exists():
+        mvrv_data_path = str(mvrv_candidate)
+        logger.info(f"Auto-discovered MVRV index: {mvrv_candidate}")
+    else:
+        logger.info("mvrv_index.parquet not found — MVRV overlay disabled (run scripts/download_mvrv_index.py)")
+    mvrv_kwarg = mvrv_data_path if mvrv_data_path is not None else _arg_not_supplied
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
@@ -541,6 +551,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         oi_data_path=oi_kwarg,
         sector_map_path=sector_kwarg,
         fg_data_path=fg_kwarg,
+        mvrv_data_path=mvrv_kwarg,
     )
 
     instruments = data.get_instrument_list()
@@ -551,7 +562,8 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     logger.info("Creating system...")
     use_oi_overlay = config.get_element_or_default('use_oi_overlay', False)
     use_fg_overlay = config.get_element_or_default('use_fg_overlay', False)
-    use_any_overlay = use_oi_overlay or use_fg_overlay
+    use_mvrv_overlay = config.get_element_or_default('use_mvrv_overlay', False)
+    use_any_overlay = use_oi_overlay or use_fg_overlay or use_mvrv_overlay
 
     if use_dynamic_universe:
         if use_any_overlay:
@@ -559,6 +571,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
             overlay_desc = " + ".join(filter(None, [
                 "OI" if use_oi_overlay else "",
                 "F&G" if use_fg_overlay else "",
+                "MVRV" if use_mvrv_overlay else "",
             ]))
             logger.info(f"  Using dynamic portfolio with overlay(s): {overlay_desc}")
         else:
@@ -570,6 +583,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
             overlay_desc = " + ".join(filter(None, [
                 "OI" if use_oi_overlay else "",
                 "F&G" if use_fg_overlay else "",
+                "MVRV" if use_mvrv_overlay else "",
             ]))
             logger.info(f"  Using static portfolio with overlay(s): {overlay_desc}")
         else:

@@ -86,6 +86,7 @@ class parquetCryptoPerpsSimData(simData):
         oi_data_path: str = arg_not_supplied,
         sector_map_path: str = arg_not_supplied,
         fg_data_path: str = arg_not_supplied,
+        mvrv_data_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -155,6 +156,19 @@ class parquetCryptoPerpsSimData(simData):
                 f"Loaded F&G index from {fg_data_path}: "
                 f"{len(self._fg_df)} days, "
                 f"{self._fg_df.index.min().date()} to {self._fg_df.index.max().date()}"
+            )
+
+        # Load MVRV ratio if path provided (used by MVRV regime overlay)
+        # Parquet columns: mvrv_ratio (float), cap_market (float), cap_realized (float); index: date
+        self._mvrv_df: Optional[pd.DataFrame] = None
+        if mvrv_data_path is not arg_not_supplied and Path(mvrv_data_path).exists():
+            self._mvrv_df = pd.read_parquet(mvrv_data_path)
+            self._mvrv_df.index = pd.DatetimeIndex(self._mvrv_df.index).normalize()
+            self.log.info(
+                f"Loaded MVRV index from {mvrv_data_path}: "
+                f"{len(self._mvrv_df)} days, "
+                f"{self._mvrv_df.index.min().date()} to {self._mvrv_df.index.max().date()}, "
+                f"current MVRV={self._mvrv_df['mvrv_ratio'].iloc[-1]:.3f}"
             )
 
         self.log.info(
@@ -1100,6 +1114,74 @@ class parquetCryptoPerpsSimData(simData):
             multiplier[greed_mask] = scale[greed_mask].clip(lower=min_scale, upper=1.0)
 
         # Strip timezone so that reindex() works against tz-naive position indexes
+        if multiplier.index.tz is not None:
+            multiplier.index = multiplier.index.tz_localize(None)
+
+        return multiplier
+
+    def get_mvrv_ratio(self) -> pd.Series:
+        """
+        Return the BTC MVRV ratio as a daily pd.Series.
+
+        MVRV = CapMrktCurUSD / CapRealUSD. Values above ~2.5–3.5 indicate
+        overheated conditions; values below 1.0 indicate undervaluation.
+
+        Returns an empty Series if no MVRV data was loaded.
+
+        Returns:
+            pd.Series with DatetimeIndex and float values.
+        """
+        if self._mvrv_df is None:
+            return pd.Series(dtype=float)
+        return self._mvrv_df['mvrv_ratio'].astype(float)
+
+    def get_mvrv_regime_multiplier(
+        self,
+        overbought_threshold: float = 3.0,
+        oversold_threshold: float = 1.0,
+        min_scale: float = 0.5,
+        max_mvrv: float = 5.0,
+    ) -> pd.Series:
+        """
+        Position scaler based on the MVRV on-chain ratio.
+
+        Contrarian scaling: high MVRV indicates overheated / bubble conditions where we
+        reduce exposure; low MVRV (undervalued) currently has no boost (reserved for
+        future testing).
+
+        Multiplier logic:
+            MVRV > overbought_threshold → linear taper from 1.0 → min_scale
+                                          as MVRV → max_mvrv (clips at min_scale above)
+            MVRV ≤ overbought_threshold → 1.0 (no scaling)
+
+        Formula:
+            scale = 1.0 - (mvrv - threshold) / (max_mvrv - threshold) * (1 - min_scale)
+            scale = clip(scale, min_scale, 1.0)
+
+        Args:
+            overbought_threshold: MVRV level above which scaling begins (default: 3.0)
+            oversold_threshold:   MVRV level below which we do nothing (default: 1.0, reserved)
+            min_scale:            Minimum multiplier at max_mvrv (default: 0.5 = 50% reduction)
+            max_mvrv:             MVRV level at which min_scale is reached (default: 5.0)
+
+        Returns:
+            pd.Series with DatetimeIndex, values in [min_scale, 1.0].
+            Returns empty Series if no MVRV data loaded.
+        """
+        mvrv = self.get_mvrv_ratio()
+        if mvrv.empty:
+            return pd.Series(dtype=float)
+
+        multiplier = pd.Series(1.0, index=mvrv.index)
+
+        # Overbought zone: linear taper from threshold to max_mvrv
+        overbought_mask = mvrv > overbought_threshold
+        if overbought_mask.any():
+            scale = 1.0 - (mvrv - overbought_threshold) / (max_mvrv - overbought_threshold) * (1.0 - min_scale)
+            multiplier[overbought_mask] = scale[overbought_mask].clip(lower=min_scale, upper=1.0)
+
+        # Strip timezone so that reindex() works against tz-naive position indexes
+        # CRITICAL: without this, reindex() silently returns all NaN → fillna(1.0) → overlay does nothing
         if multiplier.index.tz is not None:
             multiplier.index = multiplier.index.tz_localize(None)
 

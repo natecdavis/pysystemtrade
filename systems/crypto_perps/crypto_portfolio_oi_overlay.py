@@ -160,6 +160,68 @@ def apply_fg_overlay(portfolio_instance, instrument_code: str, base_position: pd
         return base_position
 
 
+def apply_mvrv_overlay(portfolio_instance, instrument_code: str, base_position: pd.Series) -> pd.Series:
+    """
+    Helper function to apply MVRV on-chain regime overlay to a position series.
+
+    Contrarian scaling: reduces positions during overheated on-chain conditions
+    (high MVRV = market value well above realized value = bubble risk).
+
+    Separated as a function so it can be reused by both static and dynamic portfolio classes.
+
+    Args:
+        portfolio_instance: Instance of portfolio stage (with config, parent, log)
+        instrument_code: Instrument code (same multiplier for all — MVRV is a global BTC ratio)
+        base_position: Base position series (after OI and F&G overlays)
+
+    Returns:
+        pd.Series of positions scaled by MVRV regime multiplier
+    """
+    if not portfolio_instance.config.get_element_or_default('use_mvrv_overlay', False):
+        return base_position
+
+    try:
+        params = portfolio_instance.config.get_element_or_default('mvrv_overlay_params', {})
+        mvrv_multiplier = portfolio_instance.parent.data.get_mvrv_regime_multiplier(
+            overbought_threshold=params.get('overbought_threshold', 3.0),
+            oversold_threshold=params.get('oversold_threshold', 1.0),
+            min_scale=params.get('min_scale', 0.5),
+            max_mvrv=params.get('max_mvrv', 5.0),
+        )
+
+        if mvrv_multiplier.empty:
+            portfolio_instance.log.warning(
+                f"{instrument_code}: MVRV overlay enabled but no data loaded — skipping",
+                instrument_code=instrument_code,
+            )
+            return base_position
+
+        # Align multiplier with base position index (forward-fill gaps)
+        mvrv_multiplier = mvrv_multiplier.reindex(base_position.index, method='ffill').fillna(1.0)
+
+        scaled_position = base_position * mvrv_multiplier
+
+        # Log summary statistics (debug level to avoid noise)
+        avg_multiplier = float(mvrv_multiplier.mean())
+        min_multiplier = float(mvrv_multiplier.min())
+        pct_scaled = float((mvrv_multiplier < 1.0).sum() / max(len(mvrv_multiplier), 1) * 100)
+        portfolio_instance.log.debug(
+            f"{instrument_code}: MVRV overlay applied | "
+            f"avg_mult={avg_multiplier:.3f} | min_mult={min_multiplier:.3f} | "
+            f"scaled_days={pct_scaled:.1f}%",
+            instrument_code=instrument_code,
+        )
+
+        return scaled_position
+
+    except Exception as e:
+        portfolio_instance.log.warning(
+            f"{instrument_code}: MVRV overlay failed ({e}), returning unscaled position",
+            instrument_code=instrument_code,
+        )
+        return base_position
+
+
 class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
     """
     Portfolio stage with OI regime overlay for defensive position scaling.
@@ -200,9 +262,10 @@ class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
         # Get base position (with lot-size rounding + min notional filter)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply OI overlay, then F&G overlay in sequence
+        # Apply OI overlay, then F&G overlay, then MVRV overlay in sequence
         position = apply_oi_overlay(self, instrument_code, base_position)
         position = apply_fg_overlay(self, instrument_code, position)
+        position = apply_mvrv_overlay(self, instrument_code, position)
         return position
 
 
@@ -233,7 +296,8 @@ class CryptoDynamicPortfolioWithOIOverlay(CryptoDynamicPortfolio):
         # Get base position (with dynamic universe + lot-size rounding + min notional)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply OI overlay, then F&G overlay in sequence
+        # Apply OI overlay, then F&G overlay, then MVRV overlay in sequence
         position = apply_oi_overlay(self, instrument_code, base_position)
         position = apply_fg_overlay(self, instrument_code, position)
+        position = apply_mvrv_overlay(self, instrument_code, position)
         return position

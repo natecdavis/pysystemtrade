@@ -761,13 +761,47 @@ oi_overlay_params:
 # Status: Testing pending. Set use_fg_overlay: true after sweep confirms benefit.
 # ============================================================================
 
-use_fg_overlay: false  # default off until sweep complete
+use_fg_overlay: false  # REJECTED: best ΔSharpe +0.30% (below +1% threshold). Keep false permanently.
 
 # F&G overlay parameters (only used when use_fg_overlay: true)
 fg_overlay_params:
   greed_threshold: 75   # F&G > 75 → start scaling down (Greed / Extreme Greed zone)
   fear_threshold: 25    # F&G < 25 → no action (fear = trend signals reliable)
   min_scale: 0.5        # Maximum scale-down (0.5 = 50% of normal position at F&G=100)
+
+# ============================================================================
+# MVRV CYCLE FILTER
+# ============================================================================
+# MVRV = CapMrktCurUSD / CapRealUSD (BTC on-chain valuation ratio).
+# Values above ~2.5–3.5 indicate overheated market conditions; values below 1.0
+# indicate undervaluation.
+#
+# Unlike F&G (fired only 9.5% of days → rejected), MVRV spends extended
+# weeks/months above overbought levels during bull runs. Sustained signal
+# duration is why MVRV is expected to be materially more impactful than F&G.
+#
+# Multiplier logic (contrarian):
+#   MVRV > overbought_threshold → linear taper from 1.0 → min_scale as MVRV → max_mvrv
+#   MVRV ≤ overbought_threshold → 1.0 (no scaling)
+#
+# Applied AFTER OI and F&G overlays:
+#   position = base × oi_multiplier × fg_multiplier × mvrv_multiplier
+#
+# Data download: python scripts/download_mvrv_index.py → data/mvrv_index.parquet
+# Auto-discovered from data/ directory alongside parquet dataset.
+#
+# Source: CRYPTO_MARKET_FACTORS_LIT_REVIEW.md §4.4 — "MVRV/NUPL: Moderate evidence,
+# Alpha (regime) type, Weekly-Monthly horizon, High implementability."
+# ============================================================================
+
+use_mvrv_overlay: false  # REJECTED: best ΔSharpe +0.46% at th=3.5 (below +1% threshold). Keep false permanently.
+
+# MVRV overlay parameters (only used when use_mvrv_overlay: true)
+mvrv_overlay_params:
+  overbought_threshold: 3.0  # MVRV > 3.0 → start scaling down
+  oversold_threshold: 1.0    # reserved for future oversold boost (no action currently)
+  min_scale: 0.5             # maximum scale-down (50% of normal position)
+  max_mvrv: 5.0              # MVRV at which min_scale is reached (clips above)
 
 # ============================================================================
 # SIZING AND CONSTRAINTS
