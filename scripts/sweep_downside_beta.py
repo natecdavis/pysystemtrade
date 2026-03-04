@@ -80,17 +80,17 @@ def load_results(outdir: Path) -> dict:
 def print_comparison(results: list) -> None:
     """Print formatted comparison table."""
     print()
-    print('=' * 130)
-    print('DOWNSIDE BETA SCALAR SWEEP — RESULTS')
-    print('=' * 130)
+    print('=' * 145)
+    print('DOWNSIDE BETA SCALAR SWEEP — RESULTS (direction-aware)')
+    print('=' * 145)
 
     hdr = (
         f'{"Window":>8}  {"MinScale":>8}  {"Sharpe":>8}  {"Calmar":>8}  '
         f'{"CAGR":>8}  {"Vol":>8}  {"MaxDD":>8}  {"Crisis Ret":>10}  '
-        f'{"AvgPos":>7}  {"ΔSharpe":>8}  {"ΔCalmar":>8}  {"ΔMaxDD":>8}'
+        f'{"AvgPos":>7}  {"ΔSharpe":>8}  {"ΔCalmar":>8}  {"ΔMaxDD":>8}  {"ΔCrisis":>9}'
     )
     print(hdr)
-    print('─' * 130)
+    print('─' * 145)
 
     baseline = None
     for r in results:
@@ -111,11 +111,13 @@ def print_comparison(results: list) -> None:
             d_sharpe = 0.0
             d_calmar = 0.0
             d_maxdd  = 0.0
+            d_crisis = 0.0
         else:
             b_m = baseline.get('metrics', {})
             d_sharpe = sharpe - b_m.get('sharpe', float('nan'))
             d_calmar = calmar - b_m.get('calmar', float('nan'))
             d_maxdd  = (maxdd - b_m.get('max_dd', float('nan'))) * 100  # pp
+            d_crisis = (crisis - b_m.get('crisis_return', float('nan'))) * 100  # pp
 
         tag = f'  <- {label}' if label else ''
         avg_pos_str = f'{avg_pos:.1f}' if avg_pos == avg_pos else '  N/A'
@@ -133,23 +135,25 @@ def print_comparison(results: list) -> None:
             f'{avg_pos_str:>7}  '
             f'{d_sharpe:>+8.4f}  '
             f'{d_calmar:>+8.4f}  '
-            f'{d_maxdd:>+7.2f}pp'
+            f'{d_maxdd:>+7.2f}pp  '
+            f'{d_crisis:>+7.2f}pp'
             f'{tag}'
         )
 
-    print('─' * 130)
+    print('─' * 145)
     print()
 
     # Adoption criteria check
     baseline_m = baseline.get('metrics', {}) if baseline else {}
     b_sharpe  = baseline_m.get('sharpe',        float('nan'))
     b_maxdd   = baseline_m.get('max_dd',        float('nan'))
+    b_crisis  = baseline_m.get('crisis_return', float('nan'))
     b_avg_pos = baseline_m.get('avg_positions', float('nan'))
 
     print('ADOPTION CRITERIA CHECK')
     print(
-        '  ΔSharpe >= +1% relative (>= 1.091)  |  ΔMaxDD < +3pp  |  '
-        'Calmar non-monotone  |  avg_positions unchanged'
+        '  ΔSharpe >= +1% relative  |  ΔMaxDD > -3pp (no worsening)  |  '
+        'ΔCrisis > -5pp  |  Calmar non-monotone  |  avg_positions unchanged'
     )
     print()
 
@@ -160,21 +164,26 @@ def print_comparison(results: list) -> None:
         sharpe   = m.get('sharpe',        float('nan'))
         maxdd    = m.get('max_dd',        float('nan'))
         calmar   = m.get('calmar',        float('nan'))
+        crisis   = m.get('crisis_return', float('nan'))
         avg_pos  = m.get('avg_positions', float('nan'))
         window   = r.get('window', 0)
         scale    = r.get('min_scale', 0.0)
 
         d_sharpe_pct = (sharpe - b_sharpe) / abs(b_sharpe) * 100 if b_sharpe else float('nan')
+        # MaxDD is negative; d_maxdd_pp is POSITIVE when MaxDD improves (less negative).
+        # Criterion: don't worsen MaxDD by more than 3pp → d_maxdd_pp > -3.0
         d_maxdd_pp   = (maxdd  - b_maxdd)  * 100
+        d_crisis_pp  = (crisis - b_crisis) * 100
         d_pos_pct    = (avg_pos - b_avg_pos) / abs(b_avg_pos) * 100 if b_avg_pos else float('nan')
 
         sharpe_ok = d_sharpe_pct >= 1.0
-        maxdd_ok  = d_maxdd_pp   < 3.0
+        maxdd_ok  = d_maxdd_pp   > -3.0   # improvement is positive; worsening is negative
+        crisis_ok = d_crisis_pp  > -5.0   # preserve at least 95% of crisis return
         # avg_positions should be essentially unchanged (±5%) — overlay scales SIZE not universe
         pos_ok    = abs(d_pos_pct) <= 5.0 if d_pos_pct == d_pos_pct else True
         calmar_values.append(calmar)
 
-        all_ok = sharpe_ok and maxdd_ok and pos_ok
+        all_ok = sharpe_ok and maxdd_ok and crisis_ok and pos_ok
         status = '✓ PASS' if all_ok else '✗ FAIL'
         if all_ok:
             candidates.append(r)
@@ -183,6 +192,7 @@ def print_comparison(results: list) -> None:
             f'  W={window:>3}d  S={scale:.2f}:  '
             f'ΔSharpe={d_sharpe_pct:+.1f}% {("✓" if sharpe_ok else "✗")}  '
             f'ΔMaxDD={d_maxdd_pp:+.1f}pp {("✓" if maxdd_ok else "✗")}  '
+            f'ΔCrisis={d_crisis_pp:+.1f}pp {("✓" if crisis_ok else "✗")}  '
             f'ΔPos={d_pos_pct:+.1f}% {("✓" if pos_ok else "✗")}  '
             f'Calmar={calmar:.4f}  '
             f'-> {status}'
@@ -316,6 +326,7 @@ def main():
             cfg['downside_beta_params']['window'] = window
             cfg['downside_beta_params']['min_periods'] = 20
             cfg['downside_beta_params']['min_scale'] = min_scale
+            cfg['downside_beta_params']['direction_aware'] = True  # only penalise longs
             with tempfile.NamedTemporaryFile(
                 mode='w', suffix='.yaml', delete=False, dir=args.outdir
             ) as tf:

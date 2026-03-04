@@ -254,6 +254,7 @@ def apply_downside_beta_overlay(
             'downside_beta_params', {}
         )
         min_scale = params.get('min_scale', 0.5)
+        direction_aware = params.get('direction_aware', True)
 
         scalar = portfolio_instance.parent.data.get_downside_beta_scalar(
             instrument_code, min_scale=min_scale
@@ -268,14 +269,33 @@ def apply_downside_beta_overlay(
             return base_position
 
         scalar = scalar.reindex(base_position.index, method='ffill').fillna(1.0)
-        scaled_position = base_position * scalar
 
-        portfolio_instance.log.debug(
-            f"{instrument_code}: β_down overlay | "
-            f"avg_scalar={float(scalar.mean()):.3f} "
-            f"min_scalar={float(scalar.min()):.3f}",
-            instrument_code=instrument_code,
-        )
+        if direction_aware:
+            # Only penalise long positions; preserve shorts at full size (1.0×).
+            # Short positions in high-beta instruments are crash hedges — reducing
+            # them would destroy 2022-bear crisis return.
+            long_mask = base_position > 0
+            scalar_applied = pd.Series(1.0, index=base_position.index)
+            scalar_applied[long_mask] = scalar[long_mask]
+            n_long_penalised = int((scalar_applied < 1.0).sum())
+            n_short_preserved = int((base_position < 0).sum())
+            portfolio_instance.log.debug(
+                f"{instrument_code}: β_down overlay (direction-aware) | "
+                f"avg_scalar_long={float(scalar[long_mask].mean()) if long_mask.any() else 1.0:.3f} | "
+                f"long_days_penalised={n_long_penalised} | "
+                f"short_days_preserved={n_short_preserved}",
+                instrument_code=instrument_code,
+            )
+        else:
+            scalar_applied = scalar
+            portfolio_instance.log.debug(
+                f"{instrument_code}: β_down overlay (direction-agnostic) | "
+                f"avg_scalar={float(scalar.mean()):.3f} "
+                f"min_scalar={float(scalar.min()):.3f}",
+                instrument_code=instrument_code,
+            )
+
+        scaled_position = base_position * scalar_applied
         return scaled_position
 
     except Exception as e:

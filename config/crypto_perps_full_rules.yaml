@@ -824,11 +824,12 @@ mvrv_overlay_params:
 # Orthogonal to OI overlay: OI is episodic+portfolio-level; β_down is
 # continuous+per-instrument. Both multiply together when both active.
 # ============================================================================
-use_downside_beta_overlay: false
+use_downside_beta_overlay: true
 downside_beta_params:
-  window: 63        # rolling window (days); ~1 quarter of trading days
+  window: 90        # rolling window (days); ~4.5 months — longer window = smoother β_down signal
   min_periods: 20   # min down-market days before β_down is defined (warmup guard)
-  min_scale: 0.5    # scalar applied to highest-β_down instrument (rank=1.0)
+  min_scale: 0.3    # scalar applied to highest-β_down instrument (rank=1.0); W=90/S=0.30 optimal
+  direction_aware: true  # only penalise long positions; preserve shorts at 1.0× (crash hedges)
 
 # ============================================================================
 # SIZING AND CONSTRAINTS
