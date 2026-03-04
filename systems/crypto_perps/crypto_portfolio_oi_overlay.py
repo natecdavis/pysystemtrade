@@ -222,6 +222,70 @@ def apply_mvrv_overlay(portfolio_instance, instrument_code: str, base_position: 
         return base_position
 
 
+def apply_downside_beta_overlay(
+    portfolio_instance, instrument_code: str, base_position: pd.Series
+) -> pd.Series:
+    """
+    Per-instrument downside beta position scalar.
+
+    Reduces positions in instruments that amplify crypto bear-market crashes.
+    β_down is ranked cross-sectionally per date — highest β_down → min_scale,
+    lowest → 1.0. The scalar is always-on and continuous (not threshold-based).
+
+    Orthogonal to OI overlay: OI fires episodically (portfolio-level); downside
+    beta fires continuously (per-instrument). Compound crash risk → compound
+    de-sizing when both are active.
+
+    Args:
+        portfolio_instance: Instance of portfolio stage (with config, parent, log)
+        instrument_code: Instrument code
+        base_position: Base position series (after OI/F&G/MVRV overlays)
+
+    Returns:
+        pd.Series of positions scaled by cross-sectional downside beta scalar
+    """
+    if not portfolio_instance.config.get_element_or_default(
+        'use_downside_beta_overlay', False
+    ):
+        return base_position
+
+    try:
+        params = portfolio_instance.config.get_element_or_default(
+            'downside_beta_params', {}
+        )
+        min_scale = params.get('min_scale', 0.5)
+
+        scalar = portfolio_instance.parent.data.get_downside_beta_scalar(
+            instrument_code, min_scale=min_scale
+        )
+
+        if scalar.empty:
+            portfolio_instance.log.warning(
+                f"{instrument_code}: downside beta overlay enabled but panel not "
+                f"loaded — skipping (check use_downside_beta_overlay in config)",
+                instrument_code=instrument_code,
+            )
+            return base_position
+
+        scalar = scalar.reindex(base_position.index, method='ffill').fillna(1.0)
+        scaled_position = base_position * scalar
+
+        portfolio_instance.log.debug(
+            f"{instrument_code}: β_down overlay | "
+            f"avg_scalar={float(scalar.mean()):.3f} "
+            f"min_scalar={float(scalar.min()):.3f}",
+            instrument_code=instrument_code,
+        )
+        return scaled_position
+
+    except Exception as e:
+        portfolio_instance.log.warning(
+            f"{instrument_code}: β_down overlay failed ({e}), returning unscaled",
+            instrument_code=instrument_code,
+        )
+        return base_position
+
+
 class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
     """
     Portfolio stage with OI regime overlay for defensive position scaling.
@@ -262,10 +326,11 @@ class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
         # Get base position (with lot-size rounding + min notional filter)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply OI overlay, then F&G overlay, then MVRV overlay in sequence
+        # Apply overlays in sequence: OI → F&G → MVRV → downside beta
         position = apply_oi_overlay(self, instrument_code, base_position)
         position = apply_fg_overlay(self, instrument_code, position)
         position = apply_mvrv_overlay(self, instrument_code, position)
+        position = apply_downside_beta_overlay(self, instrument_code, position)
         return position
 
 
@@ -296,8 +361,9 @@ class CryptoDynamicPortfolioWithOIOverlay(CryptoDynamicPortfolio):
         # Get base position (with dynamic universe + lot-size rounding + min notional)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply OI overlay, then F&G overlay, then MVRV overlay in sequence
+        # Apply overlays in sequence: OI → F&G → MVRV → downside beta
         position = apply_oi_overlay(self, instrument_code, base_position)
         position = apply_fg_overlay(self, instrument_code, position)
         position = apply_mvrv_overlay(self, instrument_code, position)
+        position = apply_downside_beta_overlay(self, instrument_code, position)
         return position

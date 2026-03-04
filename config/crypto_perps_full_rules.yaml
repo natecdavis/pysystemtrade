@@ -813,6 +813,24 @@ mvrv_overlay_params:
   max_mvrv: 5.0              # MVRV at which min_scale is reached (clips above)
 
 # ============================================================================
+# DOWNSIDE BETA POSITION SCALAR
+# Per-instrument, always-on multiplicative overlay (applied 4th, after MVRV).
+# Reduces positions in instruments that amplify crypto bear-market crashes.
+# β_down = Σ(r_i × r_m | r_m < 0) / Σ(r_m² | r_m < 0) — rolling OLS slope
+# restricted to market down-days (market = cross-sectional median return).
+# Cross-sectional rank per date: highest β_down (rank=1.0) → min_scale,
+# lowest β_down (rank=0.0) → 1.0. Linear interpolation in between.
+# NaN during warmup (< min_periods down-days in window) → scalar=1.0 (neutral).
+# Orthogonal to OI overlay: OI is episodic+portfolio-level; β_down is
+# continuous+per-instrument. Both multiply together when both active.
+# ============================================================================
+use_downside_beta_overlay: false
+downside_beta_params:
+  window: 63        # rolling window (days); ~1 quarter of trading days
+  min_periods: 20   # min down-market days before β_down is defined (warmup guard)
+  min_scale: 0.5    # scalar applied to highest-β_down instrument (rank=1.0)
+
+# ============================================================================
 # SIZING AND CONSTRAINTS
 # ============================================================================
 

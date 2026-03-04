@@ -171,6 +171,38 @@ class parquetCryptoPerpsSimData(simData):
                 f"current MVRV={self._mvrv_df['mvrv_ratio'].iloc[-1]:.3f}"
             )
 
+        # Initialize downside beta panel (always None; computed below if enabled)
+        self._downside_beta_panel = None
+        # Read raw config to check if downside beta overlay is enabled.
+        # The sim data class only receives config_path, not the parsed Config object,
+        # so we re-read the YAML here (same pattern used by _determine_candidate_pool).
+        _raw_cfg: dict = {}
+        if self._config_path is not arg_not_supplied:
+            try:
+                import yaml as _yaml
+                with open(self._config_path) as _f:
+                    _raw_cfg = _yaml.safe_load(_f) or {}
+            except Exception:
+                pass
+        if _raw_cfg.get('use_downside_beta_overlay', False):
+            _db_params = _raw_cfg.get('downside_beta_params', {})
+            _window = _db_params.get('window', 63)
+            _min_periods = max(_db_params.get('min_periods', 20), 10)
+            self.log.info(
+                f"Computing downside beta panel (window={_window}d, "
+                f"min_periods={_min_periods})"
+            )
+            self._downside_beta_panel = self._compute_downside_beta_panel(
+                _window, _min_periods
+            )
+            _med_beta = float(
+                self._downside_beta_panel.stack().dropna().median()
+            )
+            self.log.info(
+                f"  Downside beta panel: {self._downside_beta_panel.shape}, "
+                f"median β_down={_med_beta:.2f}"
+            )
+
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
         )
@@ -604,6 +636,61 @@ class parquetCryptoPerpsSimData(simData):
         ivol_ok = ivol_ok.where(ivol.notna(), other=False)
 
         return ivol_ok
+
+    def _compute_downside_beta_panel(
+        self, window: int = 63, min_periods: int = 20
+    ) -> pd.DataFrame:
+        """
+        Compute rolling downside beta vs cross-sectional market factor.
+
+        β_down = Σ(r_i × r_m | r_m < 0) / Σ(r_m² | r_m < 0), rolling window W.
+        Vectorised: mask up-market days to zero, use rolling sums.
+
+        Returns:
+            DataFrame (dates × instruments) of raw β_down values.
+            NaN before warmup (< min_periods down-market days in window).
+        """
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+        market_ret = log_ret.median(axis=1)          # cross-sectional median
+
+        down_mask = (market_ret < 0).astype(float)   # 1.0 on down days
+        mkt_masked = market_ret * down_mask           # zero on up days
+
+        # Numerator: rolling Σ(r_i × r_m) on down days
+        instr_times_mkt = log_ret.multiply(mkt_masked, axis=0)
+        cov_sum = instr_times_mkt.rolling(window, min_periods=min_periods).sum()
+
+        # Denominator: rolling Σ(r_m²) on down days
+        mkt_sq_masked = (market_ret ** 2) * down_mask
+        var_sum = mkt_sq_masked.rolling(window, min_periods=min_periods).sum()
+
+        return cov_sum.divide(var_sum, axis=0)        # dates × instruments
+
+    def get_downside_beta_scalar(
+        self, instrument_code: str, min_scale: float = 0.5
+    ) -> pd.Series:
+        """
+        Cross-sectionally ranked downside beta scalar for one instrument.
+
+        Rank=1.0 (highest β_down) → min_scale.  Rank=0.0 → 1.0.
+        Linear interpolation: scalar = 1.0 - (1.0 - min_scale) × rank.
+        Returns empty Series if panel not computed (overlay disabled).
+        """
+        if self._downside_beta_panel is None:
+            return pd.Series(dtype=float)
+
+        if not hasattr(self, '_beta_scalar_cache'):
+            self._beta_scalar_cache: dict = {}
+        if min_scale not in self._beta_scalar_cache:
+            beta_rank = self._downside_beta_panel.rank(axis=1, pct=True)
+            scalar = 1.0 - (1.0 - min_scale) * beta_rank
+            # NaN during warmup → 1.0 (neutral, no penalty before β_down is defined)
+            self._beta_scalar_cache[min_scale] = scalar.fillna(1.0)
+
+        panel = self._beta_scalar_cache[min_scale]
+        if instrument_code not in panel.columns:
+            return pd.Series(1.0, index=panel.index)
+        return panel[instrument_code]
 
     def get_universe_eligibility_df(
         self,
