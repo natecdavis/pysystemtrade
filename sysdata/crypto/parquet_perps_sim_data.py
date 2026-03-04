@@ -538,6 +538,22 @@ class parquetCryptoPerpsSimData(simData):
             log=self.log,
         )
 
+        # Compute IVOL eligibility panel if enabled
+        ivol_panel = None
+        if config.get('ivol_cap_enabled', False):
+            ivol_percentile = config.get('ivol_cap_percentile', 75)
+            ivol_window = config.get('ivol_window', config.get('vol_window', 35))
+            self.log.info(
+                f"Computing IVOL eligibility panel "
+                f"(percentile={ivol_percentile}, window={ivol_window}d)"
+            )
+            ivol_panel = self._compute_ivol_eligibility_panel(ivol_percentile, ivol_window)
+            pct_excluded = (~ivol_panel).mean().mean() * 100
+            self.log.info(
+                f"  IVOL panel: {ivol_panel.shape}, "
+                f"avg {pct_excluded:.1f}% instruments excluded per day"
+            )
+
         # Create universe manager
         self._universe_manager = DynamicUniverseManager(
             cost_estimator=self._cost_estimator,
@@ -548,8 +564,46 @@ class parquetCryptoPerpsSimData(simData):
             min_annual_vol=config.get('min_annual_vol', 0.0),
             vol_window=config.get('vol_window', 35),
             min_history_mode=config.get('min_history_rule_requirement', 'any_rule'),
+            ivol_eligibility_panel=ivol_panel,
             log=self.log,
         )
+
+    def _compute_ivol_eligibility_panel(
+        self, percentile: int = 75, window: int = 35
+    ) -> pd.DataFrame:
+        """
+        Compute cross-sectional IVOL eligibility panel.
+
+        IVOL = annualised idiosyncratic volatility (instrument return minus
+        cross-sectional median return, rolling std).
+
+        Returns boolean DataFrame (dates × instruments):
+            True  = IVOL ≤ cross-sectional percentile threshold (instrument passes)
+            False = IVOL >  threshold (excluded as lottery token)
+            False = before warmup window (conservative)
+        """
+        # Daily log returns — wide panel (dates × instruments)
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+
+        # Cross-sectional market factor: median return across instruments on each date
+        cs_median = log_ret.median(axis=1)
+
+        # Idiosyncratic return = instrument return minus market factor
+        residuals = log_ret.subtract(cs_median, axis=0)
+
+        # Rolling annualised idiosyncratic vol
+        ivol = residuals.rolling(window, min_periods=min(10, window)).std() * np.sqrt(252)
+
+        # Cross-sectional percentile threshold per date (scalar per row)
+        threshold = ivol.quantile(percentile / 100.0, axis=1)
+
+        # Boolean eligibility: True = passes (IVOL ≤ threshold)
+        ivol_ok = ivol.le(threshold, axis=0)
+
+        # NaN before warmup → False (conservative, consistent with other filters)
+        ivol_ok = ivol_ok.where(ivol.notna(), other=False)
+
+        return ivol_ok
 
     def get_universe_eligibility_df(
         self,

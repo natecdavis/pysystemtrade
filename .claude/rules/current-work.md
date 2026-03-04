@@ -1,6 +1,56 @@
 # Current Work Context
 
-## Current Session Summary (2026-03-03)
+## Current Session Summary (2026-03-03, Part 2)
+
+**IVOL Cap Universe Filter — Implemented & Rejected**
+
+**Status:** ✅ Complete. `ivol_cap_enabled: false` confirmed. Production Sharpe: 1.08 (unchanged).
+
+**What Was Accomplished:**
+
+1. **Implemented IVOL cap infrastructure** (4 files)
+   - `sysdata/crypto/parquet_perps_sim_data.py`: `_compute_ivol_eligibility_panel(percentile, window)` — pre-computes boolean DataFrame (dates × instruments) at init
+   - `sysdata/crypto/dynamic_universe.py`: `_get_ivol_cap_series()` + `ivol_eligibility_panel` param in `DynamicUniverseManager`; filter is the 5th AND in `get_eligibility_series()`
+   - `config/crypto_perps_full_rules.yaml`: `ivol_cap_enabled: false`, `ivol_cap_percentile: 75`, `ivol_window: 35`
+   - `scripts/sweep_ivol_cap.py`: sweeps percentiles [50, 60, 70, 75, 80, 90] + baseline
+
+2. **Ran 7-run sweep** (pct50/60/70/75/80/90 + baseline)
+
+**Sweep Results:**
+
+| Percentile | Sharpe | Calmar | CAGR   | MaxDD   | AvgPos | ΔSharpe |
+|-----------|--------|--------|--------|---------|--------|---------|
+| baseline  | 1.0816 | 1.1354 | 21.49% | -18.93% | 37.6   | —       |
+| 50        | 1.0816 | 1.1354 | 21.49% | -18.93% | 37.6   | +0.00%  |
+| 60        | 1.0816 | 1.1354 | 21.49% | -18.93% | 37.6   | +0.00%  |
+| 70        | 1.0816 | 1.1354 | 21.49% | -18.93% | 37.6   | +0.00%  |
+| 75        | 1.0816 | 1.1354 | 21.49% | -18.93% | 37.6   | +0.00%  |
+| 80        | 1.0816 | 1.1354 | 21.49% | -18.93% | 37.6   | +0.00%  |
+| 90        | 1.0816 | 1.1354 | 21.49% | -18.93% | 37.6   | +0.00%  |
+
+**Decision:** ❌ **REJECT** — zero effect at all percentiles. Not "below threshold" — literally zero.
+
+**Root cause: ADV-IVOL anti-correlation**
+High-ADV (liquid) instruments are inherently low-IVOL. ADV-based TopK selection already
+implicitly excludes high-IVOL lottery tokens. The IVOL cap never removes any instrument
+that TopK ADV would have selected — the two filters are 100% redundant on this dataset.
+Even at pct=50 (excluding the noisiest half by residual vol), the selected universe is unchanged.
+
+**Key lesson for future universe filters:** IVOL is orthogonal to alpha but collinear with ADV.
+Future universe filters should target signals *not* proxied by ADV: e.g., funding rate stability,
+listing age, cross-exchange basis consistency.
+
+**Production Config (unchanged):**
+- `ivol_cap_enabled: false` in `config/crypto_perps_full_rules.yaml`
+- Sharpe: **1.08**, CAGR: 21.5%, MaxDD: **-18.93%**, Calmar: **1.14**
+
+**Commit:** TBD — infrastructure committed with filter disabled
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-03-03)
 
 **Fear & Greed Overlay — Implemented & Rejected**
 

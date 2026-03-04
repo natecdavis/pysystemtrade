@@ -107,6 +107,15 @@ dynamic_universe:
 
   min_annual_vol: 0.20   # Rejects stablecoins and semi-pegged tokens
 
+  # IVOL cap — exclude high-idiosyncratic-vol lottery tokens from universe
+  # IVOL = annualised vol of (instrument return - cross-sectional median return)
+  # Filter: exclude instruments above the Nth cross-sectional percentile each day.
+  # Default off until sweep confirms benefit (sweep_ivol_cap.py).
+  # Literature: lottery-preference effect in crypto (CRYPTO_MARKET_FACTORS_LIT_REVIEW.md §5)
+  ivol_cap_enabled: false
+  ivol_cap_percentile: 75  # exclude top 25% by IVOL (keep bottom 75%)
+  ivol_window: 35          # rolling window (days), matches vol_window
+
   # Stage 2 — Top-K selection with hysteresis (criterion specified above)
   top_k: 30
   entry_buffer: 5

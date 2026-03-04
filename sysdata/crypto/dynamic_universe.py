@@ -58,6 +58,7 @@ class DynamicUniverseManager:
     Determines which instruments are tradeable at each date based on:
     1. Walk-forward cost filters (SR per trade, annual SR)
     2. Minimum data availability (at least one rule can produce forecast)
+    3. IVOL cap (optional): exclude high-idiosyncratic-vol lottery tokens
     """
 
     def __init__(
@@ -70,6 +71,7 @@ class DynamicUniverseManager:
         min_annual_vol: float = 0.0,
         vol_window: int = 35,
         min_history_mode: str = 'any_rule',
+        ivol_eligibility_panel: Optional[pd.DataFrame] = None,
         log=get_logger("DynamicUniverseManager"),
     ):
         """
@@ -85,6 +87,9 @@ class DynamicUniverseManager:
                         SR cost and vol floor filters (default 35).
             min_history_mode: Minimum history requirement mode (default 'any_rule').
                               Options: 'any_rule' (15 days), 'all_rules' (270 days).
+            ivol_eligibility_panel: Pre-computed boolean DataFrame (dates × instruments)
+                                    where True = instrument IVOL is within cap.
+                                    None = IVOL filter disabled.
             log: Logger instance
         """
         self._cost_estimator = cost_estimator
@@ -92,6 +97,7 @@ class DynamicUniverseManager:
         self._max_sr_annual = max_sr_cost_annual
         self._min_annual_vol = min_annual_vol
         self._vol_window = vol_window
+        self._ivol_panel = ivol_eligibility_panel
         self._log = log
 
         # Set minimum history threshold based on mode
@@ -176,8 +182,11 @@ class DynamicUniverseManager:
         # Volatility floor: exclude stablecoins and semi-pegged tokens
         vol_ok = self._get_vol_floor_series(prices)
 
+        # IVOL cap: exclude high-idiosyncratic-vol lottery tokens
+        ivol_ok = self._get_ivol_cap_series(instrument_code, prices)
+
         # Combined eligibility
-        eligible = cost_ok & annual_ok & history_ok & vol_ok
+        eligible = cost_ok & annual_ok & history_ok & vol_ok & ivol_ok
 
         self._eligibility_cache[instrument_code] = eligible
         return eligible
@@ -344,6 +353,25 @@ class DynamicUniverseManager:
 
         # NaN before warmup → treat as ineligible (same conservative logic as cost filter)
         return annual_vol >= self._min_annual_vol
+
+    def _get_ivol_cap_series(
+        self,
+        instrument_code: str,
+        prices: pd.Series,
+    ) -> pd.Series:
+        """
+        Return time series of whether IVOL is within the cap.
+
+        Returns all-True when IVOL panel not loaded (filter disabled) or
+        when instrument is not in the panel (conservative pass-through).
+        """
+        if self._ivol_panel is None or instrument_code not in self._ivol_panel.columns:
+            return pd.Series(True, index=prices.index)
+
+        ivol_col = self._ivol_panel[instrument_code]
+        # Reindex to instrument's price index; forward-fill (IVOL changes slowly)
+        aligned = ivol_col.reindex(prices.index, method='ffill').fillna(False)
+        return aligned
 
     def clear_cache(self):
         """Clear cached computations."""
