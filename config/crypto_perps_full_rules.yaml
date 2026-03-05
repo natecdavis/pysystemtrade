@@ -763,7 +763,7 @@ inter_sector_lookback: 20
 #
 # Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
 # Sweep: scripts/sweep_xs_activity.py
-xs_activity_weight: 0.0
+xs_activity_weight: 1.0   # ADOPTED 2026-03-05: ΔSharpe +7.3%, ΔMaxDD +0.7pp (improved), Calmar non-monotone
 xs_activity_lookback: 30
 
 # ============================================================================

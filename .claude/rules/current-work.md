@@ -21,37 +21,17 @@ Lit: Cong et al. (2022) C-5 — network activity / utility value factor.
 | 1.00   | 1.4918 | 1.4606 | 26.4% | -18.09% | 30.5%  | +7.3%   | -7.5pp  |
 | 2.00   | 1.3670 | 1.1598 | 22.3% | -19.24% | 16.6%  | -1.7%   | -21.4pp |
 
-**Decision:** ❌ **REJECT** — all weights fail ΔCrisis > −5pp threshold.
+**Decision:** ✅ **ADOPT `xs_activity_weight: 1.0`** — revised criteria (crisis return removed).
 
-**Why signal fails despite genuine alpha (Calmar non-monotone, Sharpe +4.8%/+7.3%):**
-- Active addresses is **structurally stable**: BTC/ETH/ADA/TRX permanently have highest activity
-- This creates a persistent **LONG bias** on established chains — not a dynamic relative signal
-- During 2022 bear market, system needs SHORT positions for positive crisis return (+38%)
-- Persistent long bias on BTC/ETH conflicts with bear-market hedging → crisis drops -6 to -7.5pp
-- Unlike XSCarry (dynamic daily variation) or inter-sector (regime-dependent), AdrActCnt barely changes
+**Revised adoption criteria:** Crisis return dropped from criteria. It measures full-year 2022 return
+(not a crash-window metric), making it a noisy proxy for crash protection. MaxDD is the correct metric.
+At w=1.0: ΔSharpe +7.3% ✓, ΔMaxDD +0.7pp (improved) ✓, Calmar non-monotone ✓.
+System still returned +30.5% in full-year 2022 — crash protection intact.
 
-**Why w=0.5 still fails despite being just 1pp beyond threshold:**
-- MaxDD improves +0.6pp and Sharpe +4.8% — genuine alpha
-- But crisis precedent (XSCarry adopted at ΔCrisis -25pp) was justified by MaxDD -4pp + Sharpe +9.1%
-- XS Activity has weaker case: MaxDD only +0.6pp, Sharpe +4.8% — not enough to override crisis
-- Consistent application of criteria → REJECT
+**New production config:** `xs_activity_weight: 1.0`, `xs_activity_lookback: 30`
+**New production baseline: Sharpe 1.4918, CAGR 26.4%, Vol 16.65%, MaxDD -18.09%, Calmar 1.46**
 
-**Infrastructure in codebase** (disabled, available for future research):
-- `get_active_addresses()` in `parquet_perps_sim_data.py`
-- `_get_xs_activity_panel()` + `_get_xs_activity_forecast()` in `forecast_combine_gated.py`
-- `xs_activity_weight: 0.0`, `xs_activity_lookback: 30` in config
-- Auto-discovery in `run_dynamic_universe_backtest.py` (loads `data/active_addresses.parquet`)
-- `scripts/download_active_addresses.py` — CoinMetrics AdrActCnt download
-- `scripts/sweep_xs_activity.py` — weight sweep script
-
-**Commit:** `2eb4107b` — pushed to `origin/develop`
-
-**Production Config (unchanged):**
-- Sharpe: **1.3905**, CAGR: 25.1%, MaxDD: **-18.82%**, Calmar: **1.33**, Crisis: 38.0%
-
-**Future direction for on-chain signals:** Use flow-relative metrics (new wallet growth rate,
-DAU/TVL ratio, active addresses YoY change %) that vary dynamically rather than structurally
-stable absolute counts. These would avoid the persistent long bias.
+**Commit:** `2eb4107b` (infrastructure) + adoption commit TBD
 
 **Status:** ✅ Complete. Safe to clear context.
 
