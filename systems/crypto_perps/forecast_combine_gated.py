@@ -20,6 +20,7 @@ from systems.forecast_combine import ForecastCombine
 from systems.system_cache import diagnostic, output
 import pandas as pd
 import numpy as np
+from sysquant.estimators.vol import robust_vol_calc
 
 
 class ForecastCombineGated(ForecastCombine):
@@ -164,6 +165,17 @@ class ForecastCombineGated(ForecastCombine):
             xscarry_fc = xscarry_fc.reindex(final_forecast_raw.index).fillna(0.0)
             final_forecast_raw = final_forecast_raw + xscarry_weight * xscarry_fc
 
+        # Inter-sector rotation sleeve: rank sector aggregate momentum cross-sectionally.
+        # Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects in intl equity.
+        # Captures months-level rotation signal (L1 seasons, DeFi summer, AI runs) not in TSMOM.
+        inter_sector_weight = config.get_element_or_default('inter_sector_weight', 0.0)
+        if inter_sector_weight != 0.0:
+            inter_sector_lookback = config.get_element_or_default('inter_sector_lookback', 20)
+            inter_sector_fc = self._get_inter_sector_forecast(instrument_code, lookback=inter_sector_lookback)
+            if inter_sector_fc is not None and not inter_sector_fc.empty:
+                inter_sector_fc = inter_sector_fc.reindex(final_forecast_raw.index).fillna(0.0)
+                final_forecast_raw = final_forecast_raw + inter_sector_weight * inter_sector_fc
+
         # Forecast tilt: constant offset to bias toward more predictive direction
         # Positive offset → long bias; negative → short bias
         # Applied after all sleeves, before FDM and ±20 cap
@@ -226,6 +238,77 @@ class ForecastCombineGated(ForecastCombine):
     def _get_xscarry_forecast(self, instrument_code: str, lookback: int = 30) -> pd.Series:
         """Return cross-sectional funding carry forecast for one instrument (±20 scale)."""
         panel = self._get_xscarry_panel(lookback)
+        if panel.empty or instrument_code not in panel.columns:
+            return pd.Series(dtype=float)
+        return panel[instrument_code]
+
+    def _get_inter_sector_panel(self, lookback: int = 20) -> pd.DataFrame:
+        """
+        Build inter-sector rotation forecast panel (dates × instruments, cached per lookback).
+
+        Steps:
+        1. For each named sector, load whole-sector aggregate index (get_sector_aggregate_index)
+        2. Apply EWMAC(lookback, 4×lookback) to get sector momentum score (vol-normalised)
+        3. Rank sectors cross-sectionally at each date → percentile [0,1]
+        4. Map to forecast: (pct - 0.5) × 40 → [-20, +20]
+        5. Build instrument-indexed panel: each instrument gets its sector's forecast
+
+        Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects
+        in international equity markets. L1 seasons, DeFi summer, AI runs operate
+        on months-level horizon not captured by per-instrument TSMOM rules.
+        """
+        cache_key = f'_inter_sector_panel_{lookback}'
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+
+        data = self.parent.data
+        sector_map = getattr(data, '_sector_map', {}) or {}
+
+        # Named sectors (exclude 'Other' — no clean signal for misc instruments)
+        named_sectors = sorted({s for s in sector_map.values() if s != 'Other'})
+
+        # Build EWMAC momentum series per sector
+        sector_momentum = {}
+        for sector_name in named_sectors:
+            try:
+                idx = data.get_sector_aggregate_index(sector_name)
+            except Exception:
+                continue
+            if idx is None or len(idx.dropna()) < lookback * 2:
+                continue
+            # EWMAC(fast, 4×fast) — same formula as assettrend rule
+            fast = idx.ewm(span=lookback, min_periods=1).mean()
+            slow = idx.ewm(span=lookback * 4, min_periods=1).mean()
+            vol  = robust_vol_calc(idx.diff())
+            raw  = (fast - slow) / vol.clip(lower=1e-8)
+            sector_momentum[sector_name] = raw
+
+        if len(sector_momentum) < 2:
+            result = pd.DataFrame()
+            setattr(self, cache_key, result)
+            return result
+
+        momentum_df = pd.DataFrame(sector_momentum)
+        # Cross-sectional rank at each date (pct=True → [0,1])
+        pct_rank = momentum_df.rank(axis=1, pct=True)
+        # Map [0,1] → [-20, +20]
+        sector_forecast = (pct_rank - 0.5) * 40.0
+
+        # Expand to instrument level: each instrument gets its sector's forecast
+        instrument_list = data.get_instrument_list()
+        panel = {}
+        for instr in instrument_list:
+            sector = sector_map.get(instr, 'Other')
+            if sector != 'Other' and sector in sector_forecast.columns:
+                panel[instr] = sector_forecast[sector]
+
+        result = pd.DataFrame(panel)   # dates × instruments
+        setattr(self, cache_key, result)
+        return result
+
+    def _get_inter_sector_forecast(self, instrument_code: str, lookback: int = 20) -> pd.Series:
+        """Return inter-sector rotation forecast for one instrument (±20 scale)."""
+        panel = self._get_inter_sector_panel(lookback)
         if panel.empty or instrument_code not in panel.columns:
             return pd.Series(dtype=float)
         return panel[instrument_code]

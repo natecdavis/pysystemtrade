@@ -940,6 +940,39 @@ class parquetCryptoPerpsSimData(simData):
 
         return self._compute_adv_weighted_index(prices_df, adv_df)
 
+    def get_sector_aggregate_index(self, sector_name: str) -> pd.Series:
+        """
+        ADV-weighted aggregate price index for sector_name (ALL members, no ex-self).
+
+        Used by inter-sector rotation sleeve for cross-sectional sector ranking.
+        Distinct from get_sector_index_price() which excludes the queried instrument.
+
+        Returns:
+            pd.Series rebased to 100 at first valid date.
+            Empty pd.Series if sector has < 3 members or sector_map not loaded.
+        """
+        cache_key = f'_sector_aggregate_{sector_name}'
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+
+        if self._sector_map is None:
+            setattr(self, cache_key, pd.Series(dtype=float))
+            return pd.Series(dtype=float)
+
+        if not hasattr(self, '_sector_components_cache'):
+            self._sector_components_cache = self._build_sector_components()
+
+        components = self._sector_components_cache.get(sector_name, {})
+        if len(components) < 3:
+            setattr(self, cache_key, pd.Series(dtype=float))
+            return pd.Series(dtype=float)
+
+        prices_df = pd.DataFrame({code: v[0] for code, v in components.items()})
+        adv_df    = pd.DataFrame({code: v[1] for code, v in components.items()})
+        result = self._compute_adv_weighted_index(prices_df, adv_df)
+        setattr(self, cache_key, result)
+        return result
+
     def get_cross_sectional_median_funding(self, instrument_code: str) -> pd.Series:
         """
         Cross-sectional median of annualised funding rates across all instruments.

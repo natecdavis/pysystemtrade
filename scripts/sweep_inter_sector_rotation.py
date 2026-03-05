@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """
-Sweep xscarry_weight values and compare backtest performance.
+Sweep inter_sector_weight values and compare backtest performance.
 
 Runs a full backtest for each weight, collects metrics, and prints a
-comparison table including Calmar ratio.
+comparison table. Tests whether cross-sectional sector momentum (Cong et al.
+2022 C-5) adds alpha on top of the production trend+carry+xscarry stack.
+
+Adoption criteria:
+  - ΔSharpe ≥ +1% relative vs baseline
+  - ΔCrisis return > -5pp (sector rotation shouldn't strip bear protection)
+  - ΔMaxDD > -3pp absolute worsening
+  - Calmar non-monotone across weight sweep (proves genuine signal)
 
 Usage:
-    python scripts/sweep_xscarry_weight.py \\
+    python scripts/sweep_inter_sector_rotation.py \\
         --base-config config/crypto_perps_full_rules.yaml \\
         --data data/dataset_538registry_6yr_jagged.parquet \\
-        --outdir out/xscarry_sweep \\
-        --weights 0 0.2 0.5 1.0 2.0 3.0
+        --outdir out/inter_sector_rotation_sweep \\
+        --weights 0.0 0.2 0.5 1.0 2.0
 """
 
 import argparse
@@ -61,36 +68,42 @@ def load_results(outdir: Path) -> dict:
 def print_comparison(results: list[dict]) -> None:
     """Print formatted comparison table."""
     print()
-    print('=' * 90)
-    print('XSCARRY WEIGHT SWEEP — RESULTS')
-    print('=' * 90)
+    print('=' * 100)
+    print('INTER-SECTOR ROTATION WEIGHT SWEEP — RESULTS')
+    print('=' * 100)
 
     hdr = (
         f'{"Weight":>8}  {"Sharpe":>8}  {"Calmar":>8}  {"CAGR":>8}  '
-        f'{"Vol":>8}  {"MaxDD":>8}  {"Crisis Ret":>10}  {"ΔSharpe":>8}  {"ΔCalmar":>8}'
+        f'{"Vol":>8}  {"MaxDD":>8}  {"Crisis Ret":>10}  {"AvgPos":>7}  '
+        f'{"ΔSharpe":>8}  {"ΔCalmar":>8}  {"ΔMaxDD":>8}  {"ΔCrisis":>8}'
     )
     print(hdr)
-    print('─' * 90)
+    print('─' * 100)
 
     baseline = None
     for r in results:
         m = r.get('metrics', {})
-        weight   = r['weight']
-        sharpe   = m.get('sharpe',         float('nan'))
-        calmar   = m.get('calmar',         float('nan'))
-        cagr     = m.get('cagr',           float('nan'))
-        vol      = m.get('ann_vol',        float('nan'))
-        maxdd    = m.get('max_dd',         float('nan'))
-        crisis   = m.get('crisis_return',  float('nan'))
+        weight  = r['weight']
+        sharpe  = m.get('sharpe',         float('nan'))
+        calmar  = m.get('calmar',         float('nan'))
+        cagr    = m.get('cagr',           float('nan'))
+        vol     = m.get('ann_vol',        float('nan'))
+        maxdd   = m.get('max_dd',         float('nan'))
+        crisis  = m.get('crisis_return',  float('nan'))
+        avg_pos = m.get('avg_positions',  float('nan'))
 
         if baseline is None:
             baseline = r
             d_sharpe = 0.0
             d_calmar = 0.0
+            d_maxdd  = 0.0
+            d_crisis = 0.0
         else:
             b_m = baseline.get('metrics', {})
-            d_sharpe = sharpe - b_m.get('sharpe', float('nan'))
-            d_calmar = calmar - b_m.get('calmar', float('nan'))
+            d_sharpe = sharpe - b_m.get('sharpe',        float('nan'))
+            d_calmar = calmar - b_m.get('calmar',        float('nan'))
+            d_maxdd  = maxdd  - b_m.get('max_dd',        float('nan'))
+            d_crisis = crisis - b_m.get('crisis_return', float('nan'))
 
         tag = ' ← baseline' if baseline is r else ''
         print(
@@ -101,24 +114,29 @@ def print_comparison(results: list[dict]) -> None:
             f'{vol*100:>7.2f}%  '
             f'{maxdd*100:>7.2f}%  '
             f'{crisis*100:>10.2f}%  '
+            f'{avg_pos:>7.1f}  '
             f'{d_sharpe:>+8.4f}  '
-            f'{d_calmar:>+8.4f}'
+            f'{d_calmar:>+8.4f}  '
+            f'{d_maxdd*100:>+7.2f}pp  '
+            f'{d_crisis*100:>+7.2f}pp'
             f'{tag}'
         )
 
-    print('─' * 90)
+    print('─' * 100)
     print()
 
     # Adoption check
     baseline_m = baseline.get('metrics', {}) if baseline else {}
-    b_sharpe = baseline_m.get('sharpe', float('nan'))
+    b_sharpe = baseline_m.get('sharpe',        float('nan'))
     b_crisis = baseline_m.get('crisis_return', float('nan'))
-    b_maxdd  = baseline_m.get('max_dd', float('nan'))
-    b_calmar = baseline_m.get('calmar', float('nan'))
+    b_maxdd  = baseline_m.get('max_dd',        float('nan'))
+    b_calmar = baseline_m.get('calmar',        float('nan'))
+    b_pos    = baseline_m.get('avg_positions', float('nan'))
 
     print('ADOPTION CRITERIA CHECK')
-    print('  Sharpe improvement ≥ +1%      |  Crisis return drop < 5pp  |  MaxDD < +3pp')
-    print('  (also check Calmar does not monotonically fall — ensures signal, not random)')
+    print('  ΔSharpe ≥ +1%  |  ΔCrisis > -5pp  |  ΔMaxDD > -3pp')
+    print('  (Calmar non-monotone → genuine signal, not pure leverage)')
+    print('  (avg_positions stable ±5% → sleeve changes conviction, not universe)')
     print()
 
     candidates = []
@@ -129,10 +147,13 @@ def print_comparison(results: list[dict]) -> None:
         crisis  = m.get('crisis_return', float('nan'))
         maxdd   = m.get('max_dd',        float('nan'))
         calmar  = m.get('calmar',        float('nan'))
-        d_sharpe_pct = (sharpe - b_sharpe) / b_sharpe * 100
+        avg_pos = m.get('avg_positions', float('nan'))
+
+        d_sharpe_pct = (sharpe - b_sharpe) / abs(b_sharpe) * 100
         d_crisis_pp  = (crisis - b_crisis) * 100
         d_maxdd_pp   = (maxdd  - b_maxdd)  * 100
         d_calmar     = calmar - b_calmar
+        d_pos_pct    = (avg_pos - b_pos) / b_pos * 100 if b_pos else float('nan')
 
         sharpe_ok = d_sharpe_pct >= 1.0
         crisis_ok = d_crisis_pp  > -5.0
@@ -149,6 +170,7 @@ def print_comparison(results: list[dict]) -> None:
             f'ΔCrisis={d_crisis_pp:+.1f}pp {("✓" if crisis_ok else "✗"):1}  '
             f'ΔMaxDD={d_maxdd_pp:+.1f}pp {("✓" if maxdd_ok else "✗"):1}  '
             f'ΔCalmar={d_calmar:+.4f}  '
+            f'ΔPos={d_pos_pct:+.1f}%  '
             f'→ {status}'
         )
 
@@ -164,24 +186,20 @@ def print_comparison(results: list[dict]) -> None:
     print()
     if candidates:
         best = max(candidates, key=lambda r: r.get('metrics', {}).get('sharpe', float('-inf')))
-        print(f'  RECOMMENDATION: Use xscarry_weight={best["weight"]:.2f}')
+        print(f'  RECOMMENDATION: Use inter_sector_weight={best["weight"]:.2f}')
         print(f'  (highest Sharpe among candidates that pass all criteria)')
         print()
-        print(f'  NEXT STEP: If adopted, sweep lookbacks [7, 14, 30, 60] at weight={best["weight"]:.2f}:')
-        print(f'    python scripts/sweep_xscarry_weight.py \\')
-        print(f'      --base-config config/crypto_perps_full_rules.yaml \\')
-        print(f'      --data data/dataset_538registry_6yr_jagged.parquet \\')
-        print(f'      --outdir out/xscarry_lookback_sweep \\')
-        print(f'      --weights {best["weight"]:.2f} \\')
-        print(f'      --lookbacks 7 14 30 60')
+        print(f'  NEXT STEP: Update config and commit:')
+        print(f'    inter_sector_weight: {best["weight"]:.2f}')
+        print(f'    inter_sector_lookback: 20')
     else:
-        print('  RECOMMENDATION: No weight passes all adoption criteria — keep xscarry_weight=0.0')
+        print('  RECOMMENDATION: No weight passes all adoption criteria — keep inter_sector_weight=0.0')
     print()
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Sweep xscarry_weight values.',
+        description='Sweep inter_sector_weight values for inter-sector rotation sleeve.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -195,17 +213,17 @@ def main():
     )
     parser.add_argument(
         '--outdir', type=Path,
-        default=Path('out/xscarry_sweep'),
+        default=Path('out/inter_sector_rotation_sweep'),
     )
     parser.add_argument(
         '--weights', type=float, nargs='+',
-        default=[0.0, 0.2, 0.5, 1.0, 2.0, 3.0],
-        help='xscarry_weight values to test (default: 0 0.2 0.5 1.0 2.0 3.0)',
+        default=[0.0, 0.2, 0.5, 1.0, 2.0],
+        help='inter_sector_weight values to test (default: 0.0 0.2 0.5 1.0 2.0)',
     )
     parser.add_argument(
-        '--lookbacks', type=int, nargs='+',
-        default=None,
-        help='If set, sweep xscarry_lookback values instead of weights (use with single --weights value)',
+        '--lookback', type=int,
+        default=20,
+        help='Fixed inter_sector_lookback for the weight sweep (default: 20)',
     )
     parser.add_argument(
         '--skip-existing', action='store_true',
@@ -225,98 +243,11 @@ def main():
 
     base_cfg = load_yaml(args.base_config)
 
-    # Lookback sweep mode: fix weight, sweep lookbacks
-    if args.lookbacks is not None:
-        if len(args.weights) != 1:
-            print('ERROR: --lookbacks requires exactly one --weights value')
-            sys.exit(1)
-        fixed_weight = args.weights[0]
-        print(f'Base config:  {args.base_config}')
-        print(f'Data:         {args.data}')
-        print(f'Output dir:   {args.outdir}')
-        print(f'Fixed weight: {fixed_weight}')
-        print(f'Lookbacks:    {args.lookbacks}')
-        print()
-
-        results = []
-        for lb in args.lookbacks:
-            tag = f'w{fixed_weight:.2f}_lb{lb}'.replace('.', 'p')
-            run_outdir = args.outdir / tag
-
-            print(f'{"─"*60}')
-            print(f'Running: weight={fixed_weight:.2f}, lookback={lb}  →  {run_outdir}')
-
-            if args.skip_existing and (run_outdir / 'performance_summary.json').exists():
-                print('  Skipping — results already exist (--skip-existing)')
-                r = load_results(run_outdir)
-                r['weight'] = fixed_weight
-                r['lookback'] = lb
-                results.append(r)
-                continue
-
-            cfg = dict(base_cfg)
-            cfg['xscarry_weight'] = float(fixed_weight)
-            cfg['xscarry_lookback'] = int(lb)
-
-            with tempfile.NamedTemporaryFile(
-                mode='w', suffix='.yaml', delete=False, dir=args.outdir
-            ) as tmp:
-                yaml.dump(cfg, tmp, default_flow_style=False, sort_keys=False)
-                tmp_path = Path(tmp.name)
-
-            try:
-                rc = run_backtest(tmp_path, args.data, run_outdir)
-            finally:
-                tmp_path.unlink(missing_ok=True)
-
-            if rc != 0:
-                print(f'  WARNING: backtest returned non-zero exit code {rc}')
-
-            r = load_results(run_outdir)
-            r['weight'] = fixed_weight
-            r['lookback'] = lb
-            results.append(r)
-
-            m = r.get('metrics', {})
-            print(
-                f'  Sharpe={m.get("sharpe", float("nan")):.4f}  '
-                f'Calmar={m.get("calmar", float("nan")):.4f}  '
-                f'CAGR={m.get("cagr", 0)*100:.2f}%  '
-                f'MaxDD={m.get("max_dd", 0)*100:.2f}%'
-            )
-
-        # Print lookback comparison table
-        print()
-        print('=' * 70)
-        print('LOOKBACK SWEEP — RESULTS')
-        print('=' * 70)
-        hdr = f'{"Lookback":>10}  {"Sharpe":>8}  {"Calmar":>8}  {"CAGR":>8}  {"MaxDD":>8}'
-        print(hdr)
-        print('─' * 70)
-        for r in results:
-            m = r.get('metrics', {})
-            print(
-                f'{r["lookback"]:>10}  '
-                f'{m.get("sharpe", float("nan")):>8.4f}  '
-                f'{m.get("calmar", float("nan")):>8.4f}  '
-                f'{m.get("cagr", 0)*100:>7.2f}%  '
-                f'{m.get("max_dd", 0)*100:>7.2f}%'
-            )
-        print('─' * 70)
-        best_lb = max(results, key=lambda r: r.get('metrics', {}).get('sharpe', float('-inf')))
-        print(f'\n  RECOMMENDATION: xscarry_lookback={best_lb["lookback"]} (highest Sharpe)')
-
-        summary_path = args.outdir / 'lookback_sweep_summary.json'
-        with open(summary_path, 'w') as f:
-            json.dump(results, f, indent=2, default=str)
-        print(f'\nFull results saved: {summary_path}')
-        return
-
-    # Weight sweep mode (default)
-    print(f'Base config:  {args.base_config}')
-    print(f'Data:         {args.data}')
-    print(f'Output dir:   {args.outdir}')
-    print(f'Weights:      {args.weights}')
+    print(f'Base config:      {args.base_config}')
+    print(f'Data:             {args.data}')
+    print(f'Output dir:       {args.outdir}')
+    print(f'Weights:          {args.weights}')
+    print(f'Fixed lookback:   {args.lookback}')
     print()
 
     results = []
@@ -326,7 +257,7 @@ def main():
         run_outdir = args.outdir / tag
 
         print(f'{"─"*60}')
-        print(f'Running: xscarry_weight = {weight:.2f}  →  {run_outdir}')
+        print(f'Running: inter_sector_weight = {weight:.2f}  →  {run_outdir}')
 
         if args.skip_existing and (run_outdir / 'performance_summary.json').exists():
             print('  Skipping — results already exist (--skip-existing)')
@@ -336,7 +267,8 @@ def main():
             continue
 
         cfg = dict(base_cfg)
-        cfg['xscarry_weight'] = float(weight)
+        cfg['inter_sector_weight']   = float(weight)
+        cfg['inter_sector_lookback'] = int(args.lookback)
 
         with tempfile.NamedTemporaryFile(
             mode='w', suffix='.yaml', delete=False, dir=args.outdir
@@ -361,12 +293,13 @@ def main():
             f'  Sharpe={m.get("sharpe", float("nan")):.4f}  '
             f'Calmar={m.get("calmar", float("nan")):.4f}  '
             f'CAGR={m.get("cagr", 0)*100:.2f}%  '
-            f'MaxDD={m.get("max_dd", 0)*100:.2f}%'
+            f'MaxDD={m.get("max_dd", 0)*100:.2f}%  '
+            f'Crisis={m.get("crisis_return", 0)*100:.2f}%'
         )
 
     print_comparison(results)
 
-    summary_path = args.outdir / 'xscarry_sweep_summary.json'
+    summary_path = args.outdir / 'inter_sector_sweep_summary.json'
     with open(summary_path, 'w') as f:
         json.dump(results, f, indent=2, default=str)
     print(f'Full results saved: {summary_path}')

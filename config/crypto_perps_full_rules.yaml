@@ -725,6 +725,27 @@ xscarry_weight: 1.0
 xscarry_lookback: 30
 
 # ============================================================================
+# INTER-SECTOR ROTATION SLEEVE
+# ============================================================================
+# Cross-sectional ranking of sector-aggregate momentum signals.
+# Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects.
+# Captures months-level rotation (L1 seasons, DeFi summer, AI runs) not in TSMOM.
+#
+# Sectors: L1 (83), DeFi (56), AI (36), Meme (33), Gaming (19), L2 (10), Infra (10)
+# "Other" (~53 instruments) receives 0 forecast — no sector assignment.
+#
+# Forecast: EWMAC(lookback, 4×lookback) on whole-sector ADV-weighted index,
+#           cross-sectionally ranked → [-20, +20] via (pct - 0.5) × 40
+#
+# inter_sector_weight: 0.0 = off; 1.0 adds ±20 on top of trend (same scale as xscarry)
+# inter_sector_lookback: EWMAC fast window for sector momentum (days)
+#
+# Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
+# Sweep: scripts/sweep_inter_sector_rotation.py
+inter_sector_weight: 1.0   # ADOPTED 2026-03-05: ΔSharpe +21.4%, ΔCrisis +2.4pp, MaxDD flat
+inter_sector_lookback: 20
+
+# ============================================================================
 # OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
 # ============================================================================
 # Defensive position scaling based on funding rate z-score (OI proxy).
