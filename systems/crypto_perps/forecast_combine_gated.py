@@ -54,6 +54,17 @@ class ForecastCombineGated(ForecastCombine):
 
         # Get config parameters
         config = self.parent.config
+
+        # XSMOM long-only gate: clip cross-sectional rule negative forecasts to zero.
+        # Lit: Han et al. (2024) / Dobrynskaya — cross-sectional momentum alpha concentrated
+        # in winners (long leg); loser portfolio reverts, not continues falling.
+        # Only relmomentum/assettrend are true XSMOM — normmom/residual are time-series.
+        xsmom_long_only = config.get_element_or_default('xsmom_long_only', False)
+        xsmom_rules = config.get_element_or_default('xsmom_rule_list', [])
+        if xsmom_long_only and xsmom_rules:
+            xsmom_cols = [c for c in weighted_forecasts.columns if c in xsmom_rules]
+            weighted_forecasts[xsmom_cols] = weighted_forecasts[xsmom_cols].clip(lower=0.0)
+
         use_gated_carry = config.get_element_or_default('use_gated_carry', False)
 
         # If gating is disabled, use standard combination

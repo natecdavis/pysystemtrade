@@ -654,6 +654,28 @@ carry_rule_list:
   - vol_norm_carry_30
   - vol_norm_carry_60
 
+# ============================================================================
+# XSMOM LONG-ONLY GATE
+# ============================================================================
+# Clips XSMOM rule forecasts to max(0, forecast) before combining.
+# Literature: Han et al. (2024) / Dobrynskaya — cross-sectional momentum alpha is
+# concentrated in the LONG side (winner momentum). The short leg of XS rules tends
+# to mean-revert, not continue falling. TSMOM rules (EWMAC, breakout, accel) still
+# go short freely — they are time-series signals about the instrument's own trend.
+#
+# xsmom_long_only: false = symmetric (default, baseline unchanged)
+#                  true  = clip XSMOM negative forecasts to 0
+# xsmom_rule_list: rules to gate (relmomentum only by default;
+#                  assettrend excluded — bear-market shorts may be genuine trend)
+#
+# Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
+# Sweep (gate_relmom vs gate_all_xsmom): scripts/sweep_xsmom_long_only.py
+xsmom_long_only: false
+xsmom_rule_list:
+  - relmomentum_20
+  - relmomentum_40
+  # assettrend_8/16/32/64 excluded by default (test via gate_all_xsmom config)
+
 # Additive sector momentum sleeve (no budget taken from trend rules)
 # Added AFTER trend+carry combination: final += sector_weight × mean(sector_forecasts)
 # sector_forecasts are pulled directly from ForecastScaleCap (±20 scale, already capped)

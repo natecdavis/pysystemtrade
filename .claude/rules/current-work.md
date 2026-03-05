@@ -1,6 +1,48 @@
 # Current Work Context
 
-## Current Session Summary (2026-03-03, Part 2)
+## Current Session Summary (2026-03-04)
+
+**XSMOM Short-Leg Gate — Implemented & Rejected**
+
+**Status:** ✅ Complete. `xsmom_long_only: false` confirmed. Production Sharpe: 1.1452 (unchanged).
+
+**Hypothesis:** Han et al. (2024) / Dobrynskaya — cross-sectional momentum alpha in large-cap
+crypto is concentrated in the LONG side. The short leg (relmomentum/assettrend shorts) should
+mean-revert, not continue falling. Clipping XSMOM forecasts to `max(0, fc)` should improve Sharpe.
+
+**Sweep Results:**
+
+| Config | Sharpe | Calmar | CAGR | MaxDD | Crisis | ΔSharpe | ΔCrisis |
+|--------|--------|--------|------|-------|--------|---------|---------|
+| baseline | 1.1452 | 1.0676 | 20.4% | -19.06% | 35.56% | — | — |
+| gate_relmom | 1.1235 | 1.0493 | 19.7% | -18.78% | 33.97% | -1.9% | -1.59pp |
+| gate_all_xsmom | 1.0898 | 0.9820 | 18.4% | -18.78% | 29.03% | -4.8% | -6.53pp |
+
+**Decision:** ❌ **REJECT** — Sharpe falls monotonically as more XSMOM rules are gated.
+
+**Why the hypothesis fails on this dataset:**
+- In crypto 2020–2026, cross-sectional underperformers (relmomentum short signals) tend to
+  CONTINUE underperforming, not mean-revert. It's genuine trend signal, not reversal noise.
+- The Han et al. result may be more specific to equity markets or particular sub-periods.
+- 2022 bear market: relmomentum short signals on losing tokens (e.g., LUNA ecosystem, FTX-adjacent)
+  were profitable continuation trades. Gating them removed alpha.
+- MaxDD improved slightly (+0.28pp both variants) but Sharpe loss (-1.9%, -4.8%) dominates.
+- **gate_all_xsmom** also fails crisis criterion (-6.53pp): assettrend bear-market shorts essential.
+
+**Infrastructure in codebase** (gate off, available for future research):
+- Gate block in `forecast_combine_gated.py` lines 58-66
+- `xsmom_long_only: false`, `xsmom_rule_list: [relmomentum_20, relmomentum_40]` in config
+- `scripts/sweep_xsmom_long_only.py` — 3-config comparison script
+
+**Production Config (unchanged):**
+- `xsmom_long_only: false` in `config/crypto_perps_full_rules.yaml`
+- Sharpe: **1.1452**, CAGR: 20.4%, MaxDD: **-19.06%**, Calmar: **1.07**, Crisis: 35.6%
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-03-03, Part 2)
 
 **IVOL Cap Universe Filter — Implemented & Rejected**
 
