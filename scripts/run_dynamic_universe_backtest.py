@@ -541,6 +541,16 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         logger.info("mvrv_index.parquet not found — MVRV overlay disabled (run scripts/download_mvrv_index.py)")
     mvrv_kwarg = mvrv_data_path if mvrv_data_path is not None else _arg_not_supplied
 
+    # Auto-discover active addresses data if not explicitly provided
+    aa_data_path = None
+    aa_candidate = Path(data_path).parent / 'active_addresses.parquet'
+    if aa_candidate.exists():
+        aa_data_path = str(aa_candidate)
+        logger.info(f"Auto-discovered active addresses: {aa_candidate}")
+    else:
+        logger.info("active_addresses.parquet not found — XS activity sleeve disabled (run scripts/download_active_addresses.py)")
+    aa_kwarg = aa_data_path if aa_data_path is not None else _arg_not_supplied
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
@@ -552,6 +562,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         sector_map_path=sector_kwarg,
         fg_data_path=fg_kwarg,
         mvrv_data_path=mvrv_kwarg,
+        active_addresses_data_path=aa_kwarg,
     )
 
     instruments = data.get_instrument_list()

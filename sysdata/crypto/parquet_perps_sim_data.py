@@ -87,6 +87,7 @@ class parquetCryptoPerpsSimData(simData):
         sector_map_path: str = arg_not_supplied,
         fg_data_path: str = arg_not_supplied,
         mvrv_data_path: str = arg_not_supplied,
+        active_addresses_data_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -170,6 +171,24 @@ class parquetCryptoPerpsSimData(simData):
                 f"{self._mvrv_df.index.min().date()} to {self._mvrv_df.index.max().date()}, "
                 f"current MVRV={self._mvrv_df['mvrv_ratio'].iloc[-1]:.3f}"
             )
+
+        # Load active addresses data if path provided (used by XS activity sleeve)
+        # Parquet: index=date (DatetimeIndex), columns=Binance instrument codes
+        # Values: float64 daily active address count (AdrActCnt from CoinMetrics)
+        self._active_addresses_df: Optional[pd.DataFrame] = None
+        if active_addresses_data_path is not arg_not_supplied:
+            if Path(active_addresses_data_path).exists():
+                self._active_addresses_df = pd.read_parquet(active_addresses_data_path)
+                self._active_addresses_df.index = (
+                    pd.DatetimeIndex(self._active_addresses_df.index).normalize()
+                )
+                n_instruments = len(self._active_addresses_df.columns)
+                self.log.info(
+                    f"Loaded active addresses from {active_addresses_data_path}: "
+                    f"{n_instruments} instruments, "
+                    f"{self._active_addresses_df.index.min().date()} to "
+                    f"{self._active_addresses_df.index.max().date()}"
+                )
 
         # Initialize downside beta panel (always None; computed below if enabled)
         self._downside_beta_panel = None
@@ -1613,3 +1632,22 @@ class parquetCryptoPerpsSimData(simData):
             )
             return pd.Series(dtype=float)
         return self._macro_df[col].dropna()
+
+    def get_active_addresses(self, instrument_code: str) -> pd.Series:
+        """
+        Get daily active address count for instrument_code.
+
+        Source: CoinMetrics Community AdrActCnt (count of unique addresses active
+        on a given day). Proxy for on-chain network utility / adoption.
+
+        Lit: Cong et al. (2022) C-5 — network activity predicts cross-sectional returns.
+
+        Returns:
+            pd.Series with DatetimeIndex and float values (NaN-dropped).
+            Empty Series if active addresses data not loaded or instrument not covered.
+        """
+        if self._active_addresses_df is None:
+            return pd.Series(dtype=float)
+        if instrument_code not in self._active_addresses_df.columns:
+            return pd.Series(dtype=float)
+        return self._active_addresses_df[instrument_code].dropna()

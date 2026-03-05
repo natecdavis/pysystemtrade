@@ -176,6 +176,20 @@ class ForecastCombineGated(ForecastCombine):
                 inter_sector_fc = inter_sector_fc.reindex(final_forecast_raw.index).fillna(0.0)
                 final_forecast_raw = final_forecast_raw + inter_sector_weight * inter_sector_fc
 
+        # XS Activity sleeve: cross-sectional on-chain active address count rank.
+        # Lit: Cong et al. (2022) C-5 — network activity / utility value factor.
+        # High activity rank → adoption signal → LONG (+20). Fires for ~42/300 instruments.
+        # Uncovered instruments receive 0 (neutral) — no harm from partial coverage.
+        xs_activity_weight = config.get_element_or_default('xs_activity_weight', 0.0)
+        if xs_activity_weight != 0.0:
+            xs_activity_lookback = config.get_element_or_default('xs_activity_lookback', 30)
+            xs_activity_fc = self._get_xs_activity_forecast(
+                instrument_code, lookback=xs_activity_lookback
+            )
+            if xs_activity_fc is not None and not xs_activity_fc.empty:
+                xs_activity_fc = xs_activity_fc.reindex(final_forecast_raw.index).fillna(0.0)
+                final_forecast_raw = final_forecast_raw + xs_activity_weight * xs_activity_fc
+
         # Forecast tilt: constant offset to bias toward more predictive direction
         # Positive offset → long bias; negative → short bias
         # Applied after all sleeves, before FDM and ±20 cap
@@ -309,6 +323,61 @@ class ForecastCombineGated(ForecastCombine):
     def _get_inter_sector_forecast(self, instrument_code: str, lookback: int = 20) -> pd.Series:
         """Return inter-sector rotation forecast for one instrument (±20 scale)."""
         panel = self._get_inter_sector_panel(lookback)
+        if panel.empty or instrument_code not in panel.columns:
+            return pd.Series(dtype=float)
+        return panel[instrument_code]
+
+    def _get_xs_activity_panel(self, lookback: int = 30) -> pd.DataFrame:
+        """
+        Build cross-sectional active addresses forecast panel (cached per lookback).
+
+        For each date, ranks instruments by EWM-smoothed active address count
+        cross-sectionally → percentile [0, 1] → forecast [-20, +20].
+
+        Sign: high activity (pct≈1.0) → forecast +20 (LONG).
+        Rationale: high network activity = strong adoption signal = undervalued relative
+        to peers (Cong et al. 2022 C-5 value factor — network utility predicts returns).
+
+        Instruments without coverage receive NaN → filled to 0 at sleeve application.
+        ~42 instruments covered; ~258 get 0 (neutral, no harm).
+
+        Lit: Cong et al. (2022) C-5 — on-chain activity as a value/adoption factor
+        analogous to earnings yield in equities. Cross-sectional, always-on signal.
+        """
+        cache_key = f'_xs_activity_panel_{lookback}'
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+
+        instrument_list = self.parent.data.get_instrument_list()
+        activity_dict = {}
+        for instr in instrument_list:
+            try:
+                addr = self.parent.data.get_active_addresses(instr)
+                if addr is None or len(addr.dropna()) < lookback:
+                    continue
+                addr_smooth = addr.ewm(span=lookback, min_periods=1).mean()
+                activity_dict[instr] = addr_smooth
+            except Exception:
+                continue
+
+        if not activity_dict:
+            setattr(self, cache_key, pd.DataFrame())
+            return pd.DataFrame()
+
+        activity_df = pd.DataFrame(activity_dict)
+        # Cross-sectional rank at each date: pct=True → [0, 1]
+        pct_rank = activity_df.rank(axis=1, pct=True)
+        # Map [0, 1] → [-20, +20]: high activity = LONG
+        forecast_panel = (pct_rank - 0.5) * 40.0
+
+        setattr(self, cache_key, forecast_panel)
+        return forecast_panel
+
+    def _get_xs_activity_forecast(
+        self, instrument_code: str, lookback: int = 30
+    ) -> pd.Series:
+        """Return cross-sectional active address forecast for one instrument (±20 scale)."""
+        panel = self._get_xs_activity_panel(lookback)
         if panel.empty or instrument_code not in panel.columns:
             return pd.Series(dtype=float)
         return panel[instrument_code]

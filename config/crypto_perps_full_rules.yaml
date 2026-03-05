@@ -746,6 +746,27 @@ inter_sector_weight: 1.0   # ADOPTED 2026-03-05: ΔSharpe +21.4%, ΔCrisis +2.4p
 inter_sector_lookback: 20
 
 # ============================================================================
+# CROSS-SECTIONAL ACTIVE ADDRESSES SLEEVE (XS ACTIVITY)
+# ============================================================================
+# Cross-sectional ranking of on-chain active address count per instrument.
+# Lit: Cong et al. (2022) C-5 — network activity / utility value factor.
+# High active addresses relative to peers → adoption signal → LONG (+20).
+#
+# Data: CoinMetrics Community AdrActCnt — 42 instruments covered (2020-2026).
+# Covered: BTC, ETH, ADA, AVAX, LINK, DOGE, XRP, LTC, BCH, AAVE, UNI, SUSHI, CRV,
+#          COMP, SNX, YFI, LDO, UMA, ZEC, ZRX, VET, KNC, TRX, MANA, and others.
+# Uncovered (~258 instruments): receive 0 forecast (no signal contribution).
+# Data file: auto-discovered from data/active_addresses.parquet
+#
+# xs_activity_weight: 0.0 = off; 1.0 adds ±20 (same scale as xscarry/inter_sector)
+# xs_activity_lookback: EWM smoothing window for address count (days)
+#
+# Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
+# Sweep: scripts/sweep_xs_activity.py
+xs_activity_weight: 0.0
+xs_activity_lookback: 30
+
+# ============================================================================
 # OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
 # ============================================================================
 # Defensive position scaling based on funding rate z-score (OI proxy).
