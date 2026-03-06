@@ -783,7 +783,7 @@ xs_activity_lookback: 30
 #
 # Adoption criteria: ΔSharpe ≥ +1%, ΔMaxDD > -3pp, Calmar non-monotone
 # Sweep: scripts/sweep_xs_addr_growth.py
-xs_addr_growth_weight: 0.2   # ADOPTED 2026-03-05: ΔSharpe +1.6%, ΔMaxDD -0.12pp (negligible), Calmar rises vs baseline
+xs_addr_growth_weight: 0.0   # DISABLED 2026-03-06: Carver ablation ΔSharpe -0.3% (near-zero) → DROP (sequential +1.6% was in-sample noise)
 xs_addr_growth_lookback: 30
 xs_addr_growth_window: 90
 

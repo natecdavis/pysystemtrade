@@ -1,6 +1,64 @@
 # Current Work Context
 
-## Current Session Summary (2026-03-06)
+## Current Session Summary (2026-03-06, Part 2)
+
+**Carver Audit — Complete**
+
+**Status:** ✅ Complete. xs_addr_growth disabled. New production baseline: Sharpe ~1.55.
+
+**What Was Done:**
+
+1. **`scripts/audit_carver.py`** — Static diagnostics (no new backtests). Loads diagnostics.parquet
+   and produces `out/carver_audit/CHECKLIST.md` with PASS/WARN/FAIL per check.
+
+2. **`scripts/audit_sleeve_ablation.py`** — 9-run ablation study (9×11 min ≈ 99 min).
+   Measures true marginal contribution of each sleeve in the current combined stack.
+   Saves `out/carver_audit/ablation_summary.json`.
+
+**Key Findings:**
+
+**Critical (FAIL): Forecast calibration**
+- Mean |FC| = 14.20 (target 10), cap hit rate = 45.6%
+- Total additive sleeve weight = 4.70 (range ±94 on top of capped trend)
+- Accepted: all sleeves ablation-verified; ±20 cap acts as natural limiter
+
+**Ablation marginal contributions (true ΔSharpe when sleeve disabled):**
+| Sleeve | ΔSharpe | Decision |
+|--------|---------|---------|
+| Gated Carry | -44.7% | KEEP — essential backbone |
+| Downside Beta | -14.2% | KEEP |
+| XS Carry | -13.9% | KEEP |
+| XS Activity | -6.4% | KEEP |
+| Inter-Sector | -5.4% | KEEP (adds drawdown risk) |
+| XS VAL | -2.6% | KEEP (weak) |
+| **XS Addr Growth** | **-0.3%** | **❌ DISABLED** |
+
+**Carry architecture insight:**
+`vol_norm_carry_10/30/60` have `forecast_weight: 0.01` AND `carry_weight: 1.0` sleeve.
+Zeroing the forecast_weights BREAKS the carry sleeve (Sharpe 1.5569→1.27 verified).
+The 0.01 weights are signal inputs to cross-sectional ranking, NOT double-counting.
+**Do not zero carry forecast_weights.**
+
+**Config change:**
+- `xs_addr_growth_weight: 0.2 → 0.0` (disabled in production config)
+- Verification backtest: Sharpe 1.55 (ΔSharpe -0.4% ✓)
+
+**Files created:**
+- `scripts/audit_carver.py` — static Carver diagnostics script
+- `scripts/audit_sleeve_ablation.py` — 9-run sleeve ablation study
+- `out/carver_audit/CHECKLIST.md` — full audit checklist
+- `out/carver_audit/ablation_summary.json` — ablation results
+- `config/crypto_perps_carry_fix_test.yaml` — test config (carry zeroed, do not use)
+- `config/crypto_perps_addr_growth_fix_test.yaml` — test config (addr_growth=0)
+- `config/crypto_perps_simplified_test.yaml` — combined test config (do not use)
+
+**New production baseline: Sharpe ~1.55, CAGR 26.8%, Vol 16.2%, MaxDD -18.7%**
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-03-06)
 
 **XS VAL Sleeve (C-5 VAL Factor) — Implemented & Adopted**
 
