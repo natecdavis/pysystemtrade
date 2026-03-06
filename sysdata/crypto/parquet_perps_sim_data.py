@@ -241,6 +241,17 @@ class parquetCryptoPerpsSimData(simData):
                 f"median β_down={_med_beta:.2f}"
             )
 
+        # Lookback values for XS forecast panels (read from config; used in lazy-init getters)
+        self._xs_carry_lookback = int(_raw_cfg.get('xs_carry_lookback', 30))
+        self._xs_activity_lookback = int(_raw_cfg.get('xs_activity_lookback', 30))
+        self._xs_val_lookback = int(_raw_cfg.get('xs_val_lookback', 30))
+        self._inter_sector_lookback = int(_raw_cfg.get('inter_sector_lookback', 20))
+        # Panels initialized to None; computed lazily on first getter call
+        self._xs_carry_panel: Optional[pd.DataFrame] = None
+        self._xs_activity_panel: Optional[pd.DataFrame] = None
+        self._xs_val_panel: Optional[pd.DataFrame] = None
+        self._inter_sector_panel: Optional[pd.DataFrame] = None
+
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
         )
@@ -1689,3 +1700,216 @@ class parquetCryptoPerpsSimData(simData):
         if instrument_code not in self._market_cap_df.columns:
             return pd.Series(dtype=float)
         return self._market_cap_df[instrument_code].dropna()
+
+    # =========================================================================
+    # XS FORECAST PANELS — Computed lazily, exposed as trading rule data methods
+    # =========================================================================
+    # These 4 signals were previously additive sleeves in ForecastCombineGated.
+    # They are now proper trading rules that go through the standard Carver pipeline:
+    # forecast scalar → weighted average → FDM → ±20 cap.
+    # The rule function is passthrough_forecast (rule_library.py), which returns
+    # the pre-computed series unchanged. Forecast scalar ≈ 1.0 (signals already ±20).
+
+    def _compute_xs_carry_panel(self, lookback: int = 30) -> pd.DataFrame:
+        """
+        Build cross-sectional funding carry forecast panel (dates × instruments).
+
+        Loads smoothed funding rates for all instruments, ranks cross-sectionally,
+        maps percentile → ±20 forecast.
+
+        Sign convention:
+          - Highest funding (pct≈1.0) → forecast = -20  → SHORT (over-owned)
+          - Lowest funding  (pct≈0.0) → forecast = +20  → LONG  (cheap/under-owned)
+          - Median          (pct=0.5) → forecast = 0    → neutral
+        """
+        instrument_list = self.get_instrument_list()
+        funding_dict = {}
+        for instr in instrument_list:
+            try:
+                fr = self.get_funding_rate(instr)
+                if fr is None or len(fr.dropna()) < 10:
+                    continue
+                fr_ann = fr * 3 * 365          # annualise 8-hourly funding to annual rate
+                fr_smooth = fr_ann.ewm(span=lookback, min_periods=1).mean()
+                funding_dict[instr] = fr_smooth
+            except Exception:
+                continue
+
+        if not funding_dict:
+            return pd.DataFrame()
+
+        funding_df = pd.DataFrame(funding_dict)
+        pct_rank = funding_df.rank(axis=1, pct=True)       # vectorised cross-sectional rank
+        forecast_panel = -40.0 * (pct_rank - 0.5)          # map [0,1] → [+20,−20]
+        return forecast_panel
+
+    def get_xs_carry_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return cross-sectional funding carry forecast for one instrument (±20 scale).
+
+        Called by the trading rule pipeline as data.get_xs_carry_forecast(instrument_code).
+        Returns all-NaN Series with DatetimeIndex for instruments with no funding data.
+        (Must be DatetimeIndex, not RangeIndex, or pysystemtrade's scalar reindex will fail.)
+        """
+        if self._xs_carry_panel is None:
+            self._xs_carry_panel = self._compute_xs_carry_panel(self._xs_carry_lookback)
+        if self._xs_carry_panel.empty or instrument_code not in self._xs_carry_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_carry_panel[instrument_code]
+
+    def _compute_xs_activity_panel(self, lookback: int = 30) -> pd.DataFrame:
+        """
+        Build cross-sectional active addresses forecast panel (dates × instruments).
+
+        For each date, ranks instruments by EWM-smoothed active address count
+        cross-sectionally → percentile [0, 1] → forecast [-20, +20].
+
+        Sign: high activity (pct≈1.0) → forecast +20 (LONG).
+        ~42 instruments covered; uncovered instruments return NaN (empty Series from getter).
+        """
+        instrument_list = self.get_instrument_list()
+        activity_dict = {}
+        for instr in instrument_list:
+            try:
+                addr = self.get_active_addresses(instr)
+                if addr is None or len(addr.dropna()) < lookback:
+                    continue
+                addr_smooth = addr.ewm(span=lookback, min_periods=1).mean()
+                activity_dict[instr] = addr_smooth
+            except Exception:
+                continue
+
+        if not activity_dict:
+            return pd.DataFrame()
+
+        activity_df = pd.DataFrame(activity_dict)
+        pct_rank = activity_df.rank(axis=1, pct=True)
+        forecast_panel = (pct_rank - 0.5) * 40.0           # [0, 1] → [-20, +20]: high = LONG
+        return forecast_panel
+
+    def get_xs_activity_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return cross-sectional active address forecast for one instrument (±20 scale).
+
+        Called by the trading rule pipeline as data.get_xs_activity_forecast(instrument_code).
+        Returns all-NaN Series with DatetimeIndex for uncovered instruments (~258 of 300).
+        ForecastCombine handles all-NaN by zeroing that rule's weight for this instrument.
+        """
+        if self._xs_activity_panel is None:
+            self._xs_activity_panel = self._compute_xs_activity_panel(self._xs_activity_lookback)
+        if self._xs_activity_panel.empty or instrument_code not in self._xs_activity_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_activity_panel[instrument_code]
+
+    def _compute_xs_val_panel(self, lookback: int = 30) -> pd.DataFrame:
+        """
+        Build cross-sectional AdrActCnt/MarketCap (C-5 VAL) forecast panel (dates × instruments).
+
+        Ratio of active addresses to market cap = crypto book-to-market.
+        High ratio → many users per $ of cap → undervalued relative to peers → LONG.
+
+        Lit: Cong et al. (2022) C-5 VAL factor. ~41 instruments covered.
+        """
+        instrument_list = self.get_instrument_list()
+        ratio_dict = {}
+        for instr in instrument_list:
+            try:
+                addr = self.get_active_addresses(instr)
+                mcap = self.get_market_cap(instr)
+                if addr is None or mcap is None:
+                    continue
+                if len(addr.dropna()) < lookback or len(mcap.dropna()) < lookback:
+                    continue
+                combined = pd.concat(
+                    [addr.rename('addr'), mcap.rename('mcap')], axis=1
+                ).dropna()
+                if len(combined) < lookback:
+                    continue
+                ratio = combined['addr'] / combined['mcap'].clip(lower=1.0)
+                ratio_smooth = ratio.ewm(span=lookback, min_periods=1).mean()
+                ratio_dict[instr] = ratio_smooth
+            except Exception:
+                continue
+
+        if not ratio_dict:
+            return pd.DataFrame()
+
+        ratio_df = pd.DataFrame(ratio_dict)
+        pct_rank = ratio_df.rank(axis=1, pct=True)
+        forecast_panel = (pct_rank - 0.5) * 40.0           # [0, 1] → [-20, +20]: high = LONG
+        return forecast_panel
+
+    def get_xs_val_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return C-5 VAL (AdrActCnt/MarketCap) forecast for one instrument (±20 scale).
+
+        Called by the trading rule pipeline as data.get_xs_val_forecast(instrument_code).
+        Returns all-NaN Series with DatetimeIndex for uncovered instruments (~259 of 300).
+        """
+        if self._xs_val_panel is None:
+            self._xs_val_panel = self._compute_xs_val_panel(self._xs_val_lookback)
+        if self._xs_val_panel.empty or instrument_code not in self._xs_val_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_val_panel[instrument_code]
+
+    def _compute_inter_sector_panel(self, lookback: int = 20) -> pd.DataFrame:
+        """
+        Build inter-sector rotation forecast panel (dates × instruments).
+
+        Steps:
+        1. For each named sector, load whole-sector aggregate index (get_sector_aggregate_index)
+        2. Apply EWMAC(lookback, 4×lookback) to get sector momentum score (vol-normalised)
+        3. Rank sectors cross-sectionally at each date → percentile [0,1]
+        4. Map to forecast: (pct - 0.5) × 40 → [-20, +20]
+        5. Build instrument-indexed panel: each instrument gets its sector's forecast
+
+        "Other" instruments (~53) receive NaN → empty Series from getter.
+        Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects.
+        """
+        from sysquant.estimators.vol import robust_vol_calc
+
+        sector_map = self._sector_map or {}
+        named_sectors = sorted({s for s in sector_map.values() if s != 'Other'})
+
+        sector_momentum = {}
+        for sector_name in named_sectors:
+            try:
+                idx = self.get_sector_aggregate_index(sector_name)
+            except Exception:
+                continue
+            if idx is None or len(idx.dropna()) < lookback * 2:
+                continue
+            fast = idx.ewm(span=lookback, min_periods=1).mean()
+            slow = idx.ewm(span=lookback * 4, min_periods=1).mean()
+            vol  = robust_vol_calc(idx.diff())
+            raw  = (fast - slow) / vol.clip(lower=1e-8)
+            sector_momentum[sector_name] = raw
+
+        if len(sector_momentum) < 2:
+            return pd.DataFrame()
+
+        momentum_df = pd.DataFrame(sector_momentum)
+        pct_rank = momentum_df.rank(axis=1, pct=True)
+        sector_forecast = (pct_rank - 0.5) * 40.0
+
+        instrument_list = self.get_instrument_list()
+        panel = {}
+        for instr in instrument_list:
+            sector = sector_map.get(instr, 'Other')
+            if sector != 'Other' and sector in sector_forecast.columns:
+                panel[instr] = sector_forecast[sector]
+
+        return pd.DataFrame(panel)   # dates × instruments
+
+    def get_inter_sector_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return inter-sector rotation forecast for one instrument (±20 scale).
+
+        Called by the trading rule pipeline as data.get_inter_sector_forecast(instrument_code).
+        Returns all-NaN Series with DatetimeIndex for 'Other' sector instruments (~53 of 300).
+        """
+        if self._inter_sector_panel is None:
+            self._inter_sector_panel = self._compute_inter_sector_panel(self._inter_sector_lookback)
+        if self._inter_sector_panel.empty or instrument_code not in self._inter_sector_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._inter_sector_panel[instrument_code]

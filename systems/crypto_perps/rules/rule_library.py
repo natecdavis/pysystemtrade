@@ -432,3 +432,20 @@ def residual_momentum(
     # Apply EWMAC with unit vol — residuals are already dimensionless daily fractions
     unit_vol = pd.Series(1.0, index=cum_resid.index)
     return ewmac(cum_resid, unit_vol, Lfast=Lfast, Lslow=Lslow)
+
+
+# ============================================================================
+# PASSTHROUGH (for pre-computed cross-sectional signals)
+# ============================================================================
+
+
+def passthrough_forecast(signal: pd.Series) -> pd.Series:
+    """
+    Return a pre-computed forecast unchanged.
+
+    Used for cross-sectional signals (XS Carry, XS Activity, XS VAL, Inter-Sector)
+    that are computed in the data layer and exposed via data.get_*_forecast().
+    The signal is already in [-20, +20] scale (percentile-ranked × 40), so the
+    walk-forward forecast scalar will estimate ≈ 1.0.
+    """
+    return signal

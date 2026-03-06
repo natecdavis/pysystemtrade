@@ -20,8 +20,6 @@ from systems.forecast_combine import ForecastCombine
 from systems.system_cache import diagnostic, output
 import pandas as pd
 import numpy as np
-from sysquant.estimators.vol import robust_vol_calc
-
 
 class ForecastCombineGated(ForecastCombine):
     """
@@ -155,41 +153,6 @@ class ForecastCombineGated(ForecastCombine):
                 sector_avg = sector_avg.fillna(0.0)
                 final_forecast_raw = final_forecast_raw + sector_weight * sector_avg
 
-        # XS Carry sleeve: cross-sectional funding rank, ungated
-        # Long low-funding (cheap/negative carry), short high-funding (crowded longs)
-        # Independent of trend direction — crowdedness signal, not momentum confirmation
-        xscarry_weight = config.get_element_or_default('xscarry_weight', 0.0)
-        if xscarry_weight != 0.0:
-            xscarry_lookback = config.get_element_or_default('xscarry_lookback', 30)
-            xscarry_fc = self._get_xscarry_forecast(instrument_code, lookback=xscarry_lookback)
-            xscarry_fc = xscarry_fc.reindex(final_forecast_raw.index).fillna(0.0)
-            final_forecast_raw = final_forecast_raw + xscarry_weight * xscarry_fc
-
-        # Inter-sector rotation sleeve: rank sector aggregate momentum cross-sectionally.
-        # Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects in intl equity.
-        # Captures months-level rotation signal (L1 seasons, DeFi summer, AI runs) not in TSMOM.
-        inter_sector_weight = config.get_element_or_default('inter_sector_weight', 0.0)
-        if inter_sector_weight != 0.0:
-            inter_sector_lookback = config.get_element_or_default('inter_sector_lookback', 20)
-            inter_sector_fc = self._get_inter_sector_forecast(instrument_code, lookback=inter_sector_lookback)
-            if inter_sector_fc is not None and not inter_sector_fc.empty:
-                inter_sector_fc = inter_sector_fc.reindex(final_forecast_raw.index).fillna(0.0)
-                final_forecast_raw = final_forecast_raw + inter_sector_weight * inter_sector_fc
-
-        # XS Activity sleeve: cross-sectional on-chain active address count rank.
-        # Lit: Cong et al. (2022) C-5 — network activity / utility value factor.
-        # High activity rank → adoption signal → LONG (+20). Fires for ~42/300 instruments.
-        # Uncovered instruments receive 0 (neutral) — no harm from partial coverage.
-        xs_activity_weight = config.get_element_or_default('xs_activity_weight', 0.0)
-        if xs_activity_weight != 0.0:
-            xs_activity_lookback = config.get_element_or_default('xs_activity_lookback', 30)
-            xs_activity_fc = self._get_xs_activity_forecast(
-                instrument_code, lookback=xs_activity_lookback
-            )
-            if xs_activity_fc is not None and not xs_activity_fc.empty:
-                xs_activity_fc = xs_activity_fc.reindex(final_forecast_raw.index).fillna(0.0)
-                final_forecast_raw = final_forecast_raw + xs_activity_weight * xs_activity_fc
-
         # XS Addr Growth sleeve: cross-sectional address growth rate (NET factor).
         # Lit: Cong et al. (2022) C-5 — adoption velocity (growth rate of AdrActCnt).
         # High growth rank → growing adoption → LONG (+20). Distinct from xs_activity (level).
@@ -203,17 +166,6 @@ class ForecastCombineGated(ForecastCombine):
             if xs_addr_growth_fc is not None and not xs_addr_growth_fc.empty:
                 xs_addr_growth_fc = xs_addr_growth_fc.reindex(final_forecast_raw.index).fillna(0.0)
                 final_forecast_raw = final_forecast_raw + xs_addr_growth_weight * xs_addr_growth_fc
-
-        # XS VAL sleeve: cross-sectional AdrActCnt/MarketCap (C-5 VAL factor).
-        # Lit: Cong et al. (2022) — crypto book-to-market, addresses per $ of market cap.
-        # High ratio → many users per $ of cap → undervalued relative to peers → LONG (+20).
-        xs_val_weight = config.get_element_or_default('xs_val_weight', 0.0)
-        if xs_val_weight != 0.0:
-            xs_val_lookback = config.get_element_or_default('xs_val_lookback', 30)
-            xs_val_fc = self._get_xs_val_forecast(instrument_code, lookback=xs_val_lookback)
-            if xs_val_fc is not None and not xs_val_fc.empty:
-                xs_val_fc = xs_val_fc.reindex(final_forecast_raw.index).fillna(0.0)
-                final_forecast_raw = final_forecast_raw + xs_val_weight * xs_val_fc
 
         # Forecast tilt: constant offset to bias toward more predictive direction
         # Positive offset → long bias; negative → short bias
@@ -233,179 +185,6 @@ class ForecastCombineGated(ForecastCombine):
         final_forecast = mapping_func(final_multiplied, **kwargs)
 
         return final_forecast
-
-    def _get_xscarry_panel(self, lookback: int = 30) -> pd.DataFrame:
-        """
-        Build cross-sectional funding carry forecast panel (cached).
-
-        Loads smoothed funding rates for all instruments, ranks cross-sectionally,
-        maps percentile → ±20 forecast. Cached per lookback value.
-
-        Sign convention:
-          - Highest funding (pct≈1.0) → forecast = -20  → SHORT (over-owned)
-          - Lowest funding  (pct≈0.0) → forecast = +20  → LONG  (cheap/under-owned)
-          - Median          (pct=0.5) → forecast = 0    → neutral
-        """
-        cache_key = f'_xscarry_panel_{lookback}'
-        if hasattr(self, cache_key):
-            return getattr(self, cache_key)
-
-        instrument_list = self.parent.data.get_instrument_list()
-        funding_dict = {}
-        for instr in instrument_list:
-            try:
-                fr = self.parent.data.get_funding_rate(instr)
-                if fr is None or len(fr.dropna()) < 10:
-                    continue
-                fr_ann = fr * 3 * 365          # annualise 8-hourly funding to annual rate
-                fr_smooth = fr_ann.ewm(span=lookback, min_periods=1).mean()
-                funding_dict[instr] = fr_smooth
-            except Exception:
-                continue
-
-        if not funding_dict:
-            setattr(self, cache_key, pd.DataFrame())
-            return pd.DataFrame()
-
-        funding_df = pd.DataFrame(funding_dict)
-        pct_rank = funding_df.rank(axis=1, pct=True)       # vectorised cross-sectional rank
-        forecast_panel = -40.0 * (pct_rank - 0.5)          # map [0,1] → [+20,−20]
-
-        setattr(self, cache_key, forecast_panel)
-        return forecast_panel
-
-    def _get_xscarry_forecast(self, instrument_code: str, lookback: int = 30) -> pd.Series:
-        """Return cross-sectional funding carry forecast for one instrument (±20 scale)."""
-        panel = self._get_xscarry_panel(lookback)
-        if panel.empty or instrument_code not in panel.columns:
-            return pd.Series(dtype=float)
-        return panel[instrument_code]
-
-    def _get_inter_sector_panel(self, lookback: int = 20) -> pd.DataFrame:
-        """
-        Build inter-sector rotation forecast panel (dates × instruments, cached per lookback).
-
-        Steps:
-        1. For each named sector, load whole-sector aggregate index (get_sector_aggregate_index)
-        2. Apply EWMAC(lookback, 4×lookback) to get sector momentum score (vol-normalised)
-        3. Rank sectors cross-sectionally at each date → percentile [0,1]
-        4. Map to forecast: (pct - 0.5) × 40 → [-20, +20]
-        5. Build instrument-indexed panel: each instrument gets its sector's forecast
-
-        Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects
-        in international equity markets. L1 seasons, DeFi summer, AI runs operate
-        on months-level horizon not captured by per-instrument TSMOM rules.
-        """
-        cache_key = f'_inter_sector_panel_{lookback}'
-        if hasattr(self, cache_key):
-            return getattr(self, cache_key)
-
-        data = self.parent.data
-        sector_map = getattr(data, '_sector_map', {}) or {}
-
-        # Named sectors (exclude 'Other' — no clean signal for misc instruments)
-        named_sectors = sorted({s for s in sector_map.values() if s != 'Other'})
-
-        # Build EWMAC momentum series per sector
-        sector_momentum = {}
-        for sector_name in named_sectors:
-            try:
-                idx = data.get_sector_aggregate_index(sector_name)
-            except Exception:
-                continue
-            if idx is None or len(idx.dropna()) < lookback * 2:
-                continue
-            # EWMAC(fast, 4×fast) — same formula as assettrend rule
-            fast = idx.ewm(span=lookback, min_periods=1).mean()
-            slow = idx.ewm(span=lookback * 4, min_periods=1).mean()
-            vol  = robust_vol_calc(idx.diff())
-            raw  = (fast - slow) / vol.clip(lower=1e-8)
-            sector_momentum[sector_name] = raw
-
-        if len(sector_momentum) < 2:
-            result = pd.DataFrame()
-            setattr(self, cache_key, result)
-            return result
-
-        momentum_df = pd.DataFrame(sector_momentum)
-        # Cross-sectional rank at each date (pct=True → [0,1])
-        pct_rank = momentum_df.rank(axis=1, pct=True)
-        # Map [0,1] → [-20, +20]
-        sector_forecast = (pct_rank - 0.5) * 40.0
-
-        # Expand to instrument level: each instrument gets its sector's forecast
-        instrument_list = data.get_instrument_list()
-        panel = {}
-        for instr in instrument_list:
-            sector = sector_map.get(instr, 'Other')
-            if sector != 'Other' and sector in sector_forecast.columns:
-                panel[instr] = sector_forecast[sector]
-
-        result = pd.DataFrame(panel)   # dates × instruments
-        setattr(self, cache_key, result)
-        return result
-
-    def _get_inter_sector_forecast(self, instrument_code: str, lookback: int = 20) -> pd.Series:
-        """Return inter-sector rotation forecast for one instrument (±20 scale)."""
-        panel = self._get_inter_sector_panel(lookback)
-        if panel.empty or instrument_code not in panel.columns:
-            return pd.Series(dtype=float)
-        return panel[instrument_code]
-
-    def _get_xs_activity_panel(self, lookback: int = 30) -> pd.DataFrame:
-        """
-        Build cross-sectional active addresses forecast panel (cached per lookback).
-
-        For each date, ranks instruments by EWM-smoothed active address count
-        cross-sectionally → percentile [0, 1] → forecast [-20, +20].
-
-        Sign: high activity (pct≈1.0) → forecast +20 (LONG).
-        Rationale: high network activity = strong adoption signal = undervalued relative
-        to peers (Cong et al. 2022 C-5 value factor — network utility predicts returns).
-
-        Instruments without coverage receive NaN → filled to 0 at sleeve application.
-        ~42 instruments covered; ~258 get 0 (neutral, no harm).
-
-        Lit: Cong et al. (2022) C-5 — on-chain activity as a value/adoption factor
-        analogous to earnings yield in equities. Cross-sectional, always-on signal.
-        """
-        cache_key = f'_xs_activity_panel_{lookback}'
-        if hasattr(self, cache_key):
-            return getattr(self, cache_key)
-
-        instrument_list = self.parent.data.get_instrument_list()
-        activity_dict = {}
-        for instr in instrument_list:
-            try:
-                addr = self.parent.data.get_active_addresses(instr)
-                if addr is None or len(addr.dropna()) < lookback:
-                    continue
-                addr_smooth = addr.ewm(span=lookback, min_periods=1).mean()
-                activity_dict[instr] = addr_smooth
-            except Exception:
-                continue
-
-        if not activity_dict:
-            setattr(self, cache_key, pd.DataFrame())
-            return pd.DataFrame()
-
-        activity_df = pd.DataFrame(activity_dict)
-        # Cross-sectional rank at each date: pct=True → [0, 1]
-        pct_rank = activity_df.rank(axis=1, pct=True)
-        # Map [0, 1] → [-20, +20]: high activity = LONG
-        forecast_panel = (pct_rank - 0.5) * 40.0
-
-        setattr(self, cache_key, forecast_panel)
-        return forecast_panel
-
-    def _get_xs_activity_forecast(
-        self, instrument_code: str, lookback: int = 30
-    ) -> pd.Series:
-        """Return cross-sectional active address forecast for one instrument (±20 scale)."""
-        panel = self._get_xs_activity_panel(lookback)
-        if panel.empty or instrument_code not in panel.columns:
-            return pd.Series(dtype=float)
-        return panel[instrument_code]
 
     def _get_xs_addr_growth_panel(
         self, lookback: int = 30, growth_window: int = 90
@@ -455,63 +234,6 @@ class ForecastCombineGated(ForecastCombine):
     ) -> pd.Series:
         """Return cross-sectional address growth forecast for one instrument (±20 scale)."""
         panel = self._get_xs_addr_growth_panel(lookback=lookback, growth_window=growth_window)
-        if panel.empty or instrument_code not in panel.columns:
-            return pd.Series(dtype=float)
-        return panel[instrument_code]
-
-    def _get_xs_val_panel(self, lookback: int = 30) -> pd.DataFrame:
-        """
-        Build cross-sectional AdrActCnt/MarketCap (C-5 VAL) forecast panel (cached per lookback).
-
-        Ratio of active addresses to market cap = crypto book-to-market.
-        High ratio → many users per $ of cap → undervalued relative to peers → LONG.
-
-        Lit: Cong et al. (2022) C-5 VAL factor. Distinct from xs_activity (level):
-        normalising by market cap removes the structural BTC/ETH dominance of the
-        level signal and captures relative undervaluation.
-
-        Sign: high ratio (pct≈1.0) → forecast +20 (LONG).
-        """
-        cache_key = f'_xs_val_panel_{lookback}'
-        if hasattr(self, cache_key):
-            return getattr(self, cache_key)
-
-        instrument_list = self.parent.data.get_instrument_list()
-        ratio_dict = {}
-        for instr in instrument_list:
-            try:
-                addr = self.parent.data.get_active_addresses(instr)
-                mcap = self.parent.data.get_market_cap(instr)
-                if addr is None or mcap is None:
-                    continue
-                if len(addr.dropna()) < lookback or len(mcap.dropna()) < lookback:
-                    continue
-                # Align to common index
-                combined = pd.concat(
-                    [addr.rename('addr'), mcap.rename('mcap')], axis=1
-                ).dropna()
-                if len(combined) < lookback:
-                    continue
-                ratio = combined['addr'] / combined['mcap'].clip(lower=1.0)
-                ratio_smooth = ratio.ewm(span=lookback, min_periods=1).mean()
-                ratio_dict[instr] = ratio_smooth
-            except Exception:
-                continue
-
-        if not ratio_dict:
-            setattr(self, cache_key, pd.DataFrame())
-            return pd.DataFrame()
-
-        ratio_df = pd.DataFrame(ratio_dict)
-        pct_rank = ratio_df.rank(axis=1, pct=True)          # cross-sectional rank per date
-        forecast_panel = (pct_rank - 0.5) * 40.0            # [0,1] → [-20, +20], high = LONG
-
-        setattr(self, cache_key, forecast_panel)
-        return forecast_panel
-
-    def _get_xs_val_forecast(self, instrument_code: str, lookback: int = 30) -> pd.Series:
-        """Return C-5 VAL (AdrActCnt/MarketCap) forecast for one instrument (±20 scale)."""
-        panel = self._get_xs_val_panel(lookback=lookback)
         if panel.empty or instrument_code not in panel.columns:
             return pd.Series(dtype=float)
         return panel[instrument_code]

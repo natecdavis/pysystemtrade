@@ -480,6 +480,32 @@ trading_rules:
     other_args: {Lfast: 40}
 
   # --------------------------------------------------------------------------
+  # CROSS-SECTIONAL SIGNALS — Pre-computed in data layer, passed through unchanged
+  # These 4 rules were previously additive sleeves in ForecastCombineGated.
+  # Now proper Carver rules: forecast scalar ≈ 1.0 (signals already ±20).
+  # Uncovered instruments return NaN → rule weight renormalized to 0 for that instrument.
+  # --------------------------------------------------------------------------
+  xs_carry:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_xs_carry_forecast"
+
+  xs_activity:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_xs_activity_forecast"
+
+  xs_val:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_xs_val_forecast"
+
+  inter_sector:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_inter_sector_forecast"
+
+  # --------------------------------------------------------------------------
   # CARRY — Vol-Normalized (3 variations, EXPERIMENTAL)
   # Vol-normalized funding carry with trend-gating (disabled by default)
   # Previous carry rules had negative IC (IC@5d = -0.009) and were excluded.
@@ -585,6 +611,15 @@ forecast_weights:
   vol_norm_carry_10:  0.01
   vol_norm_carry_30:  0.01
   vol_norm_carry_60:  0.01
+
+  # Cross-sectional signals (moved from additive sleeves, 2026-03-06 refactor)
+  # Initial weights: 0.05 each (≈1× avg trend rule weight, conservative starting point)
+  # Forecast scalar ≈ 1.0 (signals pre-scaled to ±20); FDM will calibrate.
+  # Uncovered instruments get NaN → weight renormalized to 0 for that instrument.
+  xs_carry:      0.05
+  xs_activity:   0.05
+  xs_val:        0.05
+  inter_sector:  0.05
 
   # Removed entirely (cost audit):
   #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each
@@ -705,107 +740,42 @@ sector_weight: 0.0  # PAUSED: additive test passed (+1.5% Sharpe) but reverted f
 forecast_tilt_offset: 0.0
 
 # ============================================================================
-# XS CARRY — CROSS-SECTIONAL FUNDING CARRY (UNGATED)
+# CROSS-SECTIONAL SIGNALS — LOOKBACK PARAMETERS
 # ============================================================================
-# Long low-funding instruments (cheap/negative carry), short high-funding (crowded longs).
-# Structurally different from vol_norm_carry sleeve: XSCarry fires INDEPENDENT of trend
-# direction. High-funding coins shorted even in bull markets (crowdedness signal).
+# These 4 signals were refactored from additive sleeves to standard Carver rules
+# (2026-03-06). Lookback values are now read by the data layer at init time to
+# pre-compute the forecast panels. Weights are specified in forecast_weights above.
 #
-# Sign convention: highest funding → pct≈1.0 → forecast=-20 (SHORT)
-#                  lowest funding  → pct≈0.0 → forecast=+20 (LONG)
-#
-# xscarry_weight: 0.0 = off; 1.0 adds ±20 on top of trend; sweep [0.2, 0.5, 1.0, 2.0]
-# xscarry_lookback: EWM smoothing window for funding rate (days; 30 ≈ monthly cadence)
-#
-# Literature: He et al. (2024) documents Sharpe 1.8-3.5 for pure XS funding rank strategy
-# Adoption criteria: Sharpe ≥ +1%, Crisis drop < 5pp, MaxDD < +3pp, Calmar non-monotone
-# Sweep (2026-03-02): weight=1.0 → Sharpe 1.0816 (+9.1%), Calmar 1.1354 (+22%), MaxDD -18.93% (improved)
-# Crisis return 28% vs 53% baseline — still positive in 2022 bear; MaxDD improvement justifies weight
-xscarry_weight: 1.0
-xscarry_lookback: 30
+# Note: The old *_weight keys (xscarry_weight, inter_sector_weight, xs_activity_weight,
+# xs_val_weight) have been removed — weights now live in forecast_weights section.
+# ============================================================================
 
-# ============================================================================
-# INTER-SECTOR ROTATION SLEEVE
-# ============================================================================
-# Cross-sectional ranking of sector-aggregate momentum signals.
-# Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects.
-# Captures months-level rotation (L1 seasons, DeFi summer, AI runs) not in TSMOM.
-#
-# Sectors: L1 (83), DeFi (56), AI (36), Meme (33), Gaming (19), L2 (10), Infra (10)
-# "Other" (~53 instruments) receives 0 forecast — no sector assignment.
-#
-# Forecast: EWMAC(lookback, 4×lookback) on whole-sector ADV-weighted index,
-#           cross-sectionally ranked → [-20, +20] via (pct - 0.5) × 40
-#
-# inter_sector_weight: 0.0 = off; 1.0 adds ±20 on top of trend (same scale as xscarry)
-# inter_sector_lookback: EWMAC fast window for sector momentum (days)
-#
-# Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
-# Sweep: scripts/sweep_inter_sector_rotation.py
-inter_sector_weight: 0.70  # TUNED 2026-03-06: w=0.70 Pareto-dominates w=1.0 (ΔSharpe -2.3%, ΔCalmar +0.20, ΔMaxDD +3.26pp)
+# XS Carry: EWM smoothing window for funding rate (days; 30 ≈ monthly cadence)
+# Lit: He et al. (2024) — XS funding rank Sharpe 1.8-3.5 in pure strategy
+xs_carry_lookback: 30
+
+# Inter-Sector: EWMAC fast window for sector-aggregate momentum (days)
+# Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects
 inter_sector_lookback: 20
 
-# ============================================================================
-# CROSS-SECTIONAL ACTIVE ADDRESSES SLEEVE (XS ACTIVITY)
-# ============================================================================
-# Cross-sectional ranking of on-chain active address count per instrument.
-# Lit: Cong et al. (2022) C-5 — network activity / utility value factor.
-# High active addresses relative to peers → adoption signal → LONG (+20).
-#
-# Data: CoinMetrics Community AdrActCnt — 42 instruments covered (2020-2026).
-# Covered: BTC, ETH, ADA, AVAX, LINK, DOGE, XRP, LTC, BCH, AAVE, UNI, SUSHI, CRV,
-#          COMP, SNX, YFI, LDO, UMA, ZEC, ZRX, VET, KNC, TRX, MANA, and others.
-# Uncovered (~258 instruments): receive 0 forecast (no signal contribution).
-# Data file: auto-discovered from data/active_addresses.parquet
-#
-# xs_activity_weight: 0.0 = off; 1.0 adds ±20 (same scale as xscarry/inter_sector)
-# xs_activity_lookback: EWM smoothing window for address count (days)
-#
-# Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
-# Sweep: scripts/sweep_xs_activity.py
-xs_activity_weight: 1.0   # ADOPTED 2026-03-05: ΔSharpe +7.3%, ΔMaxDD +0.7pp (improved), Calmar non-monotone
+# XS Activity: EWM smoothing window for active address count (days)
+# Lit: Cong et al. (2022) C-5 — network activity / utility value factor
+# Data: data/active_addresses.parquet (42 instruments, CoinMetrics AdrActCnt)
 xs_activity_lookback: 30
 
 # ============================================================================
-# CROSS-SECTIONAL ADDRESS GROWTH SLEEVE (XS ADDR GROWTH — NET FACTOR)
+# CROSS-SECTIONAL ADDRESS GROWTH — DISABLED (dead code, keep for reference)
 # ============================================================================
-# Rolling growth rate of on-chain active address count, cross-sectionally ranked.
-# Lit: Cong et al. (2022) C-5 NET factor — network adoption velocity.
-# High address growth rate relative to peers → growing adoption → LONG (+20).
-#
-# Data: Reuses data/active_addresses.parquet (same 42 instruments as xs_activity).
-# Distinct from xs_activity (absolute level): growth rate re-ranks dynamically —
-# hot new-sector chains score high in their breakout phase; mature chains plateau.
-#
-# xs_addr_growth_weight: 0.0 = off; 1.0 adds ±20 (same scale as other sleeves)
-# xs_addr_growth_lookback: EWM smoothing span before computing growth (days)
-# xs_addr_growth_window: rolling window for pct_change (days, default=90)
-#
-# Adoption criteria: ΔSharpe ≥ +1%, ΔMaxDD > -3pp, Calmar non-monotone
-# Sweep: scripts/sweep_xs_addr_growth.py
-xs_addr_growth_weight: 0.0   # DISABLED 2026-03-06: Carver ablation ΔSharpe -0.3% (near-zero) → DROP (sequential +1.6% was in-sample noise)
+# Carver ablation 2026-03-06: true marginal ΔSharpe = -0.3% (near-zero) → DISABLED.
+# Sequential +1.6% gain was in-sample noise (overlap with xs_activity + xs_val).
+# Architecture still present in forecast_combine_gated.py; weight stays at 0.
+xs_addr_growth_weight: 0.0
 xs_addr_growth_lookback: 30
 xs_addr_growth_window: 90
 
-# ============================================================================
-# CROSS-SECTIONAL VALUE SLEEVE (XS VAL — C-5 VAL FACTOR)
-# ============================================================================
-# AdrActCnt / CapMrktCurUSD ratio, cross-sectionally ranked per date.
-# Lit: Cong et al. (2022) C-5 VAL factor — crypto book-to-market.
-# High ratio (many addresses per $ of market cap) → undervalued → LONG (+20).
-#
-# Data: data/active_addresses.parquet (42 instruments) +
-#       data/market_cap.parquet (42 instruments, CapMrktCurUSD via CoinMetrics).
-# Distinct from xs_activity (level): normalises by market cap, removing BTC/ETH
-# structural dominance. A mid-cap chain with high usage relative to its valuation
-# outscores BTC/ETH. Directly implements the academically-specified C-5 VAL factor.
-#
-# xs_val_weight: 0.0 = off; 1.0 adds ±20 (same scale as other sleeves)
-# xs_val_lookback: EWM smoothing window for ratio (days)
-#
-# Adoption criteria: ΔSharpe ≥ +1%, ΔMaxDD > -3pp, Calmar non-monotone
-# Sweep: scripts/sweep_xs_val.py
-xs_val_weight: 0.5   # ADOPTED 2026-03-06: ΔSharpe +2.7%, ΔMaxDD -0.36pp (minor), Calmar non-monotone, CAGR preserved
+# XS VAL: EWM smoothing window for AdrActCnt/MarketCap ratio (days)
+# Lit: Cong et al. (2022) C-5 VAL factor — crypto book-to-market
+# Data: data/active_addresses.parquet + data/market_cap.parquet (41 instruments)
 xs_val_lookback: 30
 
 # ============================================================================
