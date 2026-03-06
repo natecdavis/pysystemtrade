@@ -767,6 +767,27 @@ xs_activity_weight: 1.0   # ADOPTED 2026-03-05: ΔSharpe +7.3%, ΔMaxDD +0.7pp (
 xs_activity_lookback: 30
 
 # ============================================================================
+# CROSS-SECTIONAL ADDRESS GROWTH SLEEVE (XS ADDR GROWTH — NET FACTOR)
+# ============================================================================
+# Rolling growth rate of on-chain active address count, cross-sectionally ranked.
+# Lit: Cong et al. (2022) C-5 NET factor — network adoption velocity.
+# High address growth rate relative to peers → growing adoption → LONG (+20).
+#
+# Data: Reuses data/active_addresses.parquet (same 42 instruments as xs_activity).
+# Distinct from xs_activity (absolute level): growth rate re-ranks dynamically —
+# hot new-sector chains score high in their breakout phase; mature chains plateau.
+#
+# xs_addr_growth_weight: 0.0 = off; 1.0 adds ±20 (same scale as other sleeves)
+# xs_addr_growth_lookback: EWM smoothing span before computing growth (days)
+# xs_addr_growth_window: rolling window for pct_change (days, default=90)
+#
+# Adoption criteria: ΔSharpe ≥ +1%, ΔMaxDD > -3pp, Calmar non-monotone
+# Sweep: scripts/sweep_xs_addr_growth.py
+xs_addr_growth_weight: 0.2   # ADOPTED 2026-03-05: ΔSharpe +1.6%, ΔMaxDD -0.12pp (negligible), Calmar rises vs baseline
+xs_addr_growth_lookback: 30
+xs_addr_growth_window: 90
+
+# ============================================================================
 # OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
 # ============================================================================
 # Defensive position scaling based on funding rate z-score (OI proxy).

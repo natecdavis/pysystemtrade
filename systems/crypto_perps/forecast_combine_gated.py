@@ -190,6 +190,20 @@ class ForecastCombineGated(ForecastCombine):
                 xs_activity_fc = xs_activity_fc.reindex(final_forecast_raw.index).fillna(0.0)
                 final_forecast_raw = final_forecast_raw + xs_activity_weight * xs_activity_fc
 
+        # XS Addr Growth sleeve: cross-sectional address growth rate (NET factor).
+        # Lit: Cong et al. (2022) C-5 — adoption velocity (growth rate of AdrActCnt).
+        # High growth rank → growing adoption → LONG (+20). Distinct from xs_activity (level).
+        xs_addr_growth_weight = config.get_element_or_default('xs_addr_growth_weight', 0.0)
+        if xs_addr_growth_weight != 0.0:
+            xs_addr_growth_lookback = config.get_element_or_default('xs_addr_growth_lookback', 30)
+            xs_addr_growth_window = config.get_element_or_default('xs_addr_growth_window', 90)
+            xs_addr_growth_fc = self._get_xs_addr_growth_forecast(
+                instrument_code, lookback=xs_addr_growth_lookback, growth_window=xs_addr_growth_window
+            )
+            if xs_addr_growth_fc is not None and not xs_addr_growth_fc.empty:
+                xs_addr_growth_fc = xs_addr_growth_fc.reindex(final_forecast_raw.index).fillna(0.0)
+                final_forecast_raw = final_forecast_raw + xs_addr_growth_weight * xs_addr_growth_fc
+
         # Forecast tilt: constant offset to bias toward more predictive direction
         # Positive offset → long bias; negative → short bias
         # Applied after all sleeves, before FDM and ±20 cap
@@ -378,6 +392,58 @@ class ForecastCombineGated(ForecastCombine):
     ) -> pd.Series:
         """Return cross-sectional active address forecast for one instrument (±20 scale)."""
         panel = self._get_xs_activity_panel(lookback)
+        if panel.empty or instrument_code not in panel.columns:
+            return pd.Series(dtype=float)
+        return panel[instrument_code]
+
+    def _get_xs_addr_growth_panel(
+        self, lookback: int = 30, growth_window: int = 90
+    ) -> pd.DataFrame:
+        """
+        Build cross-sectional address growth rate forecast panel (cached per params).
+
+        Computes rolling % growth of EWM-smoothed AdrActCnt per instrument, then
+        ranks cross-sectionally at each date → ±20 forecast.
+
+        Sign: high growth (pct≈1.0) → forecast +20 (LONG) — growing adoption = undervalued.
+        Lit: Cong et al. (2022) C-5 NET factor — network adoption velocity predicts returns.
+
+        Distinct from xs_activity (level): growth rate re-ranks dynamically across sector
+        regimes (DeFi Summer, L1 season, AI tokens) rather than structurally favouring BTC/ETH.
+        """
+        cache_key = f'_xs_addr_growth_panel_{lookback}_{growth_window}'
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+
+        instrument_list = self.parent.data.get_instrument_list()
+        growth_dict = {}
+        for instr in instrument_list:
+            try:
+                addr = self.parent.data.get_active_addresses(instr)
+                if addr is None or len(addr.dropna()) < growth_window + lookback:
+                    continue
+                addr_smooth = addr.ewm(span=lookback, min_periods=1).mean()
+                growth = addr_smooth.pct_change(periods=growth_window)
+                growth_dict[instr] = growth
+            except Exception:
+                continue
+
+        if not growth_dict:
+            setattr(self, cache_key, pd.DataFrame())
+            return pd.DataFrame()
+
+        growth_df = pd.DataFrame(growth_dict)
+        pct_rank = growth_df.rank(axis=1, pct=True)       # cross-sectional rank per date
+        forecast_panel = (pct_rank - 0.5) * 40.0          # [0,1] → [-20, +20], high = LONG
+
+        setattr(self, cache_key, forecast_panel)
+        return forecast_panel
+
+    def _get_xs_addr_growth_forecast(
+        self, instrument_code: str, lookback: int = 30, growth_window: int = 90
+    ) -> pd.Series:
+        """Return cross-sectional address growth forecast for one instrument (±20 scale)."""
+        panel = self._get_xs_addr_growth_panel(lookback=lookback, growth_window=growth_window)
         if panel.empty or instrument_code not in panel.columns:
             return pd.Series(dtype=float)
         return panel[instrument_code]
