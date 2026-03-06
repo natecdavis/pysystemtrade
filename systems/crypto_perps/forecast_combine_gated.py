@@ -204,6 +204,17 @@ class ForecastCombineGated(ForecastCombine):
                 xs_addr_growth_fc = xs_addr_growth_fc.reindex(final_forecast_raw.index).fillna(0.0)
                 final_forecast_raw = final_forecast_raw + xs_addr_growth_weight * xs_addr_growth_fc
 
+        # XS VAL sleeve: cross-sectional AdrActCnt/MarketCap (C-5 VAL factor).
+        # Lit: Cong et al. (2022) — crypto book-to-market, addresses per $ of market cap.
+        # High ratio → many users per $ of cap → undervalued relative to peers → LONG (+20).
+        xs_val_weight = config.get_element_or_default('xs_val_weight', 0.0)
+        if xs_val_weight != 0.0:
+            xs_val_lookback = config.get_element_or_default('xs_val_lookback', 30)
+            xs_val_fc = self._get_xs_val_forecast(instrument_code, lookback=xs_val_lookback)
+            if xs_val_fc is not None and not xs_val_fc.empty:
+                xs_val_fc = xs_val_fc.reindex(final_forecast_raw.index).fillna(0.0)
+                final_forecast_raw = final_forecast_raw + xs_val_weight * xs_val_fc
+
         # Forecast tilt: constant offset to bias toward more predictive direction
         # Positive offset → long bias; negative → short bias
         # Applied after all sleeves, before FDM and ±20 cap
@@ -444,6 +455,63 @@ class ForecastCombineGated(ForecastCombine):
     ) -> pd.Series:
         """Return cross-sectional address growth forecast for one instrument (±20 scale)."""
         panel = self._get_xs_addr_growth_panel(lookback=lookback, growth_window=growth_window)
+        if panel.empty or instrument_code not in panel.columns:
+            return pd.Series(dtype=float)
+        return panel[instrument_code]
+
+    def _get_xs_val_panel(self, lookback: int = 30) -> pd.DataFrame:
+        """
+        Build cross-sectional AdrActCnt/MarketCap (C-5 VAL) forecast panel (cached per lookback).
+
+        Ratio of active addresses to market cap = crypto book-to-market.
+        High ratio → many users per $ of cap → undervalued relative to peers → LONG.
+
+        Lit: Cong et al. (2022) C-5 VAL factor. Distinct from xs_activity (level):
+        normalising by market cap removes the structural BTC/ETH dominance of the
+        level signal and captures relative undervaluation.
+
+        Sign: high ratio (pct≈1.0) → forecast +20 (LONG).
+        """
+        cache_key = f'_xs_val_panel_{lookback}'
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+
+        instrument_list = self.parent.data.get_instrument_list()
+        ratio_dict = {}
+        for instr in instrument_list:
+            try:
+                addr = self.parent.data.get_active_addresses(instr)
+                mcap = self.parent.data.get_market_cap(instr)
+                if addr is None or mcap is None:
+                    continue
+                if len(addr.dropna()) < lookback or len(mcap.dropna()) < lookback:
+                    continue
+                # Align to common index
+                combined = pd.concat(
+                    [addr.rename('addr'), mcap.rename('mcap')], axis=1
+                ).dropna()
+                if len(combined) < lookback:
+                    continue
+                ratio = combined['addr'] / combined['mcap'].clip(lower=1.0)
+                ratio_smooth = ratio.ewm(span=lookback, min_periods=1).mean()
+                ratio_dict[instr] = ratio_smooth
+            except Exception:
+                continue
+
+        if not ratio_dict:
+            setattr(self, cache_key, pd.DataFrame())
+            return pd.DataFrame()
+
+        ratio_df = pd.DataFrame(ratio_dict)
+        pct_rank = ratio_df.rank(axis=1, pct=True)          # cross-sectional rank per date
+        forecast_panel = (pct_rank - 0.5) * 40.0            # [0,1] → [-20, +20], high = LONG
+
+        setattr(self, cache_key, forecast_panel)
+        return forecast_panel
+
+    def _get_xs_val_forecast(self, instrument_code: str, lookback: int = 30) -> pd.Series:
+        """Return C-5 VAL (AdrActCnt/MarketCap) forecast for one instrument (±20 scale)."""
+        panel = self._get_xs_val_panel(lookback=lookback)
         if panel.empty or instrument_code not in panel.columns:
             return pd.Series(dtype=float)
         return panel[instrument_code]

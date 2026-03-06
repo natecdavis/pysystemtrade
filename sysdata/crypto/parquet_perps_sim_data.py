@@ -88,6 +88,7 @@ class parquetCryptoPerpsSimData(simData):
         fg_data_path: str = arg_not_supplied,
         mvrv_data_path: str = arg_not_supplied,
         active_addresses_data_path: str = arg_not_supplied,
+        market_cap_data_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -188,6 +189,24 @@ class parquetCryptoPerpsSimData(simData):
                     f"{n_instruments} instruments, "
                     f"{self._active_addresses_df.index.min().date()} to "
                     f"{self._active_addresses_df.index.max().date()}"
+                )
+
+        # Load market cap data if path provided (used by XS VAL sleeve)
+        # Parquet: index=date (DatetimeIndex), columns=Binance instrument codes
+        # Values: float64 daily market cap in USD (CapMrktCurUSD from CoinMetrics)
+        self._market_cap_df: Optional[pd.DataFrame] = None
+        if market_cap_data_path is not arg_not_supplied:
+            if Path(market_cap_data_path).exists():
+                self._market_cap_df = pd.read_parquet(market_cap_data_path)
+                self._market_cap_df.index = (
+                    pd.DatetimeIndex(self._market_cap_df.index).normalize()
+                )
+                n_instruments = len(self._market_cap_df.columns)
+                self.log.info(
+                    f"Loaded market cap data from {market_cap_data_path}: "
+                    f"{n_instruments} instruments, "
+                    f"{self._market_cap_df.index.min().date()} to "
+                    f"{self._market_cap_df.index.max().date()}"
                 )
 
         # Initialize downside beta panel (always None; computed below if enabled)
@@ -1651,3 +1670,22 @@ class parquetCryptoPerpsSimData(simData):
         if instrument_code not in self._active_addresses_df.columns:
             return pd.Series(dtype=float)
         return self._active_addresses_df[instrument_code].dropna()
+
+    def get_market_cap(self, instrument_code: str) -> pd.Series:
+        """
+        Get daily market capitalisation (USD) for instrument_code.
+
+        Source: CoinMetrics Community CapMrktCurUSD (circulating supply × price).
+        Used as denominator in the C-5 VAL factor: AdrActCnt / CapMrktCurUSD.
+
+        Lit: Cong et al. (2022) C-5 VAL — crypto analogue of book-to-market equity.
+
+        Returns:
+            pd.Series with DatetimeIndex and float values (NaN-dropped).
+            Empty Series if market cap data not loaded or instrument not covered.
+        """
+        if self._market_cap_df is None:
+            return pd.Series(dtype=float)
+        if instrument_code not in self._market_cap_df.columns:
+            return pd.Series(dtype=float)
+        return self._market_cap_df[instrument_code].dropna()

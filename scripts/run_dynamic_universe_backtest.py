@@ -551,6 +551,16 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         logger.info("active_addresses.parquet not found — XS activity sleeve disabled (run scripts/download_active_addresses.py)")
     aa_kwarg = aa_data_path if aa_data_path is not None else _arg_not_supplied
 
+    # Auto-discover market cap data if not explicitly provided
+    mcap_data_path = None
+    mcap_candidate = Path(data_path).parent / 'market_cap.parquet'
+    if mcap_candidate.exists():
+        mcap_data_path = str(mcap_candidate)
+        logger.info(f"Auto-discovered market cap data: {mcap_candidate}")
+    else:
+        logger.info("market_cap.parquet not found — XS VAL sleeve disabled (run scripts/download_market_cap.py)")
+    mcap_kwarg = mcap_data_path if mcap_data_path is not None else _arg_not_supplied
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
@@ -563,6 +573,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         fg_data_path=fg_kwarg,
         mvrv_data_path=mvrv_kwarg,
         active_addresses_data_path=aa_kwarg,
+        market_cap_data_path=mcap_kwarg,
     )
 
     instruments = data.get_instrument_list()

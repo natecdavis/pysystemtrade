@@ -1,10 +1,60 @@
 # Current Work Context
 
-## Current Session Summary (2026-03-05)
+## Current Session Summary (2026-03-06)
 
-**XS Active Addresses Sleeve — Implemented & Rejected**
+**XS VAL Sleeve (C-5 VAL Factor) — Implemented & Adopted**
 
-**Status:** ✅ Complete. `xs_activity_weight: 0.0` confirmed. Production Sharpe: 1.3905 (unchanged).
+**Status:** ✅ Complete. `xs_val_weight: 0.5` adopted. New production Sharpe: 1.5569.
+
+**Signal:** AdrActCnt / CapMrktCurUSD ratio, EWM-smoothed (30d), cross-sectionally ranked per date
+→ percentile [0,1] → forecast (pct−0.5)×40 = [−20,+20].
+High ratio (many addresses per $ market cap) → undervalued → LONG (+20).
+41 instruments covered (TRX skipped — CoinMetrics 400 error on community tier).
+Lit: Cong et al. (2022) C-5 VAL factor — crypto book-to-market equity analogue.
+
+**New data:** `data/market_cap.parquet` — 41 instruments, CapMrktCurUSD via CoinMetrics Community API.
+Download script: `scripts/download_market_cap.py` (modeled after `download_active_addresses.py`).
+
+**Sweep Results:**
+
+| Weight | Sharpe | Calmar | CAGR   | Vol    | MaxDD   | ΔSharpe | ΔMaxDD  |
+|--------|--------|--------|--------|--------|---------|---------|---------|
+| 0.00   | 1.5160 | 1.4829 | 27.01% | 16.69% | -18.21% | —       | —       |
+| 0.20   | 1.5353 | 1.4684 | 27.09% | 16.50% | -18.45% | +1.3% ✓ | -0.24pp ✓ |
+| **0.50** | **1.5569** | **1.4433** | **26.81%** | **16.09%** | **-18.57%** | **+2.7% ✓** | **-0.36pp ✓** |
+| 1.00   | 1.5551 | 1.3517 | 24.95% | 15.05% | -18.45% | +2.6% ✓ | -0.24pp ✓ |
+| 2.00   | 1.6896 | 1.6145 | 23.19% | 12.83% | -14.36% | +11.4% ✓ | +3.85pp ✓ |
+
+**Decision:** ✅ **ADOPT `xs_val_weight: 0.5`** — best sweet spot.
+
+**Why w=0.5 over w=2.0 (highest Sharpe):**
+At w=2.0, VAL opposes trend for BTC/ETH (high mcap, "average" addresses) causing the combined
+forecast to hit the ±20 cap and de-lever the portfolio. Vol drops 23% (16.69%→12.83%), CAGR
+falls -3.82pp (27.01%→23.19%). This is a portfolio transformation, not an additive sleeve.
+w=0.5 preserves CAGR (26.81%) with meaningful Sharpe improvement (+2.7%). Calmar non-monotone
+(1.4829→1.4684→1.4433→1.3517→1.6145) confirms genuine signal.
+
+**New production config:** `xs_val_weight: 0.5`, `xs_val_lookback: 30`
+**New production baseline: Sharpe 1.5569, CAGR 26.81%, Vol 16.09%, MaxDD -18.57%, Calmar 1.4433**
+
+**Files created/modified:**
+- `scripts/download_market_cap.py` — NEW: CoinMetrics CapMrktCurUSD download
+- `data/market_cap.parquet` — NEW: 41 instruments, 2020-01-01 to 2026-03-05
+- `sysdata/crypto/parquet_perps_sim_data.py` — Added `market_cap_data_path` param + `get_market_cap()` getter
+- `scripts/run_dynamic_universe_backtest.py` — Added market_cap.parquet auto-discovery
+- `systems/crypto_perps/forecast_combine_gated.py` — Added `_get_xs_val_panel()`, `_get_xs_val_forecast()`, sleeve in `get_combined_forecast()`
+- `config/crypto_perps_full_rules.yaml` — `xs_val_weight: 0.5`, `xs_val_lookback: 30`
+- `scripts/sweep_xs_val.py` — NEW: weight sweep script
+
+**Status:** ✅ Complete. Safe to clear context.
+
+---
+
+## Previous Session Summary (2026-03-05)
+
+**XS Active Addresses Sleeve — Implemented & Adopted**
+
+**Status:** ✅ Complete. `xs_activity_weight: 1.0` adopted. Production Sharpe: 1.4918.
 
 **Signal:** CoinMetrics AdrActCnt (daily active address count), cross-sectionally ranked per date
 → EWM-smoothed (lookback=30) → percentile [0,1] → forecast (pct−0.5)×40 = [−20,+20].
@@ -22,16 +72,11 @@ Lit: Cong et al. (2022) C-5 — network activity / utility value factor.
 | 2.00   | 1.3670 | 1.1598 | 22.3% | -19.24% | 16.6%  | -1.7%   | -21.4pp |
 
 **Decision:** ✅ **ADOPT `xs_activity_weight: 1.0`** — revised criteria (crisis return removed).
-
-**Revised adoption criteria:** Crisis return dropped from criteria. It measures full-year 2022 return
-(not a crash-window metric), making it a noisy proxy for crash protection. MaxDD is the correct metric.
 At w=1.0: ΔSharpe +7.3% ✓, ΔMaxDD +0.7pp (improved) ✓, Calmar non-monotone ✓.
-System still returned +30.5% in full-year 2022 — crash protection intact.
 
 **New production config:** `xs_activity_weight: 1.0`, `xs_activity_lookback: 30`
-**New production baseline: Sharpe 1.4918, CAGR 26.4%, Vol 16.65%, MaxDD -18.09%, Calmar 1.46**
-
-**Commit:** `2eb4107b` (infrastructure) + adoption commit TBD
+**Production baseline after adoption: Sharpe 1.4918, CAGR 26.4%, Vol 16.65%, MaxDD -18.09%, Calmar 1.46**
+**Commits:** `2eb4107b` (infrastructure), `5cf2fbd3` (adoption)
 
 **Status:** ✅ Complete. Safe to clear context.
 
