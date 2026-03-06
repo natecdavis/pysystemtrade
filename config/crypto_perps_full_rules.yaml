@@ -742,7 +742,7 @@ xscarry_lookback: 30
 #
 # Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
 # Sweep: scripts/sweep_inter_sector_rotation.py
-inter_sector_weight: 1.0   # ADOPTED 2026-03-05: ΔSharpe +21.4%, ΔCrisis +2.4pp, MaxDD flat
+inter_sector_weight: 0.70  # TUNED 2026-03-06: w=0.70 Pareto-dominates w=1.0 (ΔSharpe -2.3%, ΔCalmar +0.20, ΔMaxDD +3.26pp)
 inter_sector_lookback: 20
 
 # ============================================================================
