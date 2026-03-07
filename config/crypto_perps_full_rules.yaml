@@ -506,12 +506,40 @@ trading_rules:
       - "data.get_inter_sector_forecast"
 
   # --------------------------------------------------------------------------
-  # CARRY — Vol-Normalized (3 variations, EXPERIMENTAL)
-  # Vol-normalized funding carry with trend-gating (disabled by default)
-  # Previous carry rules had negative IC (IC@5d = -0.009) and were excluded.
-  # This implementation uses trend-gating to only allow carry when it agrees
-  # with trend direction, acting as confirmation signal rather than independent alpha.
+  # CARRY — Trend-Gated (Carver-compliant, 2026-03-06 refactor)
+  # Gate baked into rule: returns 0 when sign(carry) ≠ sign(per-instrument EWMAC).
+  # Goes through standard forecast scalar → weighted avg → FDM pipeline.
+  # ~50% outputs are 0; walk-forward scalar compensates (Carver-correct behaviour).
+  #
+  # Prior architecture (additive sleeve in ForecastCombineGated) contributed to
+  # mean |FC|=14.2 and cap hit=45.6%. Standard rules restore these to target range.
+  #
+  # vol_norm_carry_10/30/60 kept for reference (no longer in forecast_weights).
   # --------------------------------------------------------------------------
+  gated_carry_10:
+    function: systems.crypto_perps.rules.rule_library.gated_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 10, trend_fast: 32, trend_slow: 128}
+
+  gated_carry_30:
+    function: systems.crypto_perps.rules.rule_library.gated_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 30, trend_fast: 32, trend_slow: 128}
+
+  gated_carry_60:
+    function: systems.crypto_perps.rules.rule_library.gated_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 60, trend_fast: 32, trend_slow: 128}
+
   vol_norm_carry_10:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
@@ -603,14 +631,13 @@ forecast_weights:
   # sector_momentum_20: 0.0
   # sector_momentum_40: 0.0
 
-  # Vol-Normalized Carry: 3 rules × 1.0% = 3.0% (ENABLED with trend-gating)
-  # Traditional carry had negative IC (IC@5d = -0.009) due to fighting momentum
-  # Trend-gating solved this: only allow carry when sign(carry) == sign(trend)
-  # Optimized parameters: carry_weight=1.0, threshold=0.5 (from extended 8-weight sweep)
-  # Performance: Sharpe 0.84 → 0.95 (+13.1%), CAGR 14.6% → 21.2% (+45.2%)
-  vol_norm_carry_10:  0.01
-  vol_norm_carry_30:  0.01
-  vol_norm_carry_60:  0.01
+  # Gated Carry: 3 rules × 5.0% = 15.0% (Carver-compliant refactor, 2026-03-06)
+  # Gate baked into rule function; goes through standard scalar → FDM pipeline.
+  # Initial weights: 0.05 each (≈1× avg trend rule). Sweep pending.
+  # vol_norm_carry_10/30/60 removed from weights (rules kept for reference).
+  gated_carry_10:  0.05
+  gated_carry_30:  0.05
+  gated_carry_60:  0.05
 
   # Cross-sectional signals (moved from additive sleeves, 2026-03-06 refactor)
   # Initial weights: 0.05 each (≈1× avg trend rule weight, conservative starting point)
@@ -626,68 +653,6 @@ forecast_weights:
   #   streversal_1:     424 rt/yr, annual drag 1.26 SR
 
 forecast_cap: 20.0
-
-# ============================================================================
-# TREND-GATED CARRY CONFIGURATION
-# ============================================================================
-# Trend-gating logic for carry rules (disabled by default).
-#
-# When use_gated_carry: true:
-#   1. Carry rules are percentile-ranked cross-sectionally
-#   2. Carry is gated by trend strength: zeroed when |trend| < threshold
-#   3. Carry is zeroed when sign(trend) ≠ sign(carry) (no fighting trend)
-#   4. Carry is blended additively with weight w_c (optimal: 1.0)
-#
-# To enable gated carry testing:
-#   1. Set use_gated_carry: true
-#   2. Set carry rule weights > 0 (e.g., 0.01 each for 3% total)
-#   3. Adjust carry_weight (additive blend weight, default 0.2)
-#   4. Adjust carry_trend_gate_threshold (min trend strength, default 1.0)
-# ============================================================================
-
-use_gated_carry: true  # ENABLED: Trend-gated carry (Sharpe 0.84 → 0.95)
-
-# Additive weight for carry sleeve (applied AFTER gating)
-# Optimal value from extended sweep: 1.0 (tested 0.3, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 4.76)
-carry_weight: 1.0
-
-# Minimum absolute trend strength to allow carry
-# |trend| < threshold → carry zeroed (weak trend)
-# Optimal value from parameter sweep: 0.5 (tested 0.5, 1.0, 1.5, 2.0)
-carry_trend_gate_threshold: 0.5
-
-# List of rules considered "trend" for gating logic
-# (These are summed to calculate trend strength)
-trend_rule_list:
-  - ewmac_8
-  - ewmac_16
-  - ewmac_32
-  - normmom_8
-  - normmom_16
-  - normmom_32
-  - breakout_20
-  - breakout_40
-  - breakout_80
-  - breakout_160
-  - accel_16
-  - accel_32
-  - accel_64
-  - assettrend_8
-  - assettrend_16
-  - assettrend_32
-  - assettrend_64
-  - relmomentum_20
-  - relmomentum_40
-  - residual_momentum_16
-  - residual_momentum_32
-  - residual_momentum_64
-
-# List of rules considered "carry" for gating logic
-# (These are percentile-ranked and gated by trend)
-carry_rule_list:
-  - vol_norm_carry_10
-  - vol_norm_carry_30
-  - vol_norm_carry_60
 
 # ============================================================================
 # XSMOM LONG-ONLY GATE

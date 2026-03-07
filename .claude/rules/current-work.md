@@ -1,6 +1,65 @@
 # Current Work Context
 
-## Current Session Summary (2026-03-06, Part 2)
+## Current Session Summary (2026-03-06, Part 4)
+
+**Gated Carry Sleeve → Standard Carver Rules — In Progress**
+
+**Status:** 🔄 Code changes done, smoke test ✅, full backtest done, weight sweep RUNNING (~66 min).
+
+**Carry Refactor Baseline (gated_carry_10/30/60 at w=0.05, no additive sleeve):**
+- Sharpe: 0.94, CAGR: 10.2%, Vol: 10.9%, MaxDD: -12.5%
+- vs prior XS-refactor baseline: Sharpe 0.99, Vol 17.3%, MaxDD -16.4%
+- Vol drop 17.3% → 10.9%: additive sleeve was driving leverage via ±20 cap hits;
+  without it, combined forecast magnitude is lower → smaller positions
+- Sharpe preserved (0.94 vs 0.99) = signal quality maintained
+- Weight sweep needed to restore scale: `python scripts/sweep_gated_carry_weight.py`
+- Weights being tested: [0.01, 0.03, 0.05, 0.10, 0.20, 0.30]
+
+**Key Bug Found + Fixed:**
+`gated_carry` rule: funding_rates may have different DatetimeIndex from price.
+`np.sign(carry) == np.sign(trend)` fails with "Can only compare identically-labeled Series objects".
+Fix: align funding_rates to price.index using `.reindex(price.index).ffill()` before computing carry.
+
+---
+
+## Previous Session Summary (2026-03-06, Part 3)
+
+**Architectural Refactor: 4 Additive Sleeves → Standard Carver Rules — Complete**
+
+**Status:** ✅ Complete. Commit `b3c406fd`. Refactor baseline: Sharpe 0.99, cap hit 24.9%. Next: weight sweep.
+
+**What Was Done:**
+
+Moved XS Carry, XS Activity, XS VAL, Inter-Sector from additive post-FDM sleeves in
+`ForecastCombineGated` into proper 26th–29th trading rules in the standard Carver pipeline.
+
+**Results:**
+- Mean |FC|: 14.2 → 11.7 (target ~10) ✅
+- Cap hit rate: 45.6% → 24.9% ✅
+- Sharpe: 1.5161 → 0.99 (expected — initial weights=0.05 far below former additive contribution)
+
+**Key implementation detail:** Uncovered instruments (e.g., xs_activity for non-CoinMetrics tickers)
+must return `pd.Series(np.nan, index=self._prices_df.index)` NOT `pd.Series(dtype=float)`.
+Empty series has RangeIndex. pysystemtrade's forecast scalar `.reindex()` fails with
+"Only valid with DatetimeIndex" — causing all positions to fail silently.
+
+**Files changed:**
+- `sysdata/crypto/parquet_perps_sim_data.py` — +4 `_compute_*_panel()`, +4 `get_*_forecast()` getters,
+  init additions (lookback vars + None panel placeholders after downside beta block)
+- `systems/crypto_perps/rules/rule_library.py` — +`passthrough_forecast()`
+- `config/crypto_perps_full_rules.yaml` — +4 rules in `trading_rules:`, +4 weights (0.05) in
+  `forecast_weights:`, removed old sleeve config keys, renamed `xscarry_lookback→xs_carry_lookback`
+- `systems/crypto_perps/forecast_combine_gated.py` — removed 4 sleeve blocks + 8 methods
+
+**Next Step: Weight Sweep**
+Run sweep over [0.05, 0.10, 0.20, 0.30, 0.50] for each of the 4 new rules to find optimal weights.
+Model on `scripts/sweep_xs_val.py`. Compare against additive-sleeve peak (Sharpe 1.5161).
+
+**Status:** ✅ Complete. Safe to clear context if starting new work.
+
+---
+
+## Previous Session Summary (2026-03-06, Part 2)
 
 **Carver Audit — Complete**
 

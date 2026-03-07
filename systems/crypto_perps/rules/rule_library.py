@@ -449,3 +449,64 @@ def passthrough_forecast(signal: pd.Series) -> pd.Series:
     walk-forward forecast scalar will estimate ≈ 1.0.
     """
     return signal
+
+
+# ============================================================================
+# TREND-GATED CARRY (Carver-compliant replacement for additive sleeve)
+# ============================================================================
+
+
+def gated_carry(
+    funding_rates: pd.Series,
+    price: pd.Series,
+    vol: pd.Series,
+    carry_span: int = 10,
+    trend_fast: int = 32,
+    trend_slow: int = 128,
+    vol_floor: float = 0.01,
+) -> pd.Series:
+    """
+    Trend-gated vol-normalized carry.
+
+    Computes vol-normalized carry from funding rates, then gates by a
+    per-instrument trend proxy derived from price EWMAC. Returns 0 on days
+    when carry and trend disagree in direction.
+
+    This is the Carver-compliant replacement for the additive gated carry sleeve
+    in ForecastCombineGated. The gate is baked into the rule function, so it
+    goes through the standard forecast scalar → weighted average → FDM pipeline.
+
+    Trend proxy: (EWM_fast − EWM_slow) / vol — per-instrument EWMAC, computed
+    inside the rule to avoid circular dependency with the ForecastCombine stage.
+
+    ~50% of outputs are 0 (when gated). Walk-forward forecast scalar compensates
+    by estimating a larger scalar from the non-zero outputs. This is correct
+    Carver behavior — the scalar adapts to the signal's active fraction.
+
+    Args:
+        funding_rates: Raw 8-hourly funding rate (data.get_funding_rate).
+            Typical scale: 0.0001 = 0.01% per 8h.
+        price: Daily price series (data.daily_prices).
+        vol: Daily price vol — unit, not % (rawdata.daily_returns_volatility).
+        carry_span: EWM span for smoothing funding in days.
+        trend_fast: Fast EWM for trend proxy in days.
+        trend_slow: Slow EWM for trend proxy in days (default 4× fast).
+        vol_floor: Minimum vol to avoid division-by-zero.
+
+    Returns:
+        Unscaled carry score; 0 when carry and trend directions disagree.
+    """
+    # Align funding_rates to price index (funding may start/end on different dates)
+    funding_aligned = funding_rates.reindex(price.index).ffill()
+    ann_funding = funding_aligned * 3 * 365
+    f_smooth = ann_funding.ewm(span=carry_span, min_periods=1).mean()
+
+    vol_filled = vol.reindex(price.index).ffill().replace(0.0, np.nan).ffill().clip(lower=vol_floor)
+    carry = -f_smooth / vol_filled  # negative: positive funding → short bias
+
+    trend = (
+        price.ewm(span=trend_fast, min_periods=1).mean()
+        - price.ewm(span=trend_slow, min_periods=1).mean()
+    ) / vol_filled
+
+    return carry.where(np.sign(carry) == np.sign(trend), other=0.0)
