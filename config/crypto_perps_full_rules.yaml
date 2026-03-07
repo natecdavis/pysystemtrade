@@ -637,7 +637,7 @@ forecast_weights:
   # vol_norm_carry_10/30/60 removed from weights (rules kept for reference).
   gated_carry_10:  0.05
   gated_carry_30:  0.05
-  gated_carry_60:  0.05
+  gated_carry_60:  0.10  # Sweep 2026-03-07: 3.17× empirical ratio → w=0.10 (Calmar peak, ΔSharpe +2.6%, ΔMaxDD +1.16pp)
 
   # Cross-sectional signals (moved from additive sleeves, 2026-03-06 refactor)
   # Initial weights: 0.05 each (≈1× avg trend rule weight, conservative starting point)
