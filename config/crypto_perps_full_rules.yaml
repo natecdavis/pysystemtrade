@@ -641,13 +641,13 @@ forecast_weights:
   gated_carry_60:  0.10
 
   # Cross-sectional signals (moved from additive sleeves, 2026-03-06 refactor)
-  # Initial weights: 0.05 each (≈1× avg trend rule weight, conservative starting point)
-  # Forecast scalar ≈ 1.0 (signals pre-scaled to ±20); FDM will calibrate.
+  # Sweep 2026-03-07: w=0.10 (Calmar peak, ΔSharpe +2.9%, ΔCalmar +0.067, ΔMaxDD +1.20pp)
+  # Calmar peaks at 0.10 (0.993 vs 0.926 baseline) — same Calmar-peak criterion as carry sweeps.
   # Uncovered instruments get NaN → weight renormalized to 0 for that instrument.
-  xs_carry:      0.05
-  xs_activity:   0.05
-  xs_val:        0.05
-  inter_sector:  0.05
+  xs_carry:      0.10
+  xs_activity:   0.10
+  xs_val:        0.10
+  inter_sector:  0.10
 
   # Removed entirely (cost audit):
   #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each
