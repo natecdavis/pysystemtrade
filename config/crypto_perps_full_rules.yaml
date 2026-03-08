@@ -68,6 +68,17 @@ percentage_vol_target: 25.0
 notional_trading_capital: 10000.0
 min_notional_position: 25.0
 
+# Dynamic universe systems need span=1 here. The pysystemtrade default (125) applies
+# EWMA smoothing to weight transitions, which is appropriate for static Carver universes
+# where instrument weights rarely change. In our top-K dynamic universe, the entry/exit
+# hysteresis already provides stability. With span=125, exited instruments retain
+# non-zero EWMA weights for months, inflating the effective N from ~35 to ~70+ and
+# diluting per-instrument capital by ~40%. This pushes BTC/ETH target positions below
+# their minimum lot sizes, zeroing them out and causing realized vol to be only ~38% of
+# the 25% target. span=1 restores per-instrument weights to 1/K immediately on
+# universe changes.
+instrument_weight_ewma_span: 1
+
 use_instrument_div_mult_estimates: True
 use_forecast_scale_estimates: True
 use_forecast_div_mult_estimates: True
