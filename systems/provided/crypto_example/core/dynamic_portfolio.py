@@ -100,8 +100,15 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
             dates=position_series_index,
         )
 
-        # Stage 2: Top-K Liquidity Selection with Hysteresis (if configured)
-        eligibility_df = self._apply_top_k_selection(eligibility_df)
+        # Stage 2: Instrument selection (method configurable)
+        config = self.parent.config
+        du_config = config.get_element_or_default('dynamic_universe', {}) or {}
+        stage2_method = du_config.get('stage2_method', 'adv')
+
+        if stage2_method == 'carver_static':
+            eligibility_df = self._apply_carver_static_selection(eligibility_df)
+        else:
+            eligibility_df = self._apply_top_k_selection(eligibility_df)
 
         # Calculate equal weights among eligible instruments with entry/exit logic
         weights_df = self._calculate_dynamic_weights(eligibility_df)
@@ -232,6 +239,102 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
         last_tradable_count = len(tradable_over_time[eligibility_df.index[-1]])
         self.log.info(
             f"Stage 2 complete: {last_tradable_count} instruments tradable on last date"
+        )
+
+        return eligibility_df
+
+    def _apply_carver_static_selection(self, eligibility_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Apply Stage 2 Carver greedy correlation-aware selection.
+
+        Replaces top-K ADV selection with a monthly greedy algorithm that
+        maximizes portfolio Sharpe ratio accounting for correlation structure
+        and individual net SRs (gross SR minus cost SR).
+
+        Args:
+            eligibility_df: Stage 1 boolean DataFrame (dates × instruments)
+
+        Returns:
+            Filtered eligibility_df (Stage 2 output)
+        """
+        from sysdata.crypto.carver_static_selector import CarverStaticInstrumentSelector
+
+        config = self.parent.config
+        du_config = config.get_element_or_default('dynamic_universe', {}) or {}
+        cs_config = du_config.get('carver_static', {}) or {}
+
+        assumed_gross_sr = cs_config.get('assumed_gross_sr', 0.5)
+        sr_tolerance = cs_config.get('sr_tolerance', 0.90)
+        correlation_window = cs_config.get('correlation_window', 252)
+        correlation_shrinkage = cs_config.get('correlation_shrinkage', 0.5)
+        min_instruments = cs_config.get('min_instruments', 5)
+        max_instruments = cs_config.get('max_instruments', 40)
+        rebalance_freq = cs_config.get('rebalance_freq', 'ME')
+        hysteresis_buffer = cs_config.get('hysteresis_buffer', 3)
+
+        # Inherit cost params from dynamic_universe top-level config
+        stack_turnover = du_config.get('stack_turnover', 15.0)
+        fee_bps = du_config.get('fee_bps', 5.0)
+        vol_window = du_config.get('vol_window', 35)
+
+        self.log.info(
+            f"Stage 2 (Carver static): greedy selection, "
+            f"max={max_instruments}, sr_tol={sr_tolerance}, "
+            f"corr_window={correlation_window}d, shrinkage={correlation_shrinkage}, "
+            f"hysteresis_buffer={hysteresis_buffer}"
+        )
+
+        # Get price and ADV panels from data layer
+        instruments = list(eligibility_df.columns)
+        prices_df = self.data.get_prices_df(instruments)
+        adv_df = self.data.get_adv_notional_df(instruments)
+
+        if adv_df.empty:
+            self.log.warning(
+                "ADV data not available for Carver static selection — "
+                "will use default conservative spreads"
+            )
+            adv_df = None
+
+        selector = CarverStaticInstrumentSelector(
+            prices_df=prices_df,
+            adv_df=adv_df,
+            eligibility_df=eligibility_df,
+            assumed_gross_sr=assumed_gross_sr,
+            sr_tolerance=sr_tolerance,
+            correlation_window=correlation_window,
+            correlation_shrinkage=correlation_shrinkage,
+            min_instruments=min_instruments,
+            max_instruments=max_instruments,
+            rebalance_freq=rebalance_freq,
+            hysteresis_buffer=hysteresis_buffer,
+            stack_turnover=stack_turnover,
+            fee_bps=float(fee_bps),
+            vol_window=vol_window,
+            log=self.log,
+        )
+
+        # Run monthly greedy selection
+        selected_over_time = selector.get_tradable_over_time()
+
+        # Convert to daily boolean DataFrame (forward-fill monthly → daily)
+        eligibility_df = selector.to_eligibility_df(
+            selected_over_time=selected_over_time,
+            all_dates=eligibility_df.index,
+            all_instruments=instruments,
+        )
+
+        # Stash for post-run snapshot (compatible with ADV selector)
+        self._tradable_over_time = {
+            date: set(instr_list)
+            for date, instr_list in selected_over_time.items()
+        }
+
+        last_date = eligibility_df.index[-1]
+        last_count = eligibility_df.loc[last_date].sum()
+        self.log.info(
+            f"Stage 2 (Carver static) complete: {last_count} instruments "
+            f"selected on {last_date.date()}"
         )
 
         return eligibility_df

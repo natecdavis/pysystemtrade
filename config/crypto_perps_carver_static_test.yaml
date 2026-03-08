@@ -124,7 +124,7 @@ dynamic_universe:
   # Stage 2 method: 'adv' (default) or 'carver_static'
   # 'adv': top-K by liquidity (ADV) with hysteresis
   # 'carver_static': greedy correlation-aware selection (Carver Post 3)
-  stage2_method: 'adv'
+  stage2_method: 'carver_static'
 
   # Carver static selection config (used when stage2_method: 'carver_static')
   carver_static:
