@@ -105,7 +105,7 @@ dynamic_universe:
   max_sr_cost_per_trade: 0.01
   max_sr_cost_annual: 0.13
   stack_turnover: 15.0
-  adv_window: 30
+  adv_window: 90
   fee_bps: 5
   vol_window: 35
 
