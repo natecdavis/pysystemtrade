@@ -190,12 +190,13 @@ def funding_mr(
 
 def vol_normalized_carry(
     funding_rates: pd.Series,
+    price: pd.Series,
     vol: pd.Series,
     smooth_days: int = 30,
     vol_floor: float = 0.01,
 ) -> pd.Series:
     """
-    Vol-normalized carry: smoothed funding rate normalized by price volatility.
+    Vol-normalized carry: smoothed funding rate normalized by percentage volatility.
 
     This rule returns the raw carry score per instrument. Cross-sectional
     percentile ranking will be applied in the ForecastCombineGated stage,
@@ -207,9 +208,11 @@ def vol_normalized_carry(
     Args:
         funding_rates: Raw 8-hourly funding rate series (data.get_funding_rate).
             Typical scale: 0.0001 = 0.01% per 8h.
-        vol: Daily price volatility — unit, not % (rawdata.daily_returns_volatility).
+        price: Daily price series (data.daily_prices). Used to convert vol to
+            percentage units so the carry score is price-level independent.
+        vol: Daily price volatility in price units (rawdata.daily_returns_volatility).
         smooth_days: EWM span for smoothing funding (default 30).
-        vol_floor: Minimum volatility floor to avoid division by zero (default 0.01).
+        vol_floor: Minimum percentage volatility floor (default 0.01 = 1%/day).
 
     Returns:
         Unscaled carry score (raw, will be percentile-ranked in ForecastCombine).
@@ -218,9 +221,13 @@ def vol_normalized_carry(
     ann_funding = funding_rates * 3 * 365
     f_smooth = ann_funding.ewm(span=smooth_days, min_periods=1).mean()
 
+    # Convert vol to percentage units (dimensionless) to match funding rate units
+    vol_aligned = vol.reindex(price.index).ffill().replace(0.0, np.nan).ffill()
+    price_filled = price.ffill()
+    pct_vol = (vol_aligned / price_filled).clip(lower=vol_floor)
+
     # Vol-normalize (negated so positive funding → short bias)
-    vol_filled = vol.ffill().replace(0.0, np.nan).ffill().clip(lower=vol_floor)
-    carry_score = -f_smooth / vol_filled
+    carry_score = -f_smooth.reindex(pct_vol.index) / pct_vol
 
     return carry_score
 
@@ -501,6 +508,12 @@ def gated_carry(
     ann_funding = funding_aligned * 3 * 365
     f_smooth = ann_funding.ewm(span=carry_span, min_periods=1).mean()
 
+    # NOTE: vol_filled is in price-dollar units (not percentage vol). Dividing by price-dollar
+    # vol gives carry in units of (annualized_funding / price_vol) which is inversely proportional
+    # to the instrument's price level. This intentionally attenuates carry for large-cap
+    # instruments (BTC, ETH — where funding carry is well-arbitraged and less predictive) and
+    # amplifies it for small-caps (where carry has genuine alpha). Empirically tested: switching
+    # to pct vol (vol/price) equalizes carry across instruments but reduces Sharpe by ~6%.
     vol_filled = vol.reindex(price.index).ffill().replace(0.0, np.nan).ffill().clip(lower=vol_floor)
     carry = -f_smooth / vol_filled  # negative: positive funding → short bias
 

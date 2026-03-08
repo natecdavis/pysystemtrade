@@ -544,6 +544,7 @@ trading_rules:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
       - "data.get_funding_rate"
+      - "data.daily_prices"
       - "rawdata.daily_returns_volatility"
     other_args: {smooth_days: 10, vol_floor: 0.01}
 
@@ -551,6 +552,7 @@ trading_rules:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
       - "data.get_funding_rate"
+      - "data.daily_prices"
       - "rawdata.daily_returns_volatility"
     other_args: {smooth_days: 30, vol_floor: 0.01}
 
@@ -558,6 +560,7 @@ trading_rules:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
       - "data.get_funding_rate"
+      - "data.daily_prices"
       - "rawdata.daily_returns_volatility"
     other_args: {smooth_days: 60, vol_floor: 0.01}
 
