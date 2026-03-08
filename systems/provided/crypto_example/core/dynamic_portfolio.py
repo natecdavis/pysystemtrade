@@ -156,9 +156,22 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
             raise ValueError(f"Invalid selection_criterion: {selection_criterion}. "
                              f"Must be 'adv' or 'forecast_magnitude'")
 
+        # Lot-size gate: explicit config value takes precedence; if 'auto', compute
+        # from capital/K so only instruments whose 1-lot cost fits the per-K capital
+        # allocation are eligible. Prevents phantom inclusions at high K.
+        max_lot_notional_cfg = du_config.get('max_lot_notional', 'auto')
+        if max_lot_notional_cfg == 'auto':
+            capital = config.get_element_or_default('notional_trading_capital', 10_000.0)
+            max_lot_notional = float(capital) / K
+        elif max_lot_notional_cfg is None or max_lot_notional_cfg == 0:
+            max_lot_notional = None  # disabled
+        else:
+            max_lot_notional = float(max_lot_notional_cfg)
+
         self.log.info(
             f"Stage 2: Top-K selection K={K}, entry<={K - entry_buffer}, exit>{K + exit_buffer}, "
-            f"criterion={selection_criterion}, min_history={min_history_topk}d"
+            f"criterion={selection_criterion}, min_history={min_history_topk}d, "
+            f"max_lot_notional={'auto=$'+str(round(max_lot_notional)) if max_lot_notional else 'off'}"
         )
 
         selector = TopKInstrumentSelector(
@@ -167,6 +180,7 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
             exit_buffer=exit_buffer,
             adv_window=adv_window,
             min_history_days=min_history_topk,
+            max_lot_notional=max_lot_notional,
             log=self.log,
         )
 

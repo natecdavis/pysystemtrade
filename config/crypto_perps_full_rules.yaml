@@ -117,9 +117,16 @@ dynamic_universe:
   ivol_window: 35          # rolling window (days), matches vol_window
 
   # Stage 2 — Top-K selection with hysteresis (criterion specified above)
-  top_k: 30
+  top_k: 35
   entry_buffer: 5
-  exit_buffer: 10
+  exit_buffer: 11
+
+  # Binance lot-size gate: exclude instruments whose minimum lot (in USD) exceeds
+  # this value. Prevents counting instruments in K that can't be meaningfully sized.
+  # 'auto' (default) = capital / K  (e.g. $10K / 30 = $333 per slot)
+  # null / 0         = disabled
+  # number           = explicit USD threshold
+  max_lot_notional: 'auto'
 
   # Stage 2 method: 'adv' (default) or 'carver_static'
   # 'adv': top-K by liquidity (ADV) with hysteresis

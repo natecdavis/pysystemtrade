@@ -16,7 +16,11 @@ from typing import Dict, List, Set, Optional
 from pathlib import Path
 import logging
 
+from sysdata.crypto.lot_size_provider import LotSizeProvider
+
 logger = logging.getLogger(__name__)
+
+_lot_size_provider = LotSizeProvider()
 
 
 class TopKInstrumentSelector:
@@ -41,6 +45,7 @@ class TopKInstrumentSelector:
         exit_buffer: int = 10,
         adv_window: int = 30,
         min_history_days: int = 365,
+        max_lot_notional: Optional[float] = None,
         log=None
     ):
         """
@@ -52,6 +57,12 @@ class TopKInstrumentSelector:
                         Exit when rank > K + exit_buffer
             adv_window: Rolling window for ADV calculation in days (default: 30)
             min_history_days: Minimum data history to compute ADV (default: 365)
+            max_lot_notional: Maximum allowed value (USD) for one lot of an instrument.
+                              Instruments whose Binance minimum lot exceeds this at the
+                              current price are excluded from consideration — they cannot
+                              be meaningfully sized at this K and capital level.
+                              None = disabled (default). Set to capital/K for automatic
+                              K-aware filtering. Example: capital=$10K, K=30 → $333.
             log: Logger instance
         """
         self.K = K
@@ -59,13 +70,20 @@ class TopKInstrumentSelector:
         self.exit_buffer = exit_buffer
         self.adv_window = adv_window
         self.min_history_days = min_history_days
+        self.max_lot_notional = max_lot_notional
         self.log = log or logger
 
         # Derived thresholds
         self.entry_threshold = K - entry_buffer  # e.g., 25 for K=30
         self.exit_threshold = K + exit_buffer    # e.g., 40 for K=30
 
-        self.log.info(f"TopKSelector initialized: K={K}, entry<={self.entry_threshold}, exit>{self.exit_threshold}")
+        if max_lot_notional is not None:
+            self.log.info(
+                f"TopKSelector initialized: K={K}, entry<={self.entry_threshold}, "
+                f"exit>{self.exit_threshold}, max_lot_notional=${max_lot_notional:.0f}"
+            )
+        else:
+            self.log.info(f"TopKSelector initialized: K={K}, entry<={self.entry_threshold}, exit>{self.exit_threshold}")
 
     def compute_liquidity_metric(
         self,
@@ -189,6 +207,32 @@ class TopKInstrumentSelector:
         Returns:
             Updated tradable set
         """
+        # Lot-size gate: exclude instruments where 1 Binance lot costs more than
+        # max_lot_notional USD at current price. Prevents phantom inclusions where
+        # an instrument is counted in K but its lot size makes it untradeable at
+        # this capital level (position rounds to 0 lots after sizing).
+        if self.max_lot_notional is not None:
+            filtered_out = []
+            filtered_candidates = []
+            for instr in eligible_candidates:
+                if instr in prices_df.columns:
+                    price_series = prices_df[instr].loc[:date].dropna()
+                    if len(price_series) > 0:
+                        current_price = float(price_series.iloc[-1])
+                        lot_val = _lot_size_provider.get_lot_value(instr, current_price)
+                        if lot_val > self.max_lot_notional:
+                            filtered_out.append(
+                                f"{instr}(${lot_val:.0f}/lot)"
+                            )
+                            continue
+                filtered_candidates.append(instr)
+            if filtered_out:
+                self.log.info(
+                    f"{date.date()}: lot-size filter removed {len(filtered_out)} instruments "
+                    f"(1 lot > ${self.max_lot_notional:.0f}): {filtered_out[:5]}"
+                )
+            eligible_candidates = filtered_candidates
+
         # Rank instruments by selected criterion
         if selection_criterion == 'forecast_magnitude':
             if forecasts_df is None:
