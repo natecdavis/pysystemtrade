@@ -251,6 +251,10 @@ class parquetCryptoPerpsSimData(simData):
         self._xs_activity_panel: Optional[pd.DataFrame] = None
         self._xs_val_panel: Optional[pd.DataFrame] = None
         self._inter_sector_panel: Optional[pd.DataFrame] = None
+        # Skew-abs panels (Carver 2020): lazily initialized, one per lookback window
+        self._skew_abs_panel_90: Optional[pd.DataFrame] = None
+        self._skew_abs_panel_180: Optional[pd.DataFrame] = None
+        self._skew_abs_panel_365: Optional[pd.DataFrame] = None
 
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
@@ -1913,3 +1917,95 @@ class parquetCryptoPerpsSimData(simData):
         if self._inter_sector_panel.empty or instrument_code not in self._inter_sector_panel.columns:
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._inter_sector_panel[instrument_code]
+
+    # =========================================================================
+    # SKEW-ABS FORECAST PANELS — Carver (2020) time-series skew signal
+    # =========================================================================
+    # Reference: Carver blog posts 1–4.  Instruments with more negative rolling
+    # skew (relative to the pooled cross-asset mean) tend to outperform over the
+    # subsequent 3–12 month window (SR differential ≈ 0.4 at the 6-month horizon).
+    #
+    # Signal design:
+    #   1. Rolling log-return skew over `window` days (per instrument).
+    #   2. Demean by pooled expanding-window cross-asset mean (time-series, not XS rank).
+    #   3. Normalise by pooled expanding-window cross-asset sigma.
+    #   4. EWM smooth (span = window // 10) to suppress outlier-roll spikes.
+    #   5. Negate: negative raw skew → positive forecast → go long.
+    #
+    # Unlike the xs_carry / inter_sector signals this is NOT a cross-sectional rank;
+    # it is a z-score-like time-series signal for each instrument independently.
+    # Forecast scalar (walk-forward, use_forecast_scale_estimates: True) brings
+    # mean |FC| → 10 automatically.
+    #
+    # Overlap with β_down overlay: panel Spearman r = -0.09 to -0.14 (near-orthogonal).
+
+    def _compute_skew_abs_panel(self, window: int) -> pd.DataFrame:
+        """
+        Carver skew-absolute forecast panel (dates × instruments).
+
+        Steps (Carver 2020, posts 1 & 4):
+          1. Rolling skew of log-returns over `window` days.
+          2. Demean by pooled expanding-window cross-asset mean.
+          3. Normalise by pooled expanding-window cross-asset sigma.
+          4. EWM smooth with span = window // 10 (suppresses turnover spikes from
+             outlier days rolling in/out of the window).
+          5. Negate: negative raw skew → positive forecast → go long.
+
+        Output is an unscaled z-score-like signal. Forecast scalar brings
+        mean |FC| → 10 via the standard walk-forward scalar machinery.
+        """
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+        min_periods = max(window // 3, 30)
+        skew_panel = log_ret.rolling(window, min_periods=min_periods).skew()
+
+        # Pooled expanding-window normalisation (cross-asset, backward-looking)
+        daily_mean = skew_panel.mean(axis=1)    # XS mean of skew per day
+        daily_std  = skew_panel.std(axis=1)     # XS std of skew per day
+        pooled_mean  = daily_mean.expanding(min_periods=60).mean()
+        pooled_sigma = daily_std.expanding(min_periods=60).mean().clip(lower=1e-6)
+
+        demeaned   = skew_panel.subtract(pooled_mean, axis=0)
+        normalised = demeaned.divide(pooled_sigma, axis=0)
+
+        smoother_span = max(window // 10, 3)
+        smoothed = normalised.ewm(span=smoother_span, min_periods=1).mean()
+        return -smoothed   # negate: negative skew → positive forecast
+
+    def get_skew_abs_90_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return Carver skew-abs forecast (90-day window) for one instrument.
+
+        Called by the trading rule pipeline as data.get_skew_abs_90_forecast(instrument_code).
+        Returns all-NaN Series with DatetimeIndex during warmup / missing data.
+        """
+        if self._skew_abs_panel_90 is None:
+            self._skew_abs_panel_90 = self._compute_skew_abs_panel(90)
+        if self._skew_abs_panel_90.empty or instrument_code not in self._skew_abs_panel_90.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._skew_abs_panel_90[instrument_code]
+
+    def get_skew_abs_180_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return Carver skew-abs forecast (180-day window) for one instrument.
+
+        Called by the trading rule pipeline as data.get_skew_abs_180_forecast(instrument_code).
+        Returns all-NaN Series with DatetimeIndex during warmup / missing data.
+        """
+        if self._skew_abs_panel_180 is None:
+            self._skew_abs_panel_180 = self._compute_skew_abs_panel(180)
+        if self._skew_abs_panel_180.empty or instrument_code not in self._skew_abs_panel_180.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._skew_abs_panel_180[instrument_code]
+
+    def get_skew_abs_365_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return Carver skew-abs forecast (365-day window) for one instrument.
+
+        Called by the trading rule pipeline as data.get_skew_abs_365_forecast(instrument_code).
+        Returns all-NaN Series with DatetimeIndex during warmup / missing data.
+        """
+        if self._skew_abs_panel_365 is None:
+            self._skew_abs_panel_365 = self._compute_skew_abs_panel(365)
+        if self._skew_abs_panel_365.empty or instrument_code not in self._skew_abs_panel_365.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._skew_abs_panel_365[instrument_code]
