@@ -564,6 +564,28 @@ trading_rules:
       - "data.get_skew_abs_365_forecast"
 
   # --------------------------------------------------------------------------
+  # TIME-SERIES SKEW RV — Carver (2020), relative-value variant
+  # Daily cross-sectional normalization: subtract today's crypto-wide mean skew.
+  # In Carver's multi-class futures universe _rv had r=0.54 with _abs (kept).
+  # In our single-class crypto universe _rv = _cs; Carver found _cs r=0.95 with
+  # _abs (dropped). Testing empirically to confirm whether it adds diversification.
+  # --------------------------------------------------------------------------
+  skew_rv_90:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_skew_rv_90_forecast"
+
+  skew_rv_180:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_skew_rv_180_forecast"
+
+  skew_rv_365:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_skew_rv_365_forecast"
+
+  # --------------------------------------------------------------------------
   # CARRY — Trend-Gated (Carver-compliant, 2026-03-06 refactor)
   # Gate baked into rule: returns 0 when sign(carry) ≠ sign(per-instrument EWMAC).
   # Goes through standard forecast scalar → weighted avg → FDM pipeline.
@@ -718,6 +740,15 @@ forecast_weights:
   skew_abs_90:   0.0167
   skew_abs_180:  0.0167
   skew_abs_365:  0.0167
+
+  # Skew-rv: Carver (2020) relative-value skew signal, 3 lookbacks.
+  # Daily cross-sectional normalization (subtract today's crypto-wide mean skew).
+  # Sweep 2026-03-08: Calmar-peak at w_combined=0.05 (0.0167/rule).
+  # ΔSharpe +1.0%, ΔCalmar +0.011 (Calmar peaks ABOVE baseline), ΔMaxDD -0.11pp.
+  # Window narrow: w>=0.08 collapses. Genuine diversification vs skew_abs confirmed.
+  skew_rv_90:    0.0167
+  skew_rv_180:   0.0167
+  skew_rv_365:   0.0167
 
   # Removed entirely (cost audit):
   #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each

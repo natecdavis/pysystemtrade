@@ -255,6 +255,10 @@ class parquetCryptoPerpsSimData(simData):
         self._skew_abs_panel_90: Optional[pd.DataFrame] = None
         self._skew_abs_panel_180: Optional[pd.DataFrame] = None
         self._skew_abs_panel_365: Optional[pd.DataFrame] = None
+        # Skew-rv panels (Carver 2020): daily XS normalization, one per lookback window
+        self._skew_rv_panel_90: Optional[pd.DataFrame] = None
+        self._skew_rv_panel_180: Optional[pd.DataFrame] = None
+        self._skew_rv_panel_365: Optional[pd.DataFrame] = None
 
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
@@ -2009,3 +2013,75 @@ class parquetCryptoPerpsSimData(simData):
         if self._skew_abs_panel_365.empty or instrument_code not in self._skew_abs_panel_365.columns:
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._skew_abs_panel_365[instrument_code]
+
+    # =========================================================================
+    # SKEW-RV FORECAST PANELS — Carver (2020) relative-value skew signal
+    # =========================================================================
+    # Reference: Carver blog post 4, "Testing skew and kurtosis as a trading rule".
+    #
+    # _rv = "relative to the current cross-sectional average within the relevant
+    # asset class."  In Carver's multi-class futures universe this subtracts the
+    # within-class (e.g. equity futures) mean, giving r=0.54 with _abs.
+    #
+    # In our single-class crypto universe _rv = _cs (subtract today's all-crypto
+    # mean). Carver found _cs had r=0.95 with _abs in his data and dropped it.
+    # We test empirically: if correlation here is similarly high, the signal adds
+    # no diversification and should be rejected.
+    #
+    # Implementation: pure daily cross-sectional normalization (no expanding
+    # historical window). Contrast with _abs which uses expanding-window pooled
+    # mean — _rv sees only today's cross-section, making it a pure XS signal.
+
+    def _compute_skew_rv_panel(self, window: int) -> pd.DataFrame:
+        """
+        Carver skew-relative-value forecast panel (dates × instruments).
+
+        Steps:
+          1. Rolling skew of log-returns over `window` days.
+          2. Subtract daily cross-sectional mean (each day, across all instruments).
+          3. Divide by daily cross-sectional std (normalize daily dispersion).
+          4. EWM smooth with span = window // 10.
+          5. Negate: negative relative skew → positive forecast → go long.
+
+        Pure cross-sectional normalization: each day stands alone, with no
+        look-back at historical averages. Contrast with _abs which uses an
+        expanding-window pooled mean.
+        """
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+        min_periods = max(window // 3, 30)
+        skew_panel = log_ret.rolling(window, min_periods=min_periods).skew()
+
+        # Daily cross-sectional normalization
+        daily_mean = skew_panel.mean(axis=1)
+        daily_std  = skew_panel.std(axis=1).clip(lower=1e-6)
+
+        demeaned   = skew_panel.subtract(daily_mean, axis=0)
+        normalised = demeaned.divide(daily_std, axis=0)
+
+        smoother_span = max(window // 10, 3)
+        smoothed = normalised.ewm(span=smoother_span, min_periods=1).mean()
+        return -smoothed   # negate: negative relative skew → positive forecast
+
+    def get_skew_rv_90_forecast(self, instrument_code: str) -> pd.Series:
+        """Return Carver skew-rv forecast (90-day window) for one instrument."""
+        if self._skew_rv_panel_90 is None:
+            self._skew_rv_panel_90 = self._compute_skew_rv_panel(90)
+        if self._skew_rv_panel_90.empty or instrument_code not in self._skew_rv_panel_90.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._skew_rv_panel_90[instrument_code]
+
+    def get_skew_rv_180_forecast(self, instrument_code: str) -> pd.Series:
+        """Return Carver skew-rv forecast (180-day window) for one instrument."""
+        if self._skew_rv_panel_180 is None:
+            self._skew_rv_panel_180 = self._compute_skew_rv_panel(180)
+        if self._skew_rv_panel_180.empty or instrument_code not in self._skew_rv_panel_180.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._skew_rv_panel_180[instrument_code]
+
+    def get_skew_rv_365_forecast(self, instrument_code: str) -> pd.Series:
+        """Return Carver skew-rv forecast (365-day window) for one instrument."""
+        if self._skew_rv_panel_365 is None:
+            self._skew_rv_panel_365 = self._compute_skew_rv_panel(365)
+        if self._skew_rv_panel_365.empty or instrument_code not in self._skew_rv_panel_365.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._skew_rv_panel_365[instrument_code]
