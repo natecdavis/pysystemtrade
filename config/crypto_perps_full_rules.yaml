@@ -317,6 +317,27 @@ trading_rules:
     other_args: {horizon: 80}
 
   # --------------------------------------------------------------------------
+  # CONVERGENT — Cross-Sectional Mean Reversion (2 horizons)
+  # Fades XS outperformance vs crypto-wide median over rolling horizon.
+  # Carver (2017): negative correlation with trend rules → portfolio insurance.
+  # Uses same data methods as relmomentum (get_normalised_price_*).
+  # ewma_span defaults to horizon/4 (31d for cs_mr_125, 62d for cs_mr_250).
+  # --------------------------------------------------------------------------
+  cs_mr_125:
+    function: systems.provided.rules.cs_mr.cross_sectional_mean_reversion
+    data:
+      - "data.get_normalised_price_this_instrument"
+      - "data.get_normalised_price_for_asset_class"
+    other_args: {horizon: 125}
+
+  cs_mr_250:
+    function: systems.provided.rules.cs_mr.cross_sectional_mean_reversion
+    data:
+      - "data.get_normalised_price_this_instrument"
+      - "data.get_normalised_price_for_asset_class"
+    other_args: {horizon: 250}
+
+  # --------------------------------------------------------------------------
   # DIVERGENT — BTC Lead-Lag (2 variations)
   # Lagged BTC returns as predictive signal for alts (weight=0 for BTC)
   # --------------------------------------------------------------------------
@@ -732,6 +753,14 @@ forecast_weights:
   xs_val:        0.10
   inter_sector:  0.10
 
+  # CS Mean Reversion: REJECTED 2026-03-10
+  # Sweep [0.0, 0.03, 0.05, 0.07, 0.10, 0.15, 0.20]: Calmar-peak at w=0.0 (1.437).
+  # Calmar monotonically declines to 0.91 at w=0.20. No weight passes ΔSharpe >+1%.
+  # Cost audit: gross_SR=-0.526 (cs_mr_125), -0.411 (cs_mr_250) — pre-cost losing rules.
+  # XS mean reversion is anti-signal in trending crypto 2020-2026 (strong XS momentum).
+  # cs_mr_125: 0.0  # REJECTED
+  # cs_mr_250: 0.0  # REJECTED
+
   # Skew-abs: Carver (2020) time-series skew signal, 3 lookbacks.
   # Sweep 2026-03-08: Calmar-peak at w_combined=0.05 (0.0167/rule).
   # ΔSharpe +1.3%, ΔCalmar -0.005 (noise-level), ΔMaxDD -0.07pp vs no-skew baseline.
@@ -973,6 +1002,23 @@ downside_beta_params:
   min_periods: 20   # min down-market days before β_down is defined (warmup guard)
   min_scale: 0.3    # scalar applied to highest-β_down instrument (rank=1.0); W=90/S=0.30 optimal
   direction_aware: true  # only penalise long positions; preserve shorts at 1.0× (crash hedges)
+
+# ============================================================================
+# CORRELATION SHOCK OVERLAY
+# ============================================================================
+# Scales all positions down when mean cross-asset correlation spikes above
+# threshold — indicating diversification breakdown (crash/systemic-stress regime).
+# Signal: rolling mean pairwise correlation estimated via portfolio-variance
+# decomposition (no pairwise matrix needed). Global: same multiplier all instruments.
+# Carver analogue: "sum_abs_risk" component of his 4-part risk overlay.
+# ============================================================================
+use_correlation_shock_overlay: false  # enable in test config; adopt after sweep
+
+correlation_shock_params:
+  window: 30        # rolling window for variance estimation (days)
+  threshold: 0.75   # mean_corr above which scaling begins (tune via sweep)
+  min_scale: 0.5    # maximum reduction (0.5 = 50% at mean_corr=1.0)
+  smooth_span: 5    # EWM span for smoothing the mean_corr signal
 
 # ============================================================================
 # SIZING AND CONSTRAINTS
