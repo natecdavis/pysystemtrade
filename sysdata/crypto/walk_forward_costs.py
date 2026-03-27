@@ -23,7 +23,7 @@ ADV_SPREAD_BINS = [
 ]
 
 # Default trading fee (one-way) for major exchanges
-DEFAULT_FEE_BPS = 5  # 5 bps = 0.05%
+DEFAULT_FEE_BPS = 3.5  # 3.5 bps — Hyperliquid taker fee
 
 # Rule turnover estimates (round-trips per year)
 # Based on empirical observations from Carver's work

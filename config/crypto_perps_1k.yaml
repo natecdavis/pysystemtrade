@@ -64,8 +64,8 @@ system:
   allow_jagged: true
 
 percentage_vol_target: 25.0
-notional_trading_capital: 10000.0
-min_notional_position: 25.0
+notional_trading_capital: 1000.0
+min_notional_position: 1.0
 
 # Dynamic universe systems need span=1 here. The pysystemtrade default (125) applies
 # EWMA smoothing to weight transitions, which is appropriate for static Carver universes
@@ -96,6 +96,12 @@ pinned_instruments: []
 banned_instruments: []
 
 dynamic_universe:
+  # Exchange filter: restrict top-K candidates to instruments listed on this exchange.
+  # 'hyperliquid' → reads data/hyperliquid_instruments.json (fetch with
+  #                  scripts/fetch_hyperliquid_instruments.py)
+  # null / absent  → no filter (use all cost-eligible instruments)
+  exchange_filter: hyperliquid
+
   # Stage 2 selection criterion
   # Options: 'adv' (liquidity-based, default) or 'forecast_magnitude' (signal-strength-based)
   selection_criterion: 'adv'
@@ -837,7 +843,7 @@ sector_rule_list:
   - sector_momentum_20
   - sector_momentum_40
 
-sector_weight: 0.0  # REJECTED in full-rules era: ΔSharpe -5.8%, ΔMaxDD -3.5pp (XS signals already capture this)
+sector_weight: 0.0  # PAUSED: additive test passed (+1.5% Sharpe) but reverted for simplicity
 
 # ============================================================================
 # FORECAST TILT — LONG/SHORT BIAS OFFSET
@@ -1056,6 +1062,9 @@ constraints:
 execution:
   buffer_frac: 0.1
 
+# Top-level alias so run_dynamic_universe_backtest.py can find it via hasattr(config, 'buffer_frac')
+buffer_frac: 0.1
+
 costs:
   spread_estimate: 0.0005
   taker_fee_frac: 0.00035
@@ -1085,3 +1094,4 @@ diagnostics:
 #     --data data/example_crypto_perps_2x.parquet \
 #     --outdir out/smoke_full_rules
 # ============================================================================
+lot_size_notional_override: 1.0

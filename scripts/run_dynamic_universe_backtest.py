@@ -430,8 +430,13 @@ def _compute_performance_metrics(
         json.dump(summary, f, indent=2, default=str)
     logger.info(f"  ✓ {perf_path}")
 
+    if daily_returns_dec is not None:
+        returns_path = output_path / 'daily_returns.csv'
+        daily_returns_dec.to_csv(returns_path, header=['net_return'])
+        logger.info(f"  ✓ {returns_path}")
 
-def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_universe: bool = True, macro_data_path: str = None):
+
+def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_universe: bool = True, macro_data_path: str = None, capital_override: float = None, spread_multiplier: float = 1.0):
     """
     Run pysystemtrade backtest with parquet-backed data adapter.
 
@@ -456,6 +461,14 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     import yaml
     with open(config_path) as f:
         config_dict = yaml.safe_load(f)
+
+    # Override notional_trading_capital with live equity if provided.
+    # This ensures position sizing reflects actual account balance rather than
+    # the static value in the config file.
+    if capital_override is not None:
+        config_dict['notional_trading_capital'] = capital_override
+        logger.info(f"Capital override: notional_trading_capital set to ${capital_override:,.2f}")
+
     config = Config(config_dict)
 
     # Extract dynamic universe config if enabled
@@ -575,6 +588,8 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         active_addresses_data_path=aa_kwarg,
         market_cap_data_path=mcap_kwarg,
     )
+
+    data._spread_multiplier = spread_multiplier
 
     instruments = data.get_instrument_list()
     logger.info(f"  Loaded {len(instruments)} instruments")
@@ -763,7 +778,21 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         json.dump(metadata, f, indent=2)
     logger.info(f"  ✓ {metadata_path}")
 
-    # 4. Performance metrics
+    # 4. last_prices.json (most recent close price per instrument, for position valuation)
+    last_prices = {}
+    for instrument in portfolio_positions.columns:
+        try:
+            prices = system.rawdata.get_daily_prices(instrument).dropna()
+            if len(prices) > 0:
+                last_prices[instrument] = float(prices.iloc[-1])
+        except Exception:
+            pass
+    last_prices_path = output_path / 'last_prices.json'
+    with open(last_prices_path, 'w') as f:
+        json.dump(last_prices, f, indent=2)
+    logger.info(f"  ✓ {last_prices_path} ({len(last_prices)} instruments)")
+
+    # 5. Performance metrics
     _compute_performance_metrics(
         system=system,
         portfolio_positions=portfolio_positions,
@@ -814,6 +843,13 @@ def main():
         default=None,
         help='Path to macro factors parquet (spx, dxy, us10y columns); required for residual_momentum rules'
     )
+    parser.add_argument(
+        '--capital',
+        type=float,
+        default=None,
+        help='Override notional_trading_capital with current account equity (USD). '
+             'Use this in live advisory to ensure position sizing reflects actual balance.'
+    )
 
     args = parser.parse_args()
 
@@ -834,6 +870,7 @@ def main():
             output_dir=str(args.outdir),
             use_dynamic_universe=use_dynamic,
             macro_data_path=str(args.macro_data) if args.macro_data else None,
+            capital_override=args.capital,
         )
 
         sys.exit(0 if success else 1)

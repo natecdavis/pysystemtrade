@@ -38,7 +38,7 @@ from sysdata.crypto.prices import load_crypto_perps_panel
 from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
 
 
-TAKER_FEE_FRAC = 0.0005  # 5 bps — Binance standard taker (no BNB discount)
+TAKER_FEE_FRAC = 0.00035  # 3.5 bps — Hyperliquid taker fee
 
 
 class parquetCryptoPerpsSimData(simData):
@@ -397,6 +397,8 @@ class parquetCryptoPerpsSimData(simData):
             instrumentCosts object
         """
         spread_bps = self._get_adv_tiered_spread_bps(instrument_code)
+        spread_multiplier = getattr(self, '_spread_multiplier', 1.0)
+        spread_bps = spread_bps * spread_multiplier
 
         # Build instrumentCosts using percentage_cost only (fraction of trade value).
         #
@@ -748,6 +750,60 @@ class parquetCryptoPerpsSimData(simData):
         if instrument_code not in panel.columns:
             return pd.Series(1.0, index=panel.index)
         return panel[instrument_code]
+
+    def get_correlation_shock_multiplier(
+        self,
+        window: int = 30,
+        threshold: float = 0.75,
+        min_scale: float = 0.5,
+        smooth_span: int = 5,
+    ) -> pd.Series:
+        """
+        Portfolio-level correlation-shock multiplier (same value for all instruments).
+
+        Estimates daily mean pairwise correlation via the portfolio-variance decomposition:
+          mean_corr = (port_var × N − mean_ind_var) / ((N − 1) × mean_ind_var)
+
+        When mean_corr > threshold, scale positions down linearly:
+          multiplier = 1.0  at mean_corr = threshold
+          multiplier = min_scale  at mean_corr = 1.0
+
+        Global signal: returned Series is instrument-agnostic (same for all).
+
+        Args:
+            window: Rolling window for variance estimation (days). Default 30.
+            threshold: Mean correlation above which scaling begins (default 0.75).
+            min_scale: Minimum multiplier at mean_corr=1.0 (default 0.5 = 50% reduction).
+            smooth_span: EWM span for smoothing the mean_corr signal (default 5).
+
+        Returns:
+            pd.Series with DatetimeIndex, values in [min_scale, 1.0].
+        """
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+
+        # Equal-weight portfolio return (mean across all instruments with data)
+        port_ret = log_ret.mean(axis=1)
+
+        # Rolling variances
+        port_var = port_ret.rolling(window, min_periods=window // 2).var()
+        ind_var = log_ret.rolling(window, min_periods=window // 2).var()
+        mean_ind_var = ind_var.mean(axis=1)
+        N = log_ret.notna().sum(axis=1).clip(lower=2)
+
+        # Mean pairwise correlation estimate via portfolio-variance decomposition
+        mean_corr = (port_var * N - mean_ind_var) / ((N - 1) * mean_ind_var)
+        mean_corr = mean_corr.clip(0.0, 1.0)
+
+        # EWM smooth to reduce noise from single-day outliers
+        mean_corr_smooth = mean_corr.ewm(span=smooth_span, min_periods=1).mean()
+
+        # Multiplier: linear taper from 1.0 at threshold to min_scale at 1.0
+        shock_range = 1.0 - threshold
+        excess = (mean_corr_smooth - threshold).clip(lower=0.0)
+        multiplier = 1.0 - (excess / shock_range) * (1.0 - min_scale)
+        multiplier = multiplier.clip(lower=min_scale, upper=1.0).fillna(1.0)
+
+        return multiplier
 
     def get_universe_eligibility_df(
         self,
