@@ -87,7 +87,6 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
     # Extract config parameters
     capital = config['system']['capital']
     vol_target = config['system']['vol_target_ann']
-    gross_lev_cap = config['system']['gross_leverage_cap']
     idm_cap = config['system']['idm_cap']
     min_pos_frac = config['system']['min_position_frac']
     min_adv = config['universe']['daily_min_adv_notional']
@@ -124,7 +123,6 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
 
     logger.info(f"Starting capital: ${capital:,.2f}")
     logger.info(f"Vol target: {vol_target:.1%}")
-    logger.info(f"Gross leverage cap: {gross_lev_cap}")
     logger.info(f"IDM cap: {idm_cap}")
 
     # Initialize diagnostics collector (optional)
@@ -357,7 +355,6 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
         span=corr_span,
         min_periods=corr_min_periods,
         idm_cap=idm_cap,
-        gross_leverage_cap=gross_lev_cap,
         **cfg  # adjust, demean, idm_pre_cap, returns
     )
 
@@ -462,13 +459,6 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
             raise ValueError(
                 f"Date {date}: IDM={idm_val:.3f} should be >= 1.0 (Carver-style normalization). "
                 f"This indicates a bug in IDM calculation."
-            )
-
-        # Invariant 2: Gross leverage respects cap
-        if not (gross_lev_val <= gross_lev_cap + eps):
-            raise ValueError(
-                f"Date {date}: gross_leverage={gross_lev_val:.3f} exceeds cap {gross_lev_cap}. "
-                f"This indicates a bug in position constraints."
             )
 
         # Invariant 3: idm_applied ≤ cap (if available in diagnostics)
@@ -653,6 +643,15 @@ def run_backtest(config: dict, data_path: str, output_dir: str):
     positions_file = output_path / config['output']['positions_file']
     current_positions.to_csv(positions_file)
     logger.info(f"  Saved positions: {positions_file}")
+
+    # Last prices and daily vols (used by live trade plan to apply trading buffer)
+    prices_last_file = output_path / 'prices_last.csv'
+    prices_df.iloc[-1].to_csv(prices_last_file, header=['price'])
+    logger.info(f"  Saved last prices: {prices_last_file}")
+
+    daily_vols_last_file = output_path / 'daily_vols_last.csv'
+    daily_vols_df.iloc[-1].to_csv(daily_vols_last_file, header=['daily_vol'])
+    logger.info(f"  Saved daily vols: {daily_vols_last_file}")
 
     # PnL breakdown (optional detailed output)
     pnl_breakdown_file = output_path / config['output']['pnl_breakdown_file']

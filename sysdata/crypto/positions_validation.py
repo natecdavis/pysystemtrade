@@ -234,8 +234,8 @@ def check_stale_timestamps(
 def validate_gross_leverage(
     total_notional: float,
     equity: float,
-    warn_threshold: float = 1.8,
-    error_threshold: float = 2.0
+    warn_threshold: float = 2.5,
+    error_threshold: float = 3.0
 ) -> tuple[Optional[str], Optional[str]]:
     """
     Validate gross leverage against caps.
@@ -325,8 +325,8 @@ def validate_positions_file(
     result.metadata['universe_size'] = len(universe)
     result.metadata['positions_count'] = len(positions_df)
 
-    # Check 1: Verify required columns
-    required_cols = {'instrument', 'contracts', 'mark_price_usd', 'notional_usd', 'timestamp'}
+    # Check 1: Verify required columns (mark_price_usd/notional_usd are optional — auto-derived)
+    required_cols = {'instrument', 'contracts', 'timestamp'}
     missing_cols = required_cols - set(positions_df.columns)
     if missing_cols:
         result.add_error(
@@ -335,6 +335,8 @@ def validate_positions_file(
             message=f"Missing required columns: {missing_cols}"
         )
         return result  # Can't continue without required columns
+
+    has_price_cols = 'mark_price_usd' in positions_df.columns and 'notional_usd' in positions_df.columns
 
     # Check 2: Missing instruments
     positions_instruments = set(positions_df['instrument'].unique())
@@ -361,16 +363,16 @@ def validate_positions_file(
     for idx, row in positions_df.iterrows():
         instrument = row['instrument']
         contracts = float(row['contracts'])
-        mark_price = float(row['mark_price_usd'])
-        notional = float(row['notional_usd'])
+        mark_price = float(row['mark_price_usd']) if has_price_cols else 0.0
+        notional = float(row['notional_usd']) if has_price_cols else 0.0
         timestamp = row['timestamp']
 
         total_abs_notional += abs(notional)
 
         # Skip zero positions for most checks
-        is_zero_position = (contracts == 0.0 and notional == 0.0)
+        is_zero_position = (contracts == 0.0) if not has_price_cols else (contracts == 0.0 and notional == 0.0)
 
-        if not is_zero_position:
+        if not is_zero_position and has_price_cols:
             # 3a. Notional arithmetic
             is_valid, expected, diff = validate_notional_arithmetic(
                 contracts, mark_price, notional
@@ -427,23 +429,6 @@ def validate_positions_file(
                 check='stale_timestamp',
                 message=stale_warning
             )
-
-    # Check 4: Gross leverage
-    leverage_error, leverage_warning = validate_gross_leverage(
-        total_abs_notional, equity
-    )
-    if leverage_error:
-        result.add_error(
-            instrument='PORTFOLIO',
-            check='gross_leverage',
-            message=leverage_error
-        )
-    elif leverage_warning:
-        result.add_warning(
-            instrument='PORTFOLIO',
-            check='gross_leverage',
-            message=leverage_warning
-        )
 
     # Store summary metadata
     result.metadata['total_abs_notional'] = total_abs_notional

@@ -306,6 +306,61 @@ def apply_downside_beta_overlay(
         return base_position
 
 
+def apply_correlation_shock_overlay(
+    portfolio_instance, instrument_code: str, base_position: pd.Series
+) -> pd.Series:
+    """
+    Global position scalar: reduces all positions when cross-asset correlations spike.
+
+    Same multiplier for every instrument on a given day — portfolio-level signal.
+    Detects diversification breakdown (crash/systemic-stress regime) via the
+    portfolio-variance decomposition (no N×(N-1)/2 pairwise computation needed).
+
+    Carver analogue: Component 3 ("sum_abs_risk") of his 4-part risk overlay.
+
+    Args:
+        portfolio_instance: Instance of portfolio stage (with config, parent, log)
+        instrument_code: Instrument code (multiplier is global; arg used for logging only)
+        base_position: Base position series (after OI/F&G/MVRV/β_down overlays)
+
+    Returns:
+        pd.Series of positions scaled by correlation-shock multiplier
+    """
+    if not portfolio_instance.config.get_element_or_default(
+        'use_correlation_shock_overlay', False
+    ):
+        return base_position
+
+    try:
+        params = portfolio_instance.config.get_element_or_default(
+            'correlation_shock_params', {}
+        )
+        multiplier = portfolio_instance.parent.data.get_correlation_shock_multiplier(
+            window=params.get('window', 30),
+            threshold=params.get('threshold', 0.75),
+            min_scale=params.get('min_scale', 0.5),
+            smooth_span=params.get('smooth_span', 5),
+        )
+        multiplier = multiplier.reindex(base_position.index, method='ffill').fillna(1.0)
+
+        avg_multiplier = float(multiplier.mean())
+        pct_scaled = float((multiplier < 1.0).sum() / max(len(multiplier), 1) * 100)
+        portfolio_instance.log.debug(
+            f"{instrument_code}: corr_shock overlay applied | "
+            f"avg_mult={avg_multiplier:.3f} | scaled_days={pct_scaled:.1f}%",
+            instrument_code=instrument_code,
+        )
+
+        return base_position * multiplier
+
+    except Exception as e:
+        portfolio_instance.log.warning(
+            f"{instrument_code}: corr_shock overlay failed ({e}), skipping",
+            instrument_code=instrument_code,
+        )
+        return base_position
+
+
 class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
     """
     Portfolio stage with OI regime overlay for defensive position scaling.
@@ -346,11 +401,12 @@ class CryptoPortfolioWithOIOverlay(CryptoPortfolios):
         # Get base position (with lot-size rounding + min notional filter)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply overlays in sequence: OI → F&G → MVRV → downside beta
+        # Apply overlays in sequence: OI → F&G → MVRV → downside beta → corr shock
         position = apply_oi_overlay(self, instrument_code, base_position)
         position = apply_fg_overlay(self, instrument_code, position)
         position = apply_mvrv_overlay(self, instrument_code, position)
         position = apply_downside_beta_overlay(self, instrument_code, position)
+        position = apply_correlation_shock_overlay(self, instrument_code, position)
         return position
 
 
@@ -381,9 +437,10 @@ class CryptoDynamicPortfolioWithOIOverlay(CryptoDynamicPortfolio):
         # Get base position (with dynamic universe + lot-size rounding + min notional)
         base_position = super().get_notional_position(instrument_code)
 
-        # Apply overlays in sequence: OI → F&G → MVRV → downside beta
+        # Apply overlays in sequence: OI → F&G → MVRV → downside beta → corr shock
         position = apply_oi_overlay(self, instrument_code, base_position)
         position = apply_fg_overlay(self, instrument_code, position)
         position = apply_mvrv_overlay(self, instrument_code, position)
         position = apply_downside_beta_overlay(self, instrument_code, position)
+        position = apply_correlation_shock_overlay(self, instrument_code, position)
         return position

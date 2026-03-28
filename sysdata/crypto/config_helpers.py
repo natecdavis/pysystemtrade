@@ -6,9 +6,70 @@ Provides canonical instrument ID ↔ symbol mappings and config extraction helpe
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
+
+
+def instrument_id_to_hl_symbol(instrument_id: str) -> str:
+    """
+    Convert internal instrument ID to Hyperliquid symbol (base asset only).
+
+    Hyperliquid uses bare base asset names without quote currency or suffix.
+    Some 1000x-denominated contracts use a 'k' prefix (e.g. kPEPE, kSHIB).
+
+    Examples:
+        BTCUSDT_PERP      → BTC
+        ETHUSDT_PERP      → ETH
+        SOLUSDT_PERP      → SOL
+        1000SHIBUSDT_PERP → kSHIB
+        1000PEPEUSDT_PERP → kPEPE
+
+    Args:
+        instrument_id: Internal instrument ID (e.g., BTCUSDT_PERP)
+
+    Returns:
+        Hyperliquid symbol (e.g., BTC)
+    """
+    # Remove _PERP suffix
+    base = instrument_id[:-5] if instrument_id.endswith('_PERP') else instrument_id
+    # Remove USDT quote suffix
+    if base.endswith('USDT'):
+        base = base[:-4]
+    # Hyperliquid uses 'k' prefix for 1000x-denominated contracts
+    if base.startswith('1000'):
+        return 'k' + base[4:]
+    return base
+
+
+def load_hl_symbols(data_dir: Optional[Path] = None) -> Set[str]:
+    """
+    Load available Hyperliquid symbols from data/hyperliquid_instruments.json.
+
+    Returns empty set if the file doesn't exist (caller should warn).
+
+    Args:
+        data_dir: Directory containing hyperliquid_instruments.json.
+                  Defaults to <repo_root>/data/.
+
+    Returns:
+        Set of Hyperliquid symbol strings (e.g., {'BTC', 'ETH', 'SOL', ...})
+    """
+    if data_dir is None:
+        # Resolve relative to this file: sysdata/crypto/ → repo root → data/
+        data_dir = Path(__file__).parent.parent.parent / 'data'
+
+    hl_path = Path(data_dir) / 'hyperliquid_instruments.json'
+    if not hl_path.exists():
+        return set()
+
+    try:
+        with open(hl_path) as f:
+            data = json.load(f)
+        return set(data.get('symbols', []))
+    except Exception as e:
+        logger.warning(f"Failed to load {hl_path}: {e}")
+        return set()
 
 
 def instrument_id_to_symbol(instrument_id: str) -> str:

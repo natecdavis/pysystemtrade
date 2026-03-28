@@ -523,3 +523,85 @@ def gated_carry(
     ) / vol_filled
 
     return carry.where(np.sign(carry) == np.sign(trend), other=0.0)
+
+
+def demeaned_carry(
+    funding_rates: pd.Series,
+    market_funding: pd.Series,
+    price: pd.Series,
+    vol: pd.Series,
+    carry_span: int = 30,
+    trend_fast: int = 32,
+    trend_slow: int = 128,
+    vol_floor: float = 0.0001,
+    gate: bool = False,
+) -> pd.Series:
+    """
+    De-meaned (idiosyncratic) vol-normalized carry, optionally trend-gated.
+
+    Captures the per-instrument funding rate after subtracting the universe-wide
+    mean (the "crypto carry beta"). When the whole market is funding high,
+    gated_carry goes long everything; demeaned_carry is flat, expressing only
+    relative carry strength vs peers.
+
+    Distinct from:
+    - gated_carry: uses raw funding vs own history, not vs contemporaneous peers
+    - xs_carry: uses cross-sectional rank (ordinal), not absolute deviation from mean
+
+    De-meaned carry score = (smoothed_instrument - smoothed_market) / price_vol
+    Negated so positive idiosyncratic funding → short bias (same as gated_carry).
+
+    ~50% of gated outputs are 0 (when gate=True). Walk-forward forecast scalar
+    compensates by estimating a larger scalar from non-zero outputs.
+
+    Args:
+        funding_rates: Raw 8-hourly funding rate (data.get_funding_rate).
+            Typical scale: 0.0001 = 0.01% per 8h. Will be annualised ×3×365.
+        market_funding: Cross-sectional median of annualised funding rates across
+            all instruments (data.get_cross_sectional_median_funding). Already
+            annualised — do NOT apply ×3×365 again.
+        price: Daily price series (data.daily_prices).
+        vol: Daily price vol — unit, not % (rawdata.daily_returns_volatility).
+        carry_span: EWM span for smoothing funding (days).
+        trend_fast: Fast EWM for trend gate (days). Only used when gate=True.
+        trend_slow: Slow EWM for trend gate (days). Only used when gate=True.
+        vol_floor: Minimum vol floor to avoid division-by-zero.
+        gate: If True, zero out when idiosyncratic carry and trend directions
+            disagree (same gate as gated_carry).
+
+    Returns:
+        Unscaled carry score; optionally 0 when gated.
+    """
+    # Align and annualise instrument funding
+    funding_aligned = funding_rates.reindex(price.index).ffill()
+    ann_funding = funding_aligned * 3 * 365
+    f_smooth = ann_funding.ewm(span=carry_span, min_periods=1).mean()
+
+    # Smooth market funding (already annualised — no ×3×365)
+    market_aligned = market_funding.reindex(price.index, method="ffill")
+    market_smooth = market_aligned.ewm(span=carry_span, min_periods=1).mean()
+
+    # Idiosyncratic carry = instrument - universe mean
+    idiosyncratic = f_smooth - market_smooth
+
+    # Vol-normalize using price-dollar vol (same as gated_carry — intentional:
+    # attenuates carry for large-caps where it is well-arbitraged)
+    vol_filled = (
+        vol.reindex(price.index)
+        .ffill()
+        .replace(0.0, np.nan)
+        .ffill()
+        .clip(lower=vol_floor)
+    )
+    carry = -idiosyncratic / vol_filled  # negative: positive idio funding → short
+
+    if not gate:
+        return carry
+
+    # Trend gate: zero out when carry and trend disagree in direction
+    trend = (
+        price.ewm(span=trend_fast, min_periods=1).mean()
+        - price.ewm(span=trend_slow, min_periods=1).mean()
+    ) / vol_filled
+
+    return carry.where(np.sign(carry) == np.sign(trend), other=0.0)

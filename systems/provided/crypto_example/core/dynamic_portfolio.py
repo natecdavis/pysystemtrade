@@ -113,6 +113,12 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
         # Calculate equal weights among eligible instruments with entry/exit logic
         weights_df = self._calculate_dynamic_weights(eligibility_df)
 
+        # Reindex to full instrument list so pysystemtrade can look up any instrument.
+        # Non-eligible instruments (e.g. filtered by exchange_filter) get weight=0.0.
+        # Without this, get_actual_position() raises KeyError for filtered instruments.
+        if len(weights_df.columns) < len(instrument_list):
+            weights_df = weights_df.reindex(columns=instrument_list, fill_value=0.0)
+
         self.log.info(
             f"Dynamic universe: {len(instrument_list)} instruments available, "
             f"average active: {(weights_df > 0).sum(axis=1).mean():.1f}"
@@ -183,6 +189,31 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
             max_lot_notional=max_lot_notional,
             log=self.log,
         )
+
+        # Exchange filter: restrict candidates to instruments listed on target exchange
+        exchange_filter = du_config.get('exchange_filter', None)
+        if exchange_filter == 'hyperliquid':
+            from sysdata.crypto.config_helpers import instrument_id_to_hl_symbol, load_hl_symbols
+            hl_symbols = load_hl_symbols()
+            if hl_symbols:
+                n_before = len(eligibility_df.columns)
+                hl_eligible = [
+                    c for c in eligibility_df.columns
+                    if instrument_id_to_hl_symbol(c) in hl_symbols
+                ]
+                eligibility_df = eligibility_df[hl_eligible]
+                self.log.info(
+                    f"HL exchange filter: {n_before} → {len(hl_eligible)} instruments "
+                    f"(removed {n_before - len(hl_eligible)} not listed on Hyperliquid)"
+                )
+            else:
+                raise FileNotFoundError(
+                    "exchange_filter=hyperliquid is active but data/hyperliquid_instruments.json "
+                    "is missing or empty. Run scripts/fetch_hyperliquid_instruments.py first. "
+                    "Without this file the exchange filter cannot be applied and the full "
+                    "300-instrument universe would be used for live trading — aborting to prevent "
+                    "trading instruments not available on Hyperliquid."
+                )
 
         # Get prices and ADV data from data layer
         prices_df = self.data.get_prices_df(list(eligibility_df.columns))

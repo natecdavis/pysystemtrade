@@ -1,6 +1,17 @@
 {
-  "new_instruments": [],
-  "delisted_instruments": [],
-  "total_count": 509,
-  "timestamp": "2026-02-14T17:48:26.402062+00:00"
+  "new_instruments": [
+    "CFGUSDT_PERP",
+    "EDGEUSDT_PERP",
+    "KATUSDT_PERP",
+    "MANTRAUSDT_PERP",
+    "OPNUSDT_PERP",
+    "ROBOUSDT_PERP"
+  ],
+  "delisted_instruments": [
+    "BDXNUSDT_PERP",
+    "OMUSDT_PERP",
+    "VFYUSDT_PERP"
+  ],
+  "total_count": 512,
+  "timestamp": "2026-03-23T01:43:30.472943+00:00"
 }

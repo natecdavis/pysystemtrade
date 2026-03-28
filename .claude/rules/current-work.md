@@ -1,17 +1,17 @@
 # Current Work Context
 
-## Current Baseline (2026-03-26, post-audit)
+## Current Baseline (2026-03-27, post-demeaned_carry)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K capital)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (300 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$1K / HL filter post-audit (2026-03-26):**
-- Sharpe ~1.31, Calmar ~1.50, CAGR ~13.2%, MaxDD ~-8.8%, Vol ~9.9%
+**$1K / HL filter (2026-03-27, +demeaned_carry_10/30/60 w=0.05/rule):**
+- Sharpe ~1.34, Calmar ~1.43, CAGR ~13.0%, MaxDD ~-9.1%, Vol ~9.4%
 
-**$10K full_rules post-audit (2026-03-26):**
-- Sharpe ~1.28, Calmar ~1.65, CAGR ~15.0%, MaxDD ~-9.1%, Vol ~11.4%
+**$10K full_rules (2026-03-27, +demeaned_carry_10/30/60 w=0.05/rule):**
+- Sharpe ~1.33, Calmar ~1.84, CAGR ~15.0%, MaxDD ~-8.2%
 
 **Key config parameters (1k config, post-audit):**
 ```yaml
@@ -36,6 +36,7 @@ vol_days: 63                  # D4: was 35
 - xs_carry/activity/val/inter_sector: 0.10 each
 - skew_abs_90/180/365: 0.0167 each
 - skew_rv_90/180/365: 0.03 each  (D1: was 0.0167)
+- demeaned_carry_10/30/60: 0.05 each  (ADOPTED 2026-03-27)
 - 19 trend rules: flat equal weights per family
 
 ---
@@ -44,6 +45,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-03-27 | demeaned_carry (idiosyncratic funding, ungated) | ADOPT: w=0.05/rule. full_rules ΔSharpe +3.4%, ΔCalmar +0.18. 1k ΔSharpe +2.6% (Calmar slight divergence). |
 | 2026-03-26 | Comprehensive backtesting audit (A1→E3) | COMPLETE: commit f05201cc. 5 adoptions, 6 rejections. See MEMORY.md decisions. |
 | 2026-03-21 | Paper trading infrastructure | COMPLETE: circuit_breaker.py, daily_paper_run.py, setup_paper_trading.py, reset_circuit_breaker.py, launchd plist (TZ=UTC, 01:00 UTC). |
 | 2026-03-22 | Hyperliquid exchange filter | ADOPT: exchange_filter: hyperliquid. 148/300 instruments on HL. K=30 confirmed. |

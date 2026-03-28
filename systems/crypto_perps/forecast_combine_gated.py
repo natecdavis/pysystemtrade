@@ -67,6 +67,7 @@ class ForecastCombineGated(ForecastCombine):
         sector_weight = config.get_element_or_default('sector_weight', 0.0)
         if sector_rules and sector_weight > 0:
             sector_series = []
+            _debug_done = getattr(self, '_sector_debug_done', False)
             for rule in sector_rules:
                 try:
                     fc = self.parent.forecastScaleCap.get_capped_forecast(
@@ -103,9 +104,13 @@ class ForecastCombineGated(ForecastCombine):
             final_forecast_raw = final_forecast_raw + forecast_tilt_offset
 
         # Apply FDM and capping (existing logic)
+        # ffill fills mid-series gaps; fillna(1.0) applies a neutral multiplier during warmup
+        # (before enough history exists to estimate correlations). Without fillna(1.0), ffill
+        # would forward-fill from the first computed FDM value into the warmup period, which
+        # would borrow the diversification bonus before correlations are actually estimated.
         fdm = self.get_forecast_diversification_multiplier(instrument_code).reindex(
             final_forecast_raw.index
-        ).ffill()
+        ).ffill().fillna(1.0)
         final_multiplied = final_forecast_raw * fdm
 
         # Cap to forecast limits

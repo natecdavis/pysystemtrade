@@ -33,7 +33,7 @@ def _validate_section(section: str, params: dict) -> list:
     errors = []
 
     required_params = {
-        'system': ['capital', 'vol_target_ann', 'gross_leverage_cap', 'idm_cap', 'min_position_frac'],
+        'system': ['capital', 'vol_target_ann', 'idm_cap', 'min_position_frac'],
         'universe': ['layer_a_instruments'],  # review_freq optional (None = Phase 1)
         'rules': ['ewmac_pairs', 'ewmac_vol_days', 'carry_fast_halflife', 'carry_slow_halflife'],
         'forecasts': ['target_abs', 'cap'],

@@ -35,7 +35,11 @@ from sysobjects.spot_fx_prices import fxPrices
 from sysobjects.instruments import instrumentCosts, assetClassesAndInstruments
 
 from sysdata.crypto.prices import load_crypto_perps_panel
-from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
+from sysdata.crypto.config_helpers import (
+    extract_candidate_instruments_with_registry,
+    instrument_id_to_hl_symbol,
+    load_hl_symbols,
+)
 
 
 TAKER_FEE_FRAC = 0.00035  # 3.5 bps — Hyperliquid taker fee
@@ -1118,6 +1122,71 @@ class parquetCryptoPerpsSimData(simData):
 
         self._median_funding_cache = median_series
         return self._median_funding_cache
+
+    def get_hl_cross_sectional_median_funding(self, instrument_code: str) -> pd.Series:
+        """
+        Cross-sectional median of annualised funding rates, restricted to
+        Hyperliquid-listed instruments only.
+
+        Same as get_cross_sectional_median_funding() but filters to the 148
+        instruments available on Hyperliquid before computing the median.
+        This gives a more relevant market funding reference for strategies
+        that trade on Hyperliquid.
+
+        The ``instrument_code`` argument is ignored — the same series is returned
+        for every instrument.
+
+        Returns:
+            pd.Series with a DatetimeIndex.  Falls back to the full-universe
+            median if the HL instrument list cannot be loaded.
+        """
+        if hasattr(self, "_hl_median_funding_cache"):
+            return self._hl_median_funding_cache
+
+        try:
+            funding_wide = (
+                self._meta_df["funding_rate"]
+                .unstack("instrument")
+                .astype(float)
+            )
+        except KeyError:
+            self.log.warning("funding_rate not in meta_df; returning zeros")
+            self._hl_median_funding_cache = pd.Series(0.0, index=self._prices_df.index)
+            return self._hl_median_funding_cache
+
+        # Load HL symbol set and filter columns
+        hl_symbols = load_hl_symbols()
+        if not hl_symbols:
+            self.log.warning(
+                "hyperliquid_instruments.json not found; "
+                "falling back to full-universe median for get_hl_cross_sectional_median_funding"
+            )
+            ann_funding_wide = funding_wide * 3 * 365
+            self._hl_median_funding_cache = ann_funding_wide.median(axis=1)
+            return self._hl_median_funding_cache
+
+        hl_cols = [
+            col for col in funding_wide.columns
+            if instrument_id_to_hl_symbol(col) in hl_symbols
+        ]
+
+        if not hl_cols:
+            self.log.warning(
+                "No dataset instruments matched HL symbol list; "
+                "falling back to full-universe median"
+            )
+            ann_funding_wide = funding_wide * 3 * 365
+            self._hl_median_funding_cache = ann_funding_wide.median(axis=1)
+            return self._hl_median_funding_cache
+
+        self.log.info(
+            f"HL median funding: using {len(hl_cols)}/{len(funding_wide.columns)} "
+            f"instruments (HL-filtered)"
+        )
+
+        ann_funding_wide = funding_wide[hl_cols] * 3 * 365
+        self._hl_median_funding_cache = ann_funding_wide.median(axis=1)
+        return self._hl_median_funding_cache
 
     def get_open_interest(self, instrument_code: str) -> pd.Series:
         """

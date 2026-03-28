@@ -227,10 +227,10 @@ class TestLiveAdvisoryIntegration:
                 mock_config
             )
 
-    def test_trade_plan_with_extra_instruments_in_actuals_fails(
+    def test_trade_plan_with_extra_instruments_treated_as_hard_exits(
         self, mock_backtest_dir, mock_config, tmp_path
     ):
-        """Test that extra instruments in actuals (not in universe) raises error."""
+        """Extra instruments in actuals (not in universe) become hard exits (target=0), not an error."""
         # Create actuals with instrument not in universe
         positions_csv = tmp_path / 'current_positions.csv'
         positions_csv.write_text("""instrument,contracts,mark_price_usd,notional_usd,timestamp,notes
@@ -241,14 +241,21 @@ FAKE_PERP,0.100,100.00,10.00,2024-01-10T00:00:00Z,test
         as_of_date = '2024-01-10'
         current_equity = 5125.50
 
-        with pytest.raises(ValueError, match="NOT in universe"):
-            generate_trade_plan(
-                mock_backtest_dir,
-                positions_csv,
-                current_equity,
-                as_of_date,
-                mock_config
-            )
+        # Should NOT raise — extra instrument gets a hard-exit entry
+        trade_plan, sanity_checks, _ = generate_trade_plan(
+            mock_backtest_dir,
+            positions_csv,
+            current_equity,
+            as_of_date,
+            mock_config
+        )
+
+        # FAKE_PERP must appear in the plan with target_notional=0 (full exit)
+        assert 'FAKE_PERP' in trade_plan.index
+        assert trade_plan.loc['FAKE_PERP', 'target_notional'] == 0.0
+        # Delta should be -10.00 (exit the current 10 USD position)
+        assert trade_plan.loc['FAKE_PERP', 'delta_notional'] == pytest.approx(-10.0, abs=0.01)
+        assert trade_plan.loc['FAKE_PERP', 'reason'] == 'flatten_to_zero'
 
     def test_trade_classification(
         self, mock_backtest_dir, mock_actual_positions, mock_config

@@ -635,17 +635,21 @@ Notes:
     # Preflight: check VPN connectivity (skip in dry-run mode)
     if not args.dry_run:
         if not check_binance_api_connectivity():
-            logger.error("\nERROR: Cannot reach Binance API. Aborting.")
-            logger.error("Action: Connect to Proton VPN (US server) and retry.")
-            sys.exit(1)
+            logger.warning("\nWARNING: Cannot reach Binance API — data will not be updated.")
+            logger.warning("Action: Connect to Proton VPN (US server) and re-run manually.")
+            logger.warning("Continuing — doctor preflight will flag staleness if data is out of date.")
+            # Exit code 3 = VPN unavailable (distinct from success=0 and error=1).
+            # Orchestrator (daily_paper_run.py) checks for this specific code to log a
+            # warning and continue rather than aborting the run.
+            sys.exit(3)
 
     # Validate inputs
     if not args.config.exists():
         logger.error(f"Config file not found: {args.config}")
         sys.exit(1)
 
-    if args.tail_days < 1 or args.tail_days > 30:
-        logger.error(f"Invalid --tail-days: {args.tail_days} (must be 1-30)")
+    if args.tail_days < 1 or args.tail_days > 90:
+        logger.error(f"Invalid --tail-days: {args.tail_days} (must be 1-90)")
         sys.exit(1)
 
     # Run update

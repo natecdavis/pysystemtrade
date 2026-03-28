@@ -296,7 +296,7 @@ def check_positions_sanity(
         positions_df,
         universe,
         equity,
-        critical_staleness_hours=48,
+        critical_staleness_hours=26,
         allow_missing_instruments=True  # Soft warning for missing instruments
     )
 
@@ -316,7 +316,7 @@ def check_positions_sanity(
         return 'PASS', errors, warnings
 
 
-def check_equity_staleness(equity_file: Path, critical_hours: int = 48) -> tuple[str, list, list]:
+def check_equity_staleness(equity_file: Path, critical_hours: int = 26) -> tuple[str, list, list]:
     """
     Check equity file staleness.
 
@@ -582,8 +582,12 @@ def main():
     status, errors, warnings = check_data_recency(args.data_status_path, args.cadence, tradable_universe)
     checks['data_recency'] = (status, errors, warnings)
 
-    # Check 2: Manifest integrity (optional if output_dir provided)
-    if output_dir.exists():
+    # Check 2: Manifest integrity — only when --output-dir is explicitly provided.
+    # When output_dir falls back to the environment default (out/), backtest outputs
+    # live in dated subdirectories (out/paper_YYYYMMDD/) and there is never a
+    # manifest_*.json directly in out/, producing a spurious PASS_WITH_WARNINGS on
+    # every daily run. Opt-in only.
+    if args.output_dir is not None and output_dir.exists():
         status, errors, warnings = check_manifest_integrity(output_dir)
         checks['manifest_integrity'] = (status, errors, warnings)
 

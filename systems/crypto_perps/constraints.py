@@ -523,7 +523,7 @@ class IncrementalConstraintsEngine:
         span: int,
         min_periods: int,
         idm_cap: float,
-        gross_leverage_cap: float,
+        gross_leverage_cap: float = float('inf'),
         adjust: bool = True,
         demean: bool = False,
         idm_pre_cap: bool = False,

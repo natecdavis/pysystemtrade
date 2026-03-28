@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Cost Audit — Per-Rule Turnover, Per-Instrument Drag, Forecast-Adjusted SR Cost.
+Cost Audit — Per-Rule Turnover, Per-Instrument Drag, Forecast-Adjusted SR Cost, Speed Limit.
 
-Three sections:
-  A: Per-rule turnover vs return contribution (10 instruments × 26 active rules)
+Four sections:
+  A: Per-rule turnover vs return contribution (10 instruments × active rules)
   B: Per-instrument cost drag (all instruments in dataset)
-  C: Forecast-adjusted SR cost Carver test (8 instruments × 26 rules grid)
+  C: Forecast-adjusted SR cost Carver test (8 instruments × rules grid)
+  D: Carver speed limit — annual_cost ≤ gross_SR/3 per rule
 
 Usage:
     python scripts/audit_costs.py
@@ -41,7 +42,7 @@ DATA_PATH   = "data/dataset_538registry_6yr_jagged.parquet"
 MAX_SR_PER_TRADE  = 0.01
 MAX_SR_ANNUAL     = 0.13
 FEE_BPS           = 5        # one-way taker fee
-FLEET_TURNOVER    = 23.9     # round-trips/yr from backtest metadata
+FLEET_TURNOVER    = 14.32    # round-trips/yr (adv_window=252, commit 447cd578)
 
 # ADV → spread bins (bps), matching walk_forward_costs.py
 ADV_SPREAD_BINS = [
@@ -531,6 +532,159 @@ def section_c(system, section_a_df: pd.DataFrame, section_b_df: pd.DataFrame):
 
 
 # ============================================================================
+# Section D — Carver Speed Limit: annual_cost ≤ gross_SR / 3
+# ============================================================================
+
+def section_d(system, section_a_df: pd.DataFrame, section_c_rule_df: pd.DataFrame):
+    """
+    Carver speed limit: max_annual_cost_SR = gross_SR_per_rule / 3.
+
+    For each active rule:
+      1. Measure gross weighted SR via pandl_for_trading_rule_weighted(rule).sharpe()
+      2. Compute speed limit = gross_SR / 3
+      3. Read avg annual cost from Section A (fleet_sr_cost × avg_turnover)
+      4. Flag: FAIL if annual_cost > speed_limit, WARN if > 80% of limit, PASS otherwise
+
+    Note: pandl_for_trading_rule_weighted triggers Account stage computation
+    (300 instruments × each rule). Runtime ~5-10 min for all rules after
+    Section A/B/C have warmed up the cache.
+    """
+    print("\n" + "=" * 80)
+    print("SECTION D — Carver Speed Limit (annual_cost ≤ gross_SR / 3)")
+    print("=" * 80)
+
+    active_weights = get_active_weights(system)
+    rules = list(active_weights.keys())
+
+    print(f"\n  Computing gross SR for {len(rules)} rules via pandl_for_trading_rule_weighted()")
+    print(f"  (First run: ~5-10 min. Cached on subsequent runs.)")
+
+    rows = []
+    for rule in rules:
+        # --- Gross SR (weighted across all instruments) ---
+        try:
+            curve = system.accounts.pandl_for_trading_rule_weighted(rule)
+            gross_sr = float(curve.sharpe())
+        except Exception as e:
+            gross_sr = np.nan
+
+        # Speed limit = gross_SR / 3
+        if np.isfinite(gross_sr) and gross_sr > 0:
+            speed_limit = gross_sr / 3.0
+        else:
+            speed_limit = np.nan   # negative or missing gross SR → no valid limit
+
+        # --- Annual cost: from Section A (fleet_sr_cost × avg_to) ---
+        a_row = section_a_df[section_a_df["rule"] == rule]
+        if len(a_row):
+            avg_to      = float(a_row["avg_to"].iloc[0])
+            annual_cost = float(a_row["annual_drag"].iloc[0])   # = fleet_sr_cost × avg_to
+        else:
+            avg_to      = np.nan
+            annual_cost = np.nan
+
+        # --- Flag ---
+        if np.isfinite(speed_limit) and np.isfinite(annual_cost):
+            headroom = speed_limit - annual_cost
+            if annual_cost > speed_limit:
+                status = "FAIL"
+            elif annual_cost > 0.8 * speed_limit:
+                status = "WARN"
+            else:
+                status = "PASS"
+        elif np.isfinite(gross_sr) and gross_sr <= 0:
+            headroom = np.nan
+            status = "FAIL"   # pre-cost losing rule automatically fails
+        else:
+            headroom = np.nan
+            status = "N/A"
+
+        rows.append({
+            "rule":        rule,
+            "gross_sr":    gross_sr,
+            "speed_limit": speed_limit,
+            "avg_to":      avg_to,
+            "annual_cost": annual_cost,
+            "headroom":    headroom,
+            "status":      status,
+        })
+
+    df = pd.DataFrame(rows)
+
+    # Sort: FAIL first, then WARN, then PASS, then N/A; within group by headroom asc
+    status_order = {"FAIL": 0, "WARN": 1, "PASS": 2, "N/A": 3}
+    df["_sort_key"] = df["status"].map(status_order)
+    df = df.sort_values(["_sort_key", "headroom"], ascending=[True, True]).drop(columns="_sort_key").reset_index(drop=True)
+
+    # --- Print table ---
+    header = (
+        f"{'#':>3} {'Rule':<22} {'GrossSR':>9} {'SpeedLim':>10}"
+        f" {'AvgTO':>7} {'AnnCost':>9} {'Headroom':>10} {'Status'}"
+    )
+    sep = "=" * len(header)
+    print(f"\n{sep}")
+    print(header)
+    print(sep)
+
+    def fmt(v, d=3):
+        return f"{v:{'.'+str(d)+'f'}}" if (v is not None and pd.notna(v)) else "    NaN"
+
+    for i, row in df.iterrows():
+        status_flag = ""
+        if row["status"] == "FAIL":
+            status_flag = "<<< FAILS SPEED LIMIT"
+        elif row["status"] == "WARN":
+            status_flag = "<  within 20% of limit"
+        elif np.isfinite(row.get("gross_sr", np.nan)) and row["gross_sr"] <= 0:
+            status_flag = "<<< negative gross SR"
+        print(
+            f"{i+1:>3} {row['rule']:<22}"
+            f" {fmt(row['gross_sr'], 3):>9}"
+            f" {fmt(row['speed_limit'], 3):>10}"
+            f" {fmt(row['avg_to'], 1):>7}"
+            f" {fmt(row['annual_cost'], 4):>9}"
+            f" {fmt(row['headroom'], 4):>10}"
+            f"  {row['status']}  {status_flag}"
+        )
+    print(sep)
+
+    # --- Summary ---
+    n_fail = (df["status"] == "FAIL").sum()
+    n_warn = (df["status"] == "WARN").sum()
+    n_pass = (df["status"] == "PASS").sum()
+    print(f"\n  Speed limit results: {n_pass} PASS | {n_warn} WARN | {n_fail} FAIL (of {len(df)} rules)")
+
+    fail_rules = df[df["status"] == "FAIL"]
+    if len(fail_rules):
+        print(f"\n  Rules failing Carver speed limit (annual_cost > gross_SR/3):")
+        for _, r in fail_rules.iterrows():
+            if np.isfinite(r["gross_sr"]) and r["gross_sr"] <= 0:
+                print(f"    {r['rule']:<22}  gross_SR={r['gross_sr']:.3f} (pre-cost losing rule)")
+            else:
+                print(
+                    f"    {r['rule']:<22}  gross_SR={r['gross_sr']:.3f}"
+                    f"  limit={r['speed_limit']:.3f}"
+                    f"  cost={r['annual_cost']:.4f}"
+                    f"  over by {-r['headroom']:.4f} SR"
+                )
+        print(f"\n  Recommendation: consider reducing forecast_weight proportionally to headroom,")
+        print(f"  or accept as diversification contribution if gross_SR is positive.")
+
+    warn_rules = df[df["status"] == "WARN"]
+    if len(warn_rules):
+        print(f"\n  Rules within 20% of speed limit (monitor closely):")
+        for _, r in warn_rules.iterrows():
+            print(
+                f"    {r['rule']:<22}  gross_SR={r['gross_sr']:.3f}"
+                f"  limit={r['speed_limit']:.3f}"
+                f"  cost={r['annual_cost']:.4f}"
+                f"  headroom={r['headroom']:.4f}"
+            )
+
+    return df
+
+
+# ============================================================================
 # Main
 # ============================================================================
 
@@ -548,6 +702,7 @@ def main():
     a_df = section_a(system)
     b_df = section_b(system)
     c_rule_df, c_inst_df = section_c(system, a_df, b_df)
+    d_df = section_d(system, a_df, c_rule_df)
 
     print("\n" + "=" * 80)
     print("AUDIT COMPLETE")
@@ -559,6 +714,8 @@ def main():
     print(f"  Section B: {n_fail_trade}/{len(b_df)} instruments fail SR/trade, {n_fail_annual}/{len(b_df)} fail annual SR")
     severe_c = (c_rule_df["pct_fail_annual"] > 50).sum()
     print(f"  Section C: {severe_c}/{len(c_rule_df)} rules fail annual SR test on >50% of instruments")
+    speed_fail = (d_df["status"] == "FAIL").sum()
+    print(f"  Section D: {speed_fail}/{len(d_df)} rules fail speed limit (annual_cost > gross_SR/3)")
     print("\nNext steps: see ACTION ITEMS printed above.")
 
 

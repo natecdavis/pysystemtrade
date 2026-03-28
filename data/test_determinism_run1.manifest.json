@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-03-25T22:26:40.286045Z",
+  "dataset_metadata": {
+    "requested_start_date": "2023-01-01",
+    "requested_end_date": "2023-12-31",
+    "actual_start_date": "2023-01-01",
+    "actual_end_date": "2023-12-31"
+  },
+  "date_range": {
+    "start": "2023-01-01",
+    "end": "2023-12-31",
+    "total_days": 365
+  },
+  "instruments": {
+    "included": {
+      "BTCUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-01",
+          "end": "2023-12-31"
+        },
+        "coverage_days": 365,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ETHUSDT_PERP": {
+        "date_range": {
+          "start": "2023-01-01",
+          "end": "2023-12-31"
+        },
+        "coverage_days": 365,
+        "coverage_pct": 1.0,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      }
+    },
+    "excluded": {}
+  },
+  "lifecycle": {
+    "BTCUSDT_PERP": {
+      "first_data_date": "2023-01-01",
+      "last_data_date": "2023-12-31",
+      "data_days": 365,
+      "status": "STALE",
+      "days_since_last": 815
+    },
+    "ETHUSDT_PERP": {
+      "first_data_date": "2023-01-01",
+      "last_data_date": "2023-12-31",
+      "data_days": 365,
+      "status": "STALE",
+      "days_since_last": 815
+    }
+  },
+  "lifecycle_summary": {
+    "active": 0,
+    "stale": 2,
+    "no_data": 0,
+    "error": 0
+  },
+  "summary": {
+    "total_candidates": 2,
+    "included_count": 2,
+    "excluded_count": 0,
+    "exclusion_breakdown": {}
+  }
+}

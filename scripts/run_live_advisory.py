@@ -219,7 +219,7 @@ Examples:
         '--actual-positions',
         type=Path,
         required=True,
-        help='Path to actual positions CSV (with contracts, mark_price_usd, notional_usd, timestamp)'
+        help='Path to actual positions CSV (columns: instrument, hl_symbol, contracts, timestamp[, notes])'
     )
     parser.add_argument(
         '--current-equity',
@@ -542,7 +542,8 @@ Examples:
                 'scripts/run_dynamic_universe_backtest.py',
                 '--config', str(args.config),
                 '--data', str(dataset_path),
-                '--outdir', str(backtest_dir)
+                '--outdir', str(backtest_dir),
+                '--capital', str(args.current_equity),
             ]
             run_command(backtest_cmd, "Run dynamic universe backtest (parquet-backed)")
         else:

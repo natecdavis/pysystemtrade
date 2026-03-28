@@ -656,6 +656,98 @@ trading_rules:
       - "rawdata.daily_returns_volatility"
     other_args: {carry_span: 180, trend_fast: 32, trend_slow: 128}
 
+  # --------------------------------------------------------------------------
+  # De-meaned carry: idiosyncratic funding rate (instrument minus universe mean)
+  # vol-normalized, optionally trend-gated.
+  # Theoretically distinct from gated_carry (raw vs history) and xs_carry (rank).
+  # Initialized at weight 0.0 — sweep with sweep_demeaned_carry.py before adopting.
+  # --------------------------------------------------------------------------
+  demeaned_carry_10:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 10, gate: false}
+
+  demeaned_carry_30:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 30, gate: false}
+
+  demeaned_carry_60:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 60, gate: false}
+
+  demeaned_carry_gated_10:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 10, gate: true, trend_fast: 32, trend_slow: 128}
+
+  demeaned_carry_gated_30:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 30, gate: true, trend_fast: 32, trend_slow: 128}
+
+  demeaned_carry_gated_60:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 60, gate: true, trend_fast: 32, trend_slow: 128}
+
+  # --------------------------------------------------------------------------
+  # De-meaned carry (HL-filtered median): same as demeaned_carry but uses the
+  # universe-mean funding computed only from Hyperliquid-listed instruments.
+  # Only meaningful on 1k/HL-filtered config. Initialized at 0.0.
+  # --------------------------------------------------------------------------
+  demeaned_carry_hl_10:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_hl_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 10, gate: false}
+
+  demeaned_carry_hl_30:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_hl_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 30, gate: false}
+
+  demeaned_carry_hl_60:
+    function: systems.crypto_perps.rules.rule_library.demeaned_carry
+    data:
+      - "data.get_funding_rate"
+      - "data.get_hl_cross_sectional_median_funding"
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+    other_args: {carry_span: 60, gate: false}
+
   vol_norm_carry_10:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
@@ -796,6 +888,22 @@ forecast_weights:
   skew_rv_90:    0.03  # D1 sweep 2026-03-27: Calmar-peak at 0.03, ΔSharpe +1.4% vs baseline
   skew_rv_180:   0.03
   skew_rv_365:   0.03
+
+  # De-meaned carry: ADOPTED 2026-03-27 — ungated variant, w_combined=0.15 (0.05/rule)
+  # Phase 1: ungated ΔSharpe +3.4% vs gated +1.8% → ungated wins (lower overlap with gated_carry)
+  # Phase 2: Calmar peaks at w=0.15 (1.8351 vs 1.6532 baseline). ΔSharpe +3.4%, ΔMaxDD +0.90pp (improved)
+  # Distinct from gated_carry (raw vs history) and xs_carry (rank vs absolute deviation from mean)
+  demeaned_carry_10:       0.05
+  demeaned_carry_30:       0.05
+  demeaned_carry_60:       0.05
+  demeaned_carry_gated_10: 0.0  # gated: overlap with gated_carry (Spearman 0.63), keep at 0
+  demeaned_carry_gated_30: 0.0
+  demeaned_carry_gated_60: 0.0
+
+  # HL-filtered median variants — initialized 0.0, pending HL comparison test
+  demeaned_carry_hl_10: 0.0
+  demeaned_carry_hl_30: 0.0
+  demeaned_carry_hl_60: 0.0
 
   # Removed entirely (cost audit):
   #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each

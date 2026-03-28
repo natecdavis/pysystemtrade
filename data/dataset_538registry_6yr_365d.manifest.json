@@ -1,0 +1,1745 @@
+{
+  "generated_at": "2026-02-20T23:44:10.454941Z",
+  "dataset_metadata": {
+    "requested_start_date": "2019-01-01",
+    "requested_end_date": "2024-12-31",
+    "actual_start_date": "2020-01-01",
+    "actual_end_date": "2024-12-31"
+  },
+  "date_range": {
+    "start": "2020-01-01",
+    "end": "2024-12-31",
+    "total_days": 1827
+  },
+  "instruments": {
+    "included": {
+      "ADAUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-31",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1797,
+        "coverage_pct": 0.8197992700729927,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "AVAXUSDT_PERP": {
+        "date_range": {
+          "start": "2021-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1461,
+        "coverage_pct": 0.6665145985401459,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BCHUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1827,
+        "coverage_pct": 0.8334854014598541,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BNBUSDT_PERP": {
+        "date_range": {
+          "start": "2020-02-10",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1787,
+        "coverage_pct": 0.8152372262773723,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "BTCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1827,
+        "coverage_pct": 0.8334854014598541,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DOGEUSDT_PERP": {
+        "date_range": {
+          "start": "2021-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1461,
+        "coverage_pct": 0.6665145985401459,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "DOTUSDT_PERP": {
+        "date_range": {
+          "start": "2020-08-22",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1593,
+        "coverage_pct": 0.7267335766423357,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "ETHUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1827,
+        "coverage_pct": 0.8334854014598541,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LINKUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-17",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1811,
+        "coverage_pct": 0.8261861313868614,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "LTCUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-09",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1814,
+        "coverage_pct": 0.8275547445255474,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "SOLUSDT_PERP": {
+        "date_range": {
+          "start": "2020-09-14",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1565,
+        "coverage_pct": 0.7139598540145985,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "UNIUSDT_PERP": {
+        "date_range": {
+          "start": "2021-01-01",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1461,
+        "coverage_pct": 0.6665145985401459,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      },
+      "XRPUSDT_PERP": {
+        "date_range": {
+          "start": "2020-01-06",
+          "end": "2024-12-31"
+        },
+        "coverage_days": 1817,
+        "coverage_pct": 0.8289233576642335,
+        "funding_coverage_pct": 1.0,
+        "schema_compliant": true
+      }
+    },
+    "excluded": {
+      "A2ZUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AAVEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ACEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ACHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ACTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ACUUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ACXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AERGOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AEROUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AEVOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AGLDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AGTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AINUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AIOTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AIOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AIXBTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AKEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AKTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ALCHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ALGOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ALICEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ALLOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ALLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ALPINEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ALTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ANIMEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ANKRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "APEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "API3USDT_PERP": {
+        "reason": "load_error"
+      },
+      "APRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "APTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ARBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ARCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ARIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ARKMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ARKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ARPAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ARUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ASRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ASTERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ASTRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ATAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ATHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ATOMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ATUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AUCTIONUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AVAAIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AVAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AVNTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AWEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AXLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AXSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "AZTECUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "B2USDT_PERP": {
+        "reason": "load_error"
+      },
+      "B3USDT_PERP": {
+        "reason": "load_error"
+      },
+      "BABYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BANANAS31USDT_PERP": {
+        "reason": "load_error"
+      },
+      "BANANAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BANDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BANKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BANUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BARDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BASUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BATUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BDXNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BEAMXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BEATUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BELUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BERAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BICOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BIGTIMEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BIOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BIRBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BLESSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BLUAIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BLURUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BMTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BNTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BOBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BOMEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BRETTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BREVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BROCCOLI714USDT_PERP": {
+        "reason": "load_error"
+      },
+      "BROCCOLIF3BUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BSVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BTCDOMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BTRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "BULLAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "C98USDT_PERP": {
+        "reason": "load_error"
+      },
+      "CAKEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CARVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CATIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CELOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CELRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CETUSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CFXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CGPTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CHILLGUYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CHRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CHZUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CKBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CLANKERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CLOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "COAIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "COLLECTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "COMPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "COOKIEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "COSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "COTIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "COWUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CROSSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CRVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CTKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CTSIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CVCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CVXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CYBERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "CYSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DAMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DASHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DEEPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DEGENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DEGOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DENTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DEXEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DODOXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DOGSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DOLOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DOODUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DRIFTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DUSKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DYDXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "DYMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EDENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EDUUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EGLDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EIGENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ELSAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ENAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ENJUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ENSOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ENSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EPICUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ERAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ESPORTSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ESPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ETCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ETHFIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ETHWUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EULUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "EVAAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FARTCOINUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FETUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FFUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FHEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FIDAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FIGHTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FILUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FIOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FLOCKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FLOWUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FLUIDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FLUXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FOGOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FOLKSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FORMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FORTHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FRAXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "FUNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GALAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GASUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GIGGLEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GLMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GMTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GMXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GOATUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GPSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GRASSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GRIFFAINUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GRTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GTCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GUAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GUNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "GWEIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HAEDALUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HANAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HBARUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HEIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HEMIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HFTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HIGHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HIPPOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HIVEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HMSTRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HOLOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HOMEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HOOKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HOTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HUMAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HYPERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "HYPEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ICNTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ICPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ICXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IDOLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ILVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IMXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "INITUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "INJUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "INUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "INXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IOSTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IOTAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IOTXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "IRYSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "JASMYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "JCTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "JELLYJELLYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "JOEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "JSTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "JTOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "JUPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KAIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KAITOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KASUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KAVAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KERNELUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KGENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KITEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KMNOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KNCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KOMAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "KSMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LABUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LAYERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LDOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LIGHTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LINEAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LISTAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LITUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LPTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LQTYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LRCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LSKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LUMIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "LUNA2USDT_PERP": {
+        "reason": "load_error"
+      },
+      "LYNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MAGICUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MAGMAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MANAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MANTAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MASKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MAVIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MAVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MBOXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MEGAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MELANIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MEMEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MERLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "METISUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "METUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MEWUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MINAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MIRAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MITOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MLNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MMTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MOCAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MONUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MOODENGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MORPHOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MOVEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MOVRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MTLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MUBARAKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "MYXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NAORISUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NEARUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NEIROUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NEOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NEWTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NFPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NIGHTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NILUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NMRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NOMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NOTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NTRNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "NXPCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "OGNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "OGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "OLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "OMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ONDOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ONEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ONGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ONTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ONUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "OPENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "OPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ORCAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ORDERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ORDIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "OXTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PARTIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PAXGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PENDLEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PENGUUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PEOPLEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PHAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PHBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PIEVERSEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PIPPINUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PIXELUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PLAYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PLUMEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PNUTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "POLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "POLYXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "POPCATUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PORTALUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "POWERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "POWRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PROMPTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PROMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PROVEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PTBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PUFFERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PUMPBTCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PUMPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PUNDIXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "PYTHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "QNTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "QTUMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RAREUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RAVEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RAYSOLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RDNTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RECALLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "REDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RENDERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RESOLVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "REZUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RIFUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RIVERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RLCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RLSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RONINUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ROSEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RPLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RSRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RUNEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "RVNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SAFEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SAGAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SAHARAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SANDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SANTOSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SAPIENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SCRTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SCRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SEIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SENTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SFPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SHELLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SIGNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SIRENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SKLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SKRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SKYAIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SKYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SLPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SNXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SOLVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SOMIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SONICUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SOONUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SOPHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SPACEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SPELLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SPKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SPORTFUNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SPXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SQDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SSVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STABLEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STBLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STEEMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STORJUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STRKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "STXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SUIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SUNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SUPERUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SUSHIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SWARMSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SXTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SYNUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SYRUPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "SYSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TACUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TAGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TAIKOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TAKEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TAOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "THETAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "THEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TLMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TNSRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TONUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TOSHIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TOWNSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRADOORUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TREEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRIAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRUMPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRUSTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRUTHUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRUUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TRXUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TSTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TURBOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TURTLEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TUTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "TWTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "UAIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "UBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "UMAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "USDCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "USELESSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "USTCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "USUALUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "USUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VANAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VANRYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VELODROMEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VELVETUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VETUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VFYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VICUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VINEUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VIRTUALUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VTHOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "VVVUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WALUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WAXPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WCTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WETUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WIFUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WLDUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WLFIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "WOOUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XAIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XANUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XLMUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XMRUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XNYUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XPINUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XPLUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XTZUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XVGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "XVSUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "YBUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "YFIUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "YGGUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZAMAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZBTUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZECUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZENUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZEREBROUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZETAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZILUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZKCUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZKJUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZKPUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZKUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZORAUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZROUSDT_PERP": {
+        "reason": "load_error"
+      },
+      "ZRXUSDT_PERP": {
+        "reason": "load_error"
+      }
+    }
+  },
+  "lifecycle": {
+    "ADAUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "AVAXUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "BCHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "BNBUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "BTCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "DOGEUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "DOTUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "ETHUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "LINKUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "LTCUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "SOLUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "UNIUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    },
+    "XRPUSDT_PERP": {
+      "first_data_date": "2020-01-01",
+      "last_data_date": "2024-12-31",
+      "data_days": 1827,
+      "status": "STALE",
+      "days_since_last": 416
+    }
+  },
+  "lifecycle_summary": {
+    "active": 0,
+    "stale": 13,
+    "no_data": 0,
+    "error": 0
+  },
+  "summary": {
+    "total_candidates": 509,
+    "included_count": 13,
+    "excluded_count": 496,
+    "exclusion_breakdown": {
+      "load_error": 496
+    }
+  }
+}

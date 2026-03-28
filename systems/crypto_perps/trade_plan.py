@@ -24,39 +24,42 @@ from systems.crypto_perps.staleness_overlay import (
 logger = logging.getLogger(__name__)
 
 
-def load_actual_positions(positions_path: Path) -> pd.DataFrame:
+def load_actual_positions(
+    positions_path: Path,
+    prices: Optional[Dict[str, float]] = None,
+) -> pd.DataFrame:
     """
     Load actual current positions from CSV file.
 
-    Expected schema:
-        instrument,contracts,mark_price_usd,notional_usd,timestamp,notes
+    Expected schema (minimum):
+        instrument,contracts,timestamp[,notes]
 
-    Validates:
-        - notional_usd == contracts × mark_price_usd (within 1e-6)
-        - All required columns present
+    Optional columns (auto-derived from `prices` dict if absent):
+        mark_price_usd, notional_usd
 
     Returns:
         DataFrame with 'instrument' as index and columns:
-            contracts, mark_price_usd, notional_usd, timestamp, notes
+            contracts, mark_price_usd, notional_usd, timestamp[, notes, ...]
     """
     df = pd.read_csv(positions_path)
 
-    # Validate required columns
-    required_cols = ['instrument', 'contracts', 'mark_price_usd', 'notional_usd', 'timestamp']
+    # Validate always-required columns
+    required_cols = ['instrument', 'contracts', 'timestamp']
     missing = set(required_cols) - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns in actual positions: {missing}")
 
-    # Validate notional calculation
-    computed_notional = df['contracts'] * df['mark_price_usd']
-    notional_diff = np.abs(df['notional_usd'] - computed_notional)
-    invalid_rows = df[notional_diff > 1e-6]
+    # Derive mark_price_usd from prices dict if not in CSV
+    if 'mark_price_usd' not in df.columns:
+        if prices is None:
+            raise ValueError(
+                "mark_price_usd column missing from positions CSV and no prices dict provided. "
+                "Either include the column or pass last_prices.json from the backtest."
+            )
+        df['mark_price_usd'] = df['instrument'].map(prices).fillna(0.0)
 
-    if len(invalid_rows) > 0:
-        raise ValueError(
-            f"Notional validation failed for {len(invalid_rows)} instrument(s). "
-            f"notional_usd must equal contracts × mark_price_usd:\n{invalid_rows}"
-        )
+    # Recompute notional from contracts × mark_price (mark price drifts between fill and recording)
+    df['notional_usd'] = df['contracts'] * df['mark_price_usd']
 
     # Set index
     df = df.set_index('instrument')
@@ -128,6 +131,26 @@ def load_backtest_metadata(backtest_dir: Path) -> dict:
 
     with open(metadata_path) as f:
         return json.load(f)
+
+
+def load_backtest_prices(backtest_dir: Path) -> pd.Series:
+    """Load last-day instrument prices saved by the backtest."""
+    path = backtest_dir / 'prices_last.csv'
+    if not path.exists():
+        return pd.Series(dtype=float)
+    s = pd.read_csv(path, index_col=0).squeeze()
+    s.name = 'price'
+    return s
+
+
+def load_backtest_daily_vols(backtest_dir: Path) -> pd.Series:
+    """Load last-day daily vols (in price units) saved by the backtest."""
+    path = backtest_dir / 'daily_vols_last.csv'
+    if not path.exists():
+        return pd.Series(dtype=float)
+    s = pd.read_csv(path, index_col=0).squeeze()
+    s.name = 'daily_vol'
+    return s
 
 
 def load_staleness_data(data_status_path: Path) -> Tuple[Optional[pd.Series], Optional[Date], Optional[Date]]:
@@ -250,42 +273,6 @@ def estimate_trade_costs(
     costs = deltas['delta_notional'].abs() * rtc_frac
     return costs
 
-
-def check_gross_leverage(
-    actuals: pd.DataFrame,
-    deltas: pd.DataFrame,
-    current_equity: float,
-    gross_leverage_cap: float
-) -> dict:
-    """
-    Check gross leverage before and after trades.
-
-    Gross leverage = sum(|notional|) / equity
-
-    Returns:
-        dict with keys: actual_current, after_trades, cap, headroom, status
-    """
-    # Current gross leverage (actual positions)
-    actual_instruments = actuals.index
-    current_gross_notional = actuals.loc[actual_instruments, 'notional_usd'].abs().sum()
-    actual_current = current_gross_notional / current_equity if current_equity > 0 else 0.0
-
-    # After trades gross leverage (target positions)
-    after_gross_notional = deltas['target_notional'].abs().sum()
-    after_trades = after_gross_notional / current_equity if current_equity > 0 else 0.0
-
-    # Check cap
-    headroom = gross_leverage_cap - after_trades
-    status = 'pass' if after_trades <= gross_leverage_cap else 'fail'
-
-    return {
-        'actual_current': round(actual_current, 2),
-        'after_trades': round(after_trades, 2),
-        'cap': gross_leverage_cap,
-        'headroom': round(headroom, 2),
-        'status': status,
-        'note': 'Using current_equity, not initial_capital'
-    }
 
 
 def check_min_position_sizes(
@@ -422,9 +409,14 @@ def generate_trade_plan(
     diagnostics = load_backtest_diagnostics(backtest_dir, as_of_date)
     metadata = load_backtest_metadata(backtest_dir)
 
-    # 3. Load actual positions
+    # 3. Load actual positions (prices from last_prices.json if mark_price_usd not in CSV)
     logger.info("Loading actual positions...")
-    actuals = load_actual_positions(actual_positions_path)
+    last_prices_path = backtest_dir / 'last_prices.json'
+    last_prices: Optional[Dict[str, float]] = None
+    if last_prices_path.exists():
+        with open(last_prices_path) as f:
+            last_prices = json.load(f)
+    actuals = load_actual_positions(actual_positions_path, prices=last_prices)
 
     # Validate instruments
     target_instruments = set(targets.index)
@@ -433,10 +425,18 @@ def generate_trade_plan(
     # Check for instruments in actuals but not in universe
     extra_instruments = actual_instruments - target_instruments
     if extra_instruments:
-        raise ValueError(
-            f"Instruments in actual positions but NOT in universe: {extra_instruments}. "
-            f"This is not allowed - remove these instruments or update config."
+        logger.warning(
+            f"Instruments in actual positions but NOT in backtest universe: {extra_instruments}. "
+            f"These will be added to the trade plan as hard exits (target_notional=0)."
         )
+        # Build hard-exit targets for out-of-universe instruments
+        extra_targets = pd.Series(
+            {inst: 0.0 for inst in extra_instruments},
+            name=targets.name,
+            dtype=float,
+        )
+        targets = pd.concat([targets, extra_targets])
+        target_instruments = set(targets.index)
 
     # Missing instruments in actuals are OK (default to 0.0)
     missing_instruments = target_instruments - actual_instruments
@@ -490,6 +490,36 @@ def generate_trade_plan(
     logger.info("Calculating position deltas...")
     deltas = calculate_position_deltas(targets, actuals, current_equity)
 
+    # 4.5. Identify buffer-suppressed trades (match run_dynamic_universe_backtest.py logic)
+    #
+    # The backtest uses apply_position_buffering():
+    #   buffer_threshold = buffer_frac × mean(|target_notional|) per instrument
+    #   No trade if |delta_notional| < buffer_threshold
+    #
+    # For the live plan, we use the target notional as a proxy for avg_abs_position
+    # (we don't have the full history, but the target is the best single-day estimate).
+    buffer_frac = config.get('execution', {}).get('buffer_frac', 0.0)
+    buffer_suppressed_instruments: set = set()
+    if buffer_frac > 0:
+        logger.info(f"Applying trading buffer (buffer_frac={buffer_frac})...")
+        for inst in deltas.index:
+            delta_notional = deltas.loc[inst, 'delta_notional']
+            if abs(delta_notional) < 1e-10:
+                continue
+            target_notional = deltas.loc[inst, 'target_notional']
+            current_notional = deltas.loc[inst, 'current_notional']
+            # Use average of target and current as proxy for avg_abs_position
+            avg_abs_notional = abs((target_notional + current_notional) / 2.0)
+            if avg_abs_notional < 1e-10:
+                continue
+            buffer_threshold = buffer_frac * avg_abs_notional
+            if abs(delta_notional) < buffer_threshold:
+                buffer_suppressed_instruments.add(inst)
+        logger.info(
+            f"  Buffer suppressed {len(buffer_suppressed_instruments)} trades: "
+            f"{sorted(buffer_suppressed_instruments)}"
+        )
+
     # 5. Estimate costs
     logger.info("Estimating trade costs...")
     costs_config = config.get('costs', {})
@@ -516,10 +546,6 @@ def generate_trade_plan(
     # 9. Apply risk checks
     logger.info("Running sanity checks...")
 
-    # Gross leverage check
-    gross_leverage_cap = config.get('gross_leverage_cap', 2.0)
-    gross_lev_check = check_gross_leverage(actuals, deltas, current_equity, gross_leverage_cap)
-
     # Min position size check
     min_position_frac = config.get('min_position_frac', 0.03)
     min_size_check = check_min_position_sizes(deltas, current_equity, min_position_frac)
@@ -539,15 +565,13 @@ def generate_trade_plan(
     for inst in deltas.index:
         inst_warnings = []
 
+        # Buffer suppressed (delta too small relative to position volatility)
+        if inst in buffer_suppressed_instruments:
+            inst_warnings.append('buffer_suppressed')
+
         # Below min size
         if inst in min_size_check['below_threshold']:
             inst_warnings.append('below_min_trade_size')
-
-        # Would exceed gross lev (if this trade executed alone)
-        # This is approximate - full check requires sequential execution
-        # For now, just flag any trades when we're close to cap
-        if gross_lev_check['headroom'] < 0.1:
-            inst_warnings.append('near_gross_lev_cap')
 
         # Stale target (if backtest is old)
         # This is already checked at function entry, so we're OK here
@@ -557,7 +581,8 @@ def generate_trade_plan(
     deltas['warnings'] = warnings
 
     # 10. Build sanity checks dict
-    initial_capital = config.get('capital', 5000.0)
+    initial_capital = config.get('notional_trading_capital',
+                               config.get('system', {}).get('capital', 5000.0))
     equity_pnl_pct = (current_equity - initial_capital) / initial_capital if initial_capital > 0 else 0.0
 
     # IDM from diagnostics (target portfolio only, cannot compute from actual)
@@ -573,7 +598,6 @@ def generate_trade_plan(
         'initial_capital': round(initial_capital, 2),
         'equity_pnl_pct': round(equity_pnl_pct, 4),
         'checks': {
-            'gross_leverage': gross_lev_check,
             'idm_target_portfolio': {
                 'value': round(idm_target, 2) if idm_target is not None else None,
                 'cap': idm_cap,
@@ -591,7 +615,7 @@ def generate_trade_plan(
             'total_estimated_cost': round(total_cost, 2),
             'cost_as_pct_of_equity': round(cost_pct, 4)
         },
-        'overall_status': 'pass' if gross_lev_check['status'] == 'pass' else 'fail',
+        'overall_status': 'pass',
         'warnings': [
             f"{len(min_size_check['below_threshold'])} trade(s) below min_position_size threshold" if min_size_check['status'] == 'warn' else None,
             "Using estimated spreads - check live order book before executing",

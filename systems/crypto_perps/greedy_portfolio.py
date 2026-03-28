@@ -101,6 +101,22 @@ class MrGreedyPortfolio(Portfolios):
             self._lot_size_provider = LotSizeProvider(log=self.log)
         return self._lot_size_provider
 
+    @property
+    def lot_size_notional_override(self) -> float | None:
+        """
+        If set via config key `lot_size_notional_override`, use a fixed USD
+        lot value for every instrument instead of the Binance lot-size table.
+
+        This simulates venues (e.g. Hyperliquid) where minimum contract sizes
+        are negligible. A value of 1.0 means each 'lot' is worth $1, so
+        fractional_lots ≈ position_usd — giving ~33-333 optimizer steps per
+        instrument at $1K capital, which is fast and accurate.
+
+        Leave unset (None) for normal Binance lot-size behaviour.
+        """
+        val = getattr(self.config, 'lot_size_notional_override', None)
+        return float(val) if val is not None else None
+
 
     @output()
     def get_notional_position(self, instrument_code: str) -> pd.Series:
@@ -380,22 +396,31 @@ class MrGreedyPortfolio(Portfolios):
         contracts_optimal_dict = {}
         per_contract_value_dict = {}
 
+        notional_override = self.lot_size_notional_override
+
         for instrument_code in active_instruments:
-            lot_size = self.lot_size_provider.get_lot_size(instrument_code)
             price = prices.get(instrument_code, np.nan)
 
             if np.isnan(price) or price <= 0:
                 continue
 
-            # Fractional lots
             notional_position = ideal_positions[instrument_code]
-            fractional_lots = self.lot_size_provider.convert_notional_to_lots(
-                notional_position, lot_size
-            )
-            contracts_optimal_dict[instrument_code] = fractional_lots
 
-            # Lot value in dollars
-            lot_value = self.lot_size_provider.get_lot_value(instrument_code, price)
+            if notional_override is not None:
+                # Venue has negligible minimum lot size (e.g. Hyperliquid).
+                # Treat each $notional_override as one lot, working entirely
+                # in USD space. fractional_lots = position_usd / notional_override.
+                position_usd = notional_position * price
+                fractional_lots = position_usd / notional_override
+                lot_value = notional_override
+            else:
+                lot_size = self.lot_size_provider.get_lot_size(instrument_code)
+                fractional_lots = self.lot_size_provider.convert_notional_to_lots(
+                    notional_position, lot_size
+                )
+                lot_value = self.lot_size_provider.get_lot_value(instrument_code, price)
+
+            contracts_optimal_dict[instrument_code] = fractional_lots
             per_contract_value_dict[instrument_code] = lot_value
 
         contracts_optimal = portfolioWeights(contracts_optimal_dict)

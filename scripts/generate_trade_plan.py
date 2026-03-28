@@ -231,7 +231,7 @@ Examples:
 Notes:
   - as_of_date MUST match last date in backtest (fresh targets only)
   - current_equity should reflect actual P&L, not initial capital
-  - Actual positions must have contracts, mark_price_usd, notional_usd, timestamp
+  - Actual positions must have: instrument, contracts, timestamp (mark_price_usd auto-derived from backtest)
   - Trade plan uses current_equity for all calculations (not initial capital)
         """
     )
@@ -246,7 +246,7 @@ Notes:
         '--actual-positions',
         type=Path,
         required=True,
-        help='Path to actual positions CSV (with contracts, mark_price_usd, notional_usd, timestamp)'
+        help='Path to actual positions CSV (columns: instrument, hl_symbol, contracts, timestamp[, notes])'
     )
     parser.add_argument(
         '--current-equity',
@@ -421,6 +421,12 @@ Notes:
                 "No universe snapshot provided — skipping universe membership validation"
             )
 
+        # Add hl_symbol column for Hyperliquid execution convenience
+        from sysdata.crypto.config_helpers import instrument_id_to_hl_symbol
+        trade_plan.insert(0, 'hl_symbol', [
+            instrument_id_to_hl_symbol(inst) for inst in trade_plan.index
+        ])
+
         logger.info(f"Writing trade plan to {trade_plan_path}")
         trade_plan.to_csv(trade_plan_path)
 
@@ -438,11 +444,15 @@ Notes:
         logger.info("=" * 60)
 
         total_trades = len(trade_plan)
-        trades_above_min = len(trade_plan[trade_plan['warnings'].str.contains('below_min_trade_size') == False])
-        total_cost = trade_plan['estimated_cost'].sum()
+        actionable = trade_plan[
+            ~trade_plan['warnings'].str.contains('below_min_trade_size') &
+            ~trade_plan['warnings'].str.contains('buffer_suppressed')
+        ]
+        trades_above_min = len(actionable)
+        total_cost = actionable['estimated_cost'].sum()
 
         logger.info(f"Total trades: {total_trades}")
-        logger.info(f"Trades above min size: {trades_above_min}")
+        logger.info(f"Actionable trades (above min size, clear buffer): {trades_above_min}")
         logger.info(f"Total estimated cost: ${total_cost:.2f}")
         logger.info(f"Overall status: {sanity_checks['overall_status']}")
 
