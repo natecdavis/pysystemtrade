@@ -735,6 +735,13 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
             except:
                 instrument_weight = pd.Series(np.nan, index=portfolio_positions.index)
 
+            # Get FDM if available
+            try:
+                fdm_series = system.combForecast.get_forecast_diversification_multiplier(instrument)
+                fdm_values = fdm_series.reindex(portfolio_positions.index, method='ffill').values
+            except Exception:
+                fdm_values = np.full(len(portfolio_positions.index), np.nan)
+
             # Build diagnostic row
             diag = pd.DataFrame({
                 'date': portfolio_positions.index,
@@ -742,6 +749,7 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
                 'position': position.values,
                 'combined_forecast': combined_forecast.reindex(portfolio_positions.index).values,
                 'instrument_weight': instrument_weight.reindex(portfolio_positions.index).values,
+                'fdm': fdm_values,
             })
 
             diagnostics_data.append(diag)
