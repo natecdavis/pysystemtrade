@@ -884,10 +884,10 @@ forecast_weights:
   # Daily cross-sectional normalization (subtract today's crypto-wide mean skew).
   # Sweep 2026-03-08: Calmar-peak at w_combined=0.05 (0.0167/rule).
   # ΔSharpe +1.0%, ΔCalmar +0.011 (Calmar peaks ABOVE baseline), ΔMaxDD -0.11pp.
-  # Window narrow: w>=0.08 collapses. Genuine diversification vs skew_abs confirmed.
-  skew_rv_90:    0.03  # D1 sweep 2026-03-27: Calmar-peak at 0.03, ΔSharpe +1.4% vs baseline
-  skew_rv_180:   0.03
-  skew_rv_365:   0.03
+  # D1 re-sweep 2026-03-28: Calmar-peak at 0.08 (1.9461, +6.2%). Window narrows after 0.08.
+  skew_rv_90:    0.08  # was 0.03 (D1 2026-03-27); re-sweep confirms 0.08 is Calmar-peak
+  skew_rv_180:   0.08
+  skew_rv_365:   0.08
 
   # De-meaned carry: ADOPTED 2026-03-27 — ungated variant, w_combined=0.15 (0.05/rule)
   # Phase 1: ungated ΔSharpe +3.4% vs gated +1.8% → ungated wins (lower overlap with gated_carry)

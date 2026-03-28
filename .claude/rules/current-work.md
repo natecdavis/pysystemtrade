@@ -1,17 +1,17 @@
 # Current Work Context
 
-## Current Baseline (2026-03-28, post-fee-correction)
+## Current Baseline (2026-03-28, post-skew_rv-re-sweep)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K capital)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (300 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$1K / HL filter (2026-03-28, fee-corrected: taker=4.5bps, maker=1.5bps):**
-- Sharpe ~1.33, Calmar ~1.38, CAGR ~12.87%, MaxDD ~-9.34%, Vol ~9.43%
+**$1K / HL filter (2026-03-28, skew_rv w=0.08):**
+- Sharpe ~1.40, Calmar ~1.50, CAGR ~12.79%, MaxDD ~-8.50%
 
-**$10K full_rules (2026-03-28, fee-corrected):**
-- Sharpe ~1.32, Calmar ~1.83, CAGR ~14.96%, MaxDD ~-8.17%
+**$10K full_rules (2026-03-28, skew_rv w=0.08):**
+- Sharpe ~1.37, Calmar ~1.95, CAGR ~14.84%, MaxDD ~-7.63%
 
 **Key config parameters (1k config, post-audit):**
 ```yaml
@@ -35,7 +35,7 @@ vol_days: 63                  # D4: was 35
 - gated_carry_10/30: 0.07 | gated_carry_60: 0.10
 - xs_carry/activity/val/inter_sector: 0.10 each
 - skew_abs_90/180/365: 0.0167 each
-- skew_rv_90/180/365: 0.03 each  (D1: was 0.0167)
+- skew_rv_90/180/365: 0.08 each  (D1 re-sweep 2026-03-28: was 0.03)
 - demeaned_carry_10/30/60: 0.05 each  (ADOPTED 2026-03-27)
 - 19 trend rules: flat equal weights per family
 
@@ -45,6 +45,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-03-28 | skew_rv re-sweep 0.03→0.08 | ADOPT: full_rules ΔSharpe +3.7%, ΔCalmar +6.2%. 1k ΔSharpe +4.9%, ΔCalmar +9.2%. Calmar peaks at w=0.08, narrows after. |
 | 2026-03-28 | Fee correction: HL taker 3.5→4.5bps, dataset patched | full_rules: Sharpe 1.3239, Calmar 1.8321. 1k: Sharpe 1.3315, Calmar 1.3779. Small but real cost increase. |
 | 2026-03-27 | demeaned_carry (idiosyncratic funding, ungated) | ADOPT: w=0.05/rule. full_rules ΔSharpe +3.4%, ΔCalmar +0.18. 1k ΔSharpe +2.6% (Calmar slight divergence). |
 | 2026-03-26 | Comprehensive backtesting audit (A1→E3) | COMPLETE: commit f05201cc. 5 adoptions, 6 rejections. See MEMORY.md decisions. |
@@ -59,5 +60,5 @@ vol_days: 63                  # D4: was 35
 
 - **Capital scaling / leverage:** Vol is ~10% vs 25% target; leverage is the main lever at $1K
 - **Hyperliquid live positions:** Connect actual API for position tracking (no API keys yet)
-- **skew_rv weight fine-tune:** 0.03 adopted; could probe 0.03–0.05 range (window narrows at w≥0.08)
+- ~~**skew_rv weight fine-tune:**~~ DONE — 0.08 adopted (2026-03-28)
 - **Per-instrument SR estimates for Carver static:** Prerequisite to making it useful
