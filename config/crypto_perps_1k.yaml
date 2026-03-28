@@ -111,7 +111,7 @@ dynamic_universe:
   max_sr_cost_annual: 0.13
   stack_turnover: 15.0
   adv_window: 252
-  fee_bps: 3.5
+  fee_bps: 4.5
   vol_window: 63  # D4 sweep 2026-03-27: Calmar-peak at 63d (ΔSharpe +4.1%)
 
   # Minimum history configuration (OPTIMIZED: 15 days, validated 2026-02-20)
@@ -1166,7 +1166,7 @@ buffer_frac: 0.1
 
 costs:
   spread_estimate: 0.0005
-  taker_fee_frac: 0.00035
+  taker_fee_frac: 0.00045
 
 output:
   equity_curve_file: "equity_curve.csv"

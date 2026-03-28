@@ -42,7 +42,7 @@ from sysdata.crypto.config_helpers import (
 )
 
 
-TAKER_FEE_FRAC = 0.00035  # 3.5 bps — Hyperliquid taker fee
+TAKER_FEE_FRAC = 0.00045  # 4.5 bps — Hyperliquid taker fee (0.045% at standard capital level)
 
 
 class parquetCryptoPerpsSimData(simData):

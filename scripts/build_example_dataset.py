@@ -1469,7 +1469,7 @@ def generate_synthetic_crypto_data(
 
         # Fixed cost parameters for Phase 1 (placeholders)
         spread_frac = np.full(n_days, 0.0003)  # 3 bps
-        taker_fee_frac = np.full(n_days, 0.0004)  # 4 bps (typical Binance taker fee)
+        taker_fee_frac = np.full(n_days, 0.00045)  # 4.5 bps — Hyperliquid taker fee (0.045%)
 
         # Create DataFrame for this instrument
         inst_df = pd.DataFrame({

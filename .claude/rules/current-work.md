@@ -1,17 +1,17 @@
 # Current Work Context
 
-## Current Baseline (2026-03-27, post-demeaned_carry)
+## Current Baseline (2026-03-28, post-fee-correction)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K capital)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (300 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$1K / HL filter (2026-03-27, +demeaned_carry_10/30/60 w=0.05/rule):**
-- Sharpe ~1.34, Calmar ~1.43, CAGR ~13.0%, MaxDD ~-9.1%, Vol ~9.4%
+**$1K / HL filter (2026-03-28, fee-corrected: taker=4.5bps, maker=1.5bps):**
+- Sharpe ~1.33, Calmar ~1.38, CAGR ~12.87%, MaxDD ~-9.34%, Vol ~9.43%
 
-**$10K full_rules (2026-03-27, +demeaned_carry_10/30/60 w=0.05/rule):**
-- Sharpe ~1.33, Calmar ~1.84, CAGR ~15.0%, MaxDD ~-8.2%
+**$10K full_rules (2026-03-28, fee-corrected):**
+- Sharpe ~1.32, Calmar ~1.83, CAGR ~14.96%, MaxDD ~-8.17%
 
 **Key config parameters (1k config, post-audit):**
 ```yaml
@@ -26,8 +26,8 @@ max_lot_notional: 'auto'
 instrument_weight_ewma_span: 1
 stage2_method: 'adv'
 use_gated_carry: true         # MUST be true (ForecastCombineGated)
-fee_bps: 3.5                  # A1: was 5 (Hyperliquid taker)
-taker_fee_frac: 0.00035       # A1: was 0.0005
+fee_bps: 4.5                  # corrected 2026-03-28: HL taker=0.045% (was 3.5)
+taker_fee_frac: 0.00045       # corrected 2026-03-28: HL taker=0.045% (was 0.00035)
 vol_days: 63                  # D4: was 35
 ```
 
@@ -45,6 +45,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-03-28 | Fee correction: HL taker 3.5→4.5bps, dataset patched | full_rules: Sharpe 1.3239, Calmar 1.8321. 1k: Sharpe 1.3315, Calmar 1.3779. Small but real cost increase. |
 | 2026-03-27 | demeaned_carry (idiosyncratic funding, ungated) | ADOPT: w=0.05/rule. full_rules ΔSharpe +3.4%, ΔCalmar +0.18. 1k ΔSharpe +2.6% (Calmar slight divergence). |
 | 2026-03-26 | Comprehensive backtesting audit (A1→E3) | COMPLETE: commit f05201cc. 5 adoptions, 6 rejections. See MEMORY.md decisions. |
 | 2026-03-21 | Paper trading infrastructure | COMPLETE: circuit_breaker.py, daily_paper_run.py, setup_paper_trading.py, reset_circuit_breaker.py, launchd plist (TZ=UTC, 01:00 UTC). |
