@@ -87,17 +87,22 @@ def load_delisted_from_registry_changelog(changelog_path):
 def compute_shadow_targets(reduce_only_instruments, backtest_dir, prev_backtest_dir=None, log=None):
     """
     For reduce_only instruments where the current backtest target is 0 (config-driven),
-    compute a 'shadow target' that tracks the natural position via forecast ratio.
+    compute a 'shadow target' = what the position would be if the instrument were sized
+    like a normal active instrument at the current forecast.
 
-    shadow_target = last_active_position × (current_forecast / last_active_forecast)
+    Method: infer the current sizing factor from active instruments on the last backtest date:
+        sizing_factor = mean(|position| / |forecast|) across instruments with weight > 0, |fc| > 1
+        shadow_target = sizing_factor × current_forecast
 
-    'last active' = last row with instrument_weight > 0 AND |combined_forecast| > 5.
-    If not found in current backtest diagnostics, tries prev_backtest_dir.
-    If current and last_active forecasts have opposite signs, shadow_target = 0 (allow exit).
+    This is equivalent to applying the full position sizing formula (capital × IDM × weight ×
+    target_vol / inst_vol × forecast/10) with current parameters, without needing to recompute
+    each term individually.
 
     Returns:
         dict {instrument: shadow_target_notional}
     """
+    import numpy as np
+
     shadow_targets = {}
     if not reduce_only_instruments:
         return shadow_targets
@@ -115,73 +120,58 @@ def compute_shadow_targets(reduce_only_instruments, backtest_dir, prev_backtest_
             log.warning(f"Could not load diagnostics for shadow targets: {e}")
         return shadow_targets
 
-    prev_diag = None
-    if prev_backtest_dir:
-        prev_diag_path = Path(prev_backtest_dir) / 'diagnostics.parquet'
-        if prev_diag_path.exists():
-            try:
-                prev_diag = pd.read_parquet(prev_diag_path)
-            except Exception:
-                pass
+    # Last date in the backtest
+    last_date = diag['date'].max()
+    today_rows = diag[diag['date'] == last_date]
+
+    # Sizing factor: median |position| / |forecast| across well-sized active instruments today.
+    # instrument_weight is NaN on non-rebalance dates; use non-zero position as proxy for active.
+    # Filter out lot-size-capped positions (|pos| < $5) and clear outliers (ratio > 10x median)
+    # to get a clean estimate of the current $/forecast-unit for a normal 1/K-weight instrument.
+    active = today_rows[
+        (today_rows['position'].abs() > 5.0) &   # exclude lot-size-capped tiny positions
+        (today_rows['combined_forecast'].abs() > 1)
+    ].copy()
+
+    if active.empty:
+        if log:
+            log.warning("Shadow targets: no active instruments on last backtest date — unavailable")
+        return shadow_targets
+
+    sizing_factors = active['position'].abs() / active['combined_forecast'].abs()
+    # Remove outliers > 3× median (legacy over-sized zombie positions)
+    raw_median = float(sizing_factors.median())
+    sizing_factors = sizing_factors[sizing_factors <= raw_median * 3]
+    sizing_factor = float(sizing_factors.median())
+
+    if log:
+        log.info(
+            f"Shadow target sizing factor: median |pos|/|fc| = {sizing_factor:.2f} "
+            f"across {len(active)} active instruments on {last_date}"
+        )
 
     for inst in reduce_only_instruments:
         inst_rows = diag[diag['instrument'] == inst].sort_values('date')
 
-        # Current forecast = last row with any data
+        # Current forecast = last row's combined_forecast (instrument may have weight=0)
         if inst_rows.empty:
-            current_forecast = None
-        else:
-            cf_val = inst_rows.iloc[-1].get('combined_forecast')
-            current_forecast = float(cf_val) if cf_val is not None and not pd.isna(cf_val) else None
+            if log:
+                log.debug(f"Shadow target: {inst} not in diagnostics")
+            continue
 
-        # If no current forecast in this backtest, skip
+        cf_val = inst_rows.iloc[-1].get('combined_forecast')
+        current_forecast = float(cf_val) if cf_val is not None and not pd.isna(cf_val) else None
+
         if current_forecast is None or abs(current_forecast) < 0.1:
             if log:
                 log.debug(f"Shadow target: no current forecast for {inst}")
             continue
 
-        # Last active = last row with weight > 0 AND |forecast| > 5
-        def find_last_active(rows):
-            if rows.empty:
-                return None
-            mask = (rows['instrument_weight'] > 0) & (rows['combined_forecast'].abs() > 5)
-            active = rows[mask]
-            return active.iloc[-1] if not active.empty else None
-
-        last_active = find_last_active(inst_rows)
-
-        # If not found in current backtest, try prev backtest
-        if last_active is None and prev_diag is not None:
-            prev_rows = prev_diag[prev_diag['instrument'] == inst].sort_values('date')
-            last_active = find_last_active(prev_rows)
-
-        if last_active is None:
-            if log:
-                log.debug(f"Shadow target: no active rows for {inst}")
-            continue
-
-        last_pos = float(last_active['position'])
-        last_forecast = float(last_active['combined_forecast'])
-
-        if abs(last_forecast) < 0.1:
-            continue
-
-        # Sign flip → forecasts reversed → allow full exit
-        if (current_forecast > 0) != (last_forecast > 0):
-            shadow_targets[inst] = 0.0
-            if log:
-                log.info(
-                    f"Shadow target for {inst}: forecast sign flipped "
-                    f"({last_forecast:.2f} → {current_forecast:.2f}) — shadow=0 (allow exit)"
-                )
-            continue
-
-        shadow = last_pos * (current_forecast / last_forecast)
+        shadow = sizing_factor * current_forecast
         shadow_targets[inst] = shadow
         if log:
             log.info(
-                f"Shadow target for {inst}: last_pos={last_pos:.0f} × "
-                f"({current_forecast:.2f}/{last_forecast:.2f}) = {shadow:.0f}"
+                f"Shadow target for {inst}: {sizing_factor:.2f} × {current_forecast:.2f} = {shadow:.0f}"
             )
 
     return shadow_targets
@@ -632,16 +622,11 @@ Notes:
             logger.warning(f"Could not load notes from positions file: {e}")
 
         # Compute shadow targets for reduce_only instruments whose backtest target is 0
-        # (driven by config changes rather than forecast decay). Shadow target = natural
-        # position the instrument would have if still sized by the forecast ratio.
-        prev_backtest_dir = None
-        if hasattr(args, 'prev_universe_snapshot') and args.prev_universe_snapshot:
-            prev_backtest_dir = Path(args.prev_universe_snapshot).parent
-
+        # (driven by config changes rather than forecast decay). Shadow target = what the
+        # position would be if sized like a normal active instrument at the current forecast.
         shadow_targets = compute_shadow_targets(
             reduce_only_instruments=reduce_only_instruments,
             backtest_dir=args.backtest_dir,
-            prev_backtest_dir=prev_backtest_dir,
             log=logger,
         )
 
