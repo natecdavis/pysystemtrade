@@ -91,6 +91,7 @@ def apply_hard_exits_and_reduce_only(
     delisted_instruments,
     banned_instruments,
     log,
+    reduce_only_instruments=None,
 ):
     """
     Apply hard exits and reduce-only constraints to trade plan.
@@ -99,6 +100,9 @@ def apply_hard_exits_and_reduce_only(
     - Hard exits (target=0): delisted, API-stale, BANNED_FLATTEN
     - Reduce-only (no exposure increase): instruments exiting universe
     - Reduce-only (zombie guard): instruments with non-zero target not in current snapshot
+    - Reduce-only (notes): instruments explicitly marked 'reduce_only' in current_positions.csv
+      These are frozen: no increases, no abrupt flatten. Position decays only via natural
+      step-by-step backtest reductions. Remove the note to allow full closure.
 
     Also recomputes delta_notional and delta_weight for modified rows.
 
@@ -110,6 +114,7 @@ def apply_hard_exits_and_reduce_only(
         delisted_instruments: list of delisted symbols
         banned_instruments: set of banned instrument codes
         log: Logger
+        reduce_only_instruments: set of instrument codes marked 'reduce_only' in positions notes
 
     Returns:
         Number of instruments modified
@@ -225,11 +230,57 @@ def apply_hard_exits_and_reduce_only(
                         f"target {target:.0f} → {new_target:.0f}"
                     )
 
+    # --- Notes-based reduce-only (explicit user override) ---
+    # Instruments marked 'reduce_only' in current_positions.csv notes are frozen:
+    # - No increases beyond current position
+    # - No abrupt flatten (even if backtest says target=0 due to config change)
+    # - Step-by-step reductions from the backtest ARE allowed
+    # Hard exits (delisted, banned, stale) still override this.
+    # To allow full closure: remove 'reduce_only' from the notes column.
+
+    if reduce_only_instruments:
+        for inst in reduce_only_instruments:
+            if inst not in trade_plan.index:
+                continue
+            current_reason = str(trade_plan.loc[inst, 'reason'])
+            if current_reason.startswith('hard_exit'):
+                continue  # Hard exits take precedence
+
+            current = float(trade_plan.loc[inst, 'current_notional'])
+            target = float(trade_plan.loc[inst, 'target_notional'])
+
+            if abs(current) < 0.01:
+                continue  # Position already closed, nothing to protect
+
+            # Cap in the direction of the existing position
+            if current > 0.0:
+                # Long: allow reduction toward zero but not increase or flip
+                new_target = max(min(target, current), 0.0)
+            else:
+                # Short: allow reduction toward zero but not increase or flip
+                new_target = min(max(target, current), 0.0)
+
+            # Suppress abrupt flatten: if new_target would go to 0 from a
+            # meaningful position, hold at current instead. Config changes can
+            # drive target=0 without any signal — this prevents acting on them.
+            if abs(new_target) < 0.01 and abs(current) > 0.01:
+                new_target = current
+
+            if abs(new_target - target) > 1e-6:
+                trade_plan.loc[inst, 'target_notional'] = new_target
+                trade_plan.loc[inst, 'reason'] = 'reduce_only_notes'
+                modified += 1
+                log.info(
+                    f"Notes reduce-only: {inst} target {target:.0f} → {new_target:.0f} "
+                    f"(remove 'reduce_only' note to allow full close)"
+                )
+
     # Recompute delta_notional and delta_weight for all modified rows
     hard_exit_mask = trade_plan['reason'].astype(str).str.startswith('hard_exit')
     reduce_only_mask = (
         (trade_plan['reason'] == 'reduce_only_exit')
         | (trade_plan['reason'] == 'reduce_only_not_in_universe')
+        | (trade_plan['reason'] == 'reduce_only_notes')
     )
     changed_mask = hard_exit_mask | reduce_only_mask
 
@@ -429,6 +480,24 @@ Notes:
         )
         banned_instruments = set(config.get('banned_instruments', []))
 
+        # Load notes-based reduce-only instruments from actual positions CSV
+        reduce_only_instruments = set()
+        try:
+            positions_df = pd.read_csv(args.actual_positions)
+            if 'notes' in positions_df.columns and 'instrument' in positions_df.columns:
+                reduce_only_instruments = set(
+                    positions_df.loc[
+                        positions_df['notes'].fillna('').str.strip() == 'reduce_only',
+                        'instrument'
+                    ]
+                )
+                if reduce_only_instruments:
+                    logger.info(
+                        f"Notes reduce-only instruments: {sorted(reduce_only_instruments)}"
+                    )
+        except Exception as e:
+            logger.warning(f"Could not load notes from positions file: {e}")
+
         n_modified = apply_hard_exits_and_reduce_only(
             trade_plan=trade_plan,
             new_snapshot=new_snapshot,
@@ -437,6 +506,7 @@ Notes:
             delisted_instruments=delisted_instruments,
             banned_instruments=banned_instruments,
             log=logger,
+            reduce_only_instruments=reduce_only_instruments,
         )
         if n_modified > 0:
             logger.info(
