@@ -84,76 +84,126 @@ def load_delisted_from_registry_changelog(changelog_path):
     return changelog.get('delisted_instruments', [])
 
 
-def compute_shadow_targets(reduce_only_instruments, backtest_dir, prev_backtest_dir=None, log=None):
+def compute_shadow_targets(reduce_only_instruments, backtest_dir, log=None):
     """
     For reduce_only instruments where the current backtest target is 0 (config-driven),
-    compute a 'shadow target' = what the position would be if the instrument were sized
-    like a normal active instrument at the current forecast.
+    compute a 'shadow target' = what the position would be if sized as a normal active
+    instrument today using the full vol-targeting formula.
 
-    Method: infer the current sizing factor from active instruments on the last backtest date:
-        sizing_factor = mean(|position| / |forecast|) across instruments with weight > 0, |fc| > 1
-        shadow_target = sizing_factor × current_forecast
+    Method:
+        1. Load dataset prices from backtest metadata
+        2. For each active instrument (non-zero backtest position), compute vol_pct_ann
+           from robust_vol_calc and back out the implied (capital × IDM × inv_K) factor:
+               implied_factor = position × vol_pct_ann / ((forecast/10) × vol_target)
+        3. Take median implied_factor across active instruments
+        4. For each reduce_only instrument, compute vol_pct_ann the same way and apply:
+               shadow = implied_factor × (forecast/10) × (vol_target / vol_pct_ann)
 
-    This is equivalent to applying the full position sizing formula (capital × IDM × weight ×
-    target_vol / inst_vol × forecast/10) with current parameters, without needing to recompute
-    each term individually.
+    This correctly accounts for each instrument's own volatility, unlike a flat
+    |pos|/|fc| ratio which confounds sizing and vol.
 
     Returns:
         dict {instrument: shadow_target_notional}
     """
     import numpy as np
+    import json as _json
+    from sysquant.estimators.vol import robust_vol_calc
+    from syscore.dateutils import BUSINESS_DAYS_IN_YEAR
 
     shadow_targets = {}
     if not reduce_only_instruments:
         return shadow_targets
 
+    # --- Load backtest metadata ---
+    meta_path = Path(backtest_dir) / 'metadata.json'
+    if not meta_path.exists():
+        if log:
+            log.warning("Shadow targets: no metadata.json — unavailable")
+        return shadow_targets
+    with open(meta_path) as f:
+        meta = _json.load(f)
+
+    data_path = meta.get('data_path')
+    if not data_path or not Path(data_path).exists():
+        # Fall back to default dataset
+        data_path = 'data/dataset_538registry_6yr_jagged.parquet'
+    if not Path(data_path).exists():
+        if log:
+            log.warning(f"Shadow targets: dataset not found at {data_path}")
+        return shadow_targets
+
+    # --- Load diagnostics ---
     diag_path = Path(backtest_dir) / 'diagnostics.parquet'
     if not diag_path.exists():
         if log:
-            log.warning(f"No diagnostics.parquet in {backtest_dir} — shadow targets unavailable")
+            log.warning("Shadow targets: no diagnostics.parquet — unavailable")
         return shadow_targets
-
     try:
         diag = pd.read_parquet(diag_path)
+        dataset = pd.read_parquet(data_path, columns=['date', 'instrument', 'close'])
     except Exception as e:
         if log:
-            log.warning(f"Could not load diagnostics for shadow targets: {e}")
+            log.warning(f"Shadow targets: failed to load data: {e}")
         return shadow_targets
 
-    # Last date in the backtest
     last_date = diag['date'].max()
-    today_rows = diag[diag['date'] == last_date]
+    today_diag = diag[diag['date'] == last_date]
 
-    # Sizing factor: median |position| / |forecast| across well-sized active instruments today.
-    # instrument_weight is NaN on non-rebalance dates; use non-zero position as proxy for active.
-    # Filter out lot-size-capped positions (|pos| < $5) and clear outliers (ratio > 10x median)
-    # to get a clean estimate of the current $/forecast-unit for a normal 1/K-weight instrument.
-    active = today_rows[
-        (today_rows['position'].abs() > 5.0) &   # exclude lot-size-capped tiny positions
-        (today_rows['combined_forecast'].abs() > 1)
-    ].copy()
+    # Config params
+    vol_target = 0.25
+    vol_days = meta.get('dynamic_universe_config', {}).get('vol_window', 63)
 
-    if active.empty:
+    def get_vol_pct_ann(instrument):
+        """Compute annualised percentage vol for an instrument at last_date."""
+        px = dataset[dataset['instrument'] == instrument].set_index('date')['close'].dropna()
+        if len(px) < vol_days + 5:
+            return None
+        daily_vol = robust_vol_calc(px.diff(), days=vol_days)
+        last_price = px.loc[:last_date].dropna()
+        last_vol = daily_vol.loc[:last_date].dropna()
+        if last_price.empty or last_vol.empty:
+            return None
+        p = float(last_price.iloc[-1])
+        v = float(last_vol.iloc[-1])
+        if p <= 0 or v <= 0 or np.isnan(p) or np.isnan(v):
+            return None
+        return (v / p) * np.sqrt(BUSINESS_DAYS_IN_YEAR)
+
+    # --- Back out implied (capital × IDM × inv_K) from active instruments ---
+    # Active = non-zero position and |forecast| > 1 on last date
+    active = today_diag[
+        (today_diag['position'].abs() > 0.01) &
+        (today_diag['combined_forecast'].abs() > 1)
+    ]
+
+    implied_factors = []
+    for _, row in active.iterrows():
+        inst = row['instrument']
+        pos = float(row['position'])
+        fc = float(row['combined_forecast'])
+        vpa = get_vol_pct_ann(inst)
+        if vpa is None or vpa <= 0:
+            continue
+        # position = factor × (fc/10) × (vol_target / vol_pct_ann)
+        # → factor = position × vol_pct_ann / ((fc/10) × vol_target)
+        factor = pos * vpa / ((fc / 10.0) * vol_target)
+        implied_factors.append(factor)
+
+    if not implied_factors:
         if log:
-            log.warning("Shadow targets: no active instruments on last backtest date — unavailable")
+            log.warning("Shadow targets: could not compute implied sizing factor — unavailable")
         return shadow_targets
 
-    sizing_factors = active['position'].abs() / active['combined_forecast'].abs()
-    # Remove outliers > 3× median (legacy over-sized zombie positions)
-    raw_median = float(sizing_factors.median())
-    sizing_factors = sizing_factors[sizing_factors <= raw_median * 3]
-    sizing_factor = float(sizing_factors.median())
-
+    implied_factor = float(np.median(implied_factors))
     if log:
         log.info(
-            f"Shadow target sizing factor: median |pos|/|fc| = {sizing_factor:.2f} "
-            f"across {len(active)} active instruments on {last_date}"
+            f"Shadow target implied factor (capital×IDM×inv_K): {implied_factor:.1f} "
+            f"(median of {len(implied_factors)} active instruments)"
         )
 
+    # --- Compute shadow target for each reduce_only instrument ---
     for inst in reduce_only_instruments:
         inst_rows = diag[diag['instrument'] == inst].sort_values('date')
-
-        # Current forecast = last row's combined_forecast (instrument may have weight=0)
         if inst_rows.empty:
             if log:
                 log.debug(f"Shadow target: {inst} not in diagnostics")
@@ -161,17 +211,25 @@ def compute_shadow_targets(reduce_only_instruments, backtest_dir, prev_backtest_
 
         cf_val = inst_rows.iloc[-1].get('combined_forecast')
         current_forecast = float(cf_val) if cf_val is not None and not pd.isna(cf_val) else None
-
         if current_forecast is None or abs(current_forecast) < 0.1:
             if log:
                 log.debug(f"Shadow target: no current forecast for {inst}")
             continue
 
-        shadow = sizing_factor * current_forecast
+        vpa = get_vol_pct_ann(inst)
+        if vpa is None or vpa <= 0:
+            if log:
+                log.warning(f"Shadow target: could not compute vol for {inst} — skipping")
+            continue
+
+        shadow = implied_factor * (current_forecast / 10.0) * (vol_target / vpa)
         shadow_targets[inst] = shadow
         if log:
+            vol_ann_pct = vpa * 100
             log.info(
-                f"Shadow target for {inst}: {sizing_factor:.2f} × {current_forecast:.2f} = {shadow:.0f}"
+                f"Shadow target for {inst}: factor={implied_factor:.1f} × "
+                f"fc={current_forecast:.2f}/10 × target_vol/inst_vol "
+                f"({vol_target*100:.0f}%/{vol_ann_pct:.0f}%) = {shadow:.0f}"
             )
 
     return shadow_targets

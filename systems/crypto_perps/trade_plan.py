@@ -76,7 +76,8 @@ def load_backtest_positions(backtest_dir: Path, as_of_date: str) -> pd.Series:
         as_of_date: Date string in YYYY-MM-DD format
 
     Returns:
-        Series with instrument as index, target notional as values
+        Series with instrument as index, target position in BASE-ASSET TOKENS (not USD).
+        Caller must multiply by last_prices.json to convert to USD notional.
     """
     positions_path = backtest_dir / 'positions.csv'
     if not positions_path.exists():
@@ -409,13 +410,31 @@ def generate_trade_plan(
     diagnostics = load_backtest_diagnostics(backtest_dir, as_of_date)
     metadata = load_backtest_metadata(backtest_dir)
 
+    # 2a. Convert target positions from base-asset tokens → USD notional.
+    #
+    # pysystemtrade's get_notional_position() returns contracts in base-asset units
+    # (e.g., PENGU tokens, ADA tokens), NOT USD. The block_value formula uses
+    # value_of_block_price_move=1.0 (hard-coded for crypto perps), so the sizing
+    # formula produces: vol_scalar [contracts] = daily_cash_vol_target [USD] / ivm [USD/contract/day].
+    # positions.csv stores these token counts directly. We must multiply by last_prices.json
+    # to get true USD notionals before any comparison with actual USD positions.
+    last_prices_path = backtest_dir / 'last_prices.json'
+    if not last_prices_path.exists():
+        raise FileNotFoundError(
+            f"last_prices.json not found in {backtest_dir}. "
+            "Re-run backtest to generate it (required to convert token positions to USD)."
+        )
+    with open(last_prices_path) as f:
+        last_prices: Optional[Dict[str, float]] = json.load(f)
+    last_prices_series = pd.Series(last_prices).reindex(targets.index)
+    targets = (targets * last_prices_series).fillna(0.0)
+    logger.info(
+        f"Converted {(last_prices_series.notna()).sum()}/{len(targets)} target positions "
+        f"from tokens to USD using last_prices.json"
+    )
+
     # 3. Load actual positions (prices from last_prices.json if mark_price_usd not in CSV)
     logger.info("Loading actual positions...")
-    last_prices_path = backtest_dir / 'last_prices.json'
-    last_prices: Optional[Dict[str, float]] = None
-    if last_prices_path.exists():
-        with open(last_prices_path) as f:
-            last_prices = json.load(f)
     actuals = load_actual_positions(actual_positions_path, prices=last_prices)
 
     # Validate instruments
