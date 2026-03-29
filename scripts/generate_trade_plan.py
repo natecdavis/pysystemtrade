@@ -98,6 +98,7 @@ def apply_hard_exits_and_reduce_only(
     Modifies trade_plan in place:
     - Hard exits (target=0): delisted, API-stale, BANNED_FLATTEN
     - Reduce-only (no exposure increase): instruments exiting universe
+    - Reduce-only (zombie guard): instruments with non-zero target not in current snapshot
 
     Also recomputes delta_notional and delta_weight for modified rows.
 
@@ -187,9 +188,49 @@ def apply_hard_exits_and_reduce_only(
                     f"target {target:.0f} → {new_target:.0f}"
                 )
 
+    # --- Reduce-only for zombie instruments (non-zero target but never in snapshot) ---
+    # Catches instruments that the backtest carries as legacy positions from a prior
+    # high-ADV period, but have never appeared in any paper-trading universe snapshot.
+    # The exit-transition guard above misses these because they were never in prev_tradable.
+
+    if new_snapshot is not None:
+        new_tradable = set(new_snapshot.get('tradable_instruments', []))
+
+        for inst in trade_plan.index:
+            # Skip if already handled
+            current_reason = str(trade_plan.loc[inst, 'reason'])
+            if current_reason.startswith('hard_exit') or current_reason == 'reduce_only_exit':
+                continue
+
+            target = float(trade_plan.loc[inst, 'target_notional'])
+            if abs(target) < 0.01:
+                continue  # Nothing to restrict
+
+            if inst not in new_tradable:
+                current = float(trade_plan.loc[inst, 'current_notional'])
+                # Reduce-only: can close or hold, but cannot increase absolute exposure
+                if current == 0.0:
+                    new_target = 0.0
+                elif current > 0.0:
+                    new_target = max(min(target, current), 0.0)
+                else:
+                    new_target = min(max(target, current), 0.0)
+
+                if abs(new_target - target) > 1e-6:
+                    trade_plan.loc[inst, 'target_notional'] = new_target
+                    trade_plan.loc[inst, 'reason'] = 'reduce_only_not_in_universe'
+                    modified += 1
+                    log.warning(
+                        f"Reduce-only (zombie — not in universe): {inst} "
+                        f"target {target:.0f} → {new_target:.0f}"
+                    )
+
     # Recompute delta_notional and delta_weight for all modified rows
     hard_exit_mask = trade_plan['reason'].astype(str).str.startswith('hard_exit')
-    reduce_only_mask = trade_plan['reason'] == 'reduce_only_exit'
+    reduce_only_mask = (
+        (trade_plan['reason'] == 'reduce_only_exit')
+        | (trade_plan['reason'] == 'reduce_only_not_in_universe')
+    )
     changed_mask = hard_exit_mask | reduce_only_mask
 
     if changed_mask.any():
