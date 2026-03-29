@@ -17,6 +17,7 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
+import pandas as pd
 import yaml
 import json
 import logging
@@ -275,13 +276,24 @@ def apply_hard_exits_and_reduce_only(
                     f"(remove 'reduce_only' note to allow full close)"
                 )
 
-    # Recompute delta_notional and delta_weight for all modified rows
-    hard_exit_mask = trade_plan['reason'].astype(str).str.startswith('hard_exit')
+    # Tag all reduce_only rows with a warning so they're visually distinct
+    # in the trade plan CSV and filterable (e.g. held_reduce_only means
+    # "backtest wants to move this but reduce_only logic capped it").
     reduce_only_mask = (
         (trade_plan['reason'] == 'reduce_only_exit')
         | (trade_plan['reason'] == 'reduce_only_not_in_universe')
         | (trade_plan['reason'] == 'reduce_only_notes')
     )
+    if reduce_only_mask.any() and 'warnings' in trade_plan.columns:
+        for inst in trade_plan.index[reduce_only_mask]:
+            existing = str(trade_plan.loc[inst, 'warnings'])
+            if existing in ('', 'nan', 'None'):
+                trade_plan.loc[inst, 'warnings'] = 'held_reduce_only'
+            elif 'held_reduce_only' not in existing:
+                trade_plan.loc[inst, 'warnings'] = existing + ',held_reduce_only'
+
+    # Recompute delta_notional and delta_weight for all modified rows
+    hard_exit_mask = trade_plan['reason'].astype(str).str.startswith('hard_exit')
     changed_mask = hard_exit_mask | reduce_only_mask
 
     if changed_mask.any():
