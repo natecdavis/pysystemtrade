@@ -84,6 +84,109 @@ def load_delisted_from_registry_changelog(changelog_path):
     return changelog.get('delisted_instruments', [])
 
 
+def compute_shadow_targets(reduce_only_instruments, backtest_dir, prev_backtest_dir=None, log=None):
+    """
+    For reduce_only instruments where the current backtest target is 0 (config-driven),
+    compute a 'shadow target' that tracks the natural position via forecast ratio.
+
+    shadow_target = last_active_position × (current_forecast / last_active_forecast)
+
+    'last active' = last row with instrument_weight > 0 AND |combined_forecast| > 5.
+    If not found in current backtest diagnostics, tries prev_backtest_dir.
+    If current and last_active forecasts have opposite signs, shadow_target = 0 (allow exit).
+
+    Returns:
+        dict {instrument: shadow_target_notional}
+    """
+    shadow_targets = {}
+    if not reduce_only_instruments:
+        return shadow_targets
+
+    diag_path = Path(backtest_dir) / 'diagnostics.parquet'
+    if not diag_path.exists():
+        if log:
+            log.warning(f"No diagnostics.parquet in {backtest_dir} — shadow targets unavailable")
+        return shadow_targets
+
+    try:
+        diag = pd.read_parquet(diag_path)
+    except Exception as e:
+        if log:
+            log.warning(f"Could not load diagnostics for shadow targets: {e}")
+        return shadow_targets
+
+    prev_diag = None
+    if prev_backtest_dir:
+        prev_diag_path = Path(prev_backtest_dir) / 'diagnostics.parquet'
+        if prev_diag_path.exists():
+            try:
+                prev_diag = pd.read_parquet(prev_diag_path)
+            except Exception:
+                pass
+
+    for inst in reduce_only_instruments:
+        inst_rows = diag[diag['instrument'] == inst].sort_values('date')
+
+        # Current forecast = last row with any data
+        if inst_rows.empty:
+            current_forecast = None
+        else:
+            cf_val = inst_rows.iloc[-1].get('combined_forecast')
+            current_forecast = float(cf_val) if cf_val is not None and not pd.isna(cf_val) else None
+
+        # If no current forecast in this backtest, skip
+        if current_forecast is None or abs(current_forecast) < 0.1:
+            if log:
+                log.debug(f"Shadow target: no current forecast for {inst}")
+            continue
+
+        # Last active = last row with weight > 0 AND |forecast| > 5
+        def find_last_active(rows):
+            if rows.empty:
+                return None
+            mask = (rows['instrument_weight'] > 0) & (rows['combined_forecast'].abs() > 5)
+            active = rows[mask]
+            return active.iloc[-1] if not active.empty else None
+
+        last_active = find_last_active(inst_rows)
+
+        # If not found in current backtest, try prev backtest
+        if last_active is None and prev_diag is not None:
+            prev_rows = prev_diag[prev_diag['instrument'] == inst].sort_values('date')
+            last_active = find_last_active(prev_rows)
+
+        if last_active is None:
+            if log:
+                log.debug(f"Shadow target: no active rows for {inst}")
+            continue
+
+        last_pos = float(last_active['position'])
+        last_forecast = float(last_active['combined_forecast'])
+
+        if abs(last_forecast) < 0.1:
+            continue
+
+        # Sign flip → forecasts reversed → allow full exit
+        if (current_forecast > 0) != (last_forecast > 0):
+            shadow_targets[inst] = 0.0
+            if log:
+                log.info(
+                    f"Shadow target for {inst}: forecast sign flipped "
+                    f"({last_forecast:.2f} → {current_forecast:.2f}) — shadow=0 (allow exit)"
+                )
+            continue
+
+        shadow = last_pos * (current_forecast / last_forecast)
+        shadow_targets[inst] = shadow
+        if log:
+            log.info(
+                f"Shadow target for {inst}: last_pos={last_pos:.0f} × "
+                f"({current_forecast:.2f}/{last_forecast:.2f}) = {shadow:.0f}"
+            )
+
+    return shadow_targets
+
+
 def apply_hard_exits_and_reduce_only(
     trade_plan,
     new_snapshot,
@@ -93,6 +196,7 @@ def apply_hard_exits_and_reduce_only(
     banned_instruments,
     log,
     reduce_only_instruments=None,
+    shadow_targets=None,
 ):
     """
     Apply hard exits and reduce-only constraints to trade plan.
@@ -101,9 +205,10 @@ def apply_hard_exits_and_reduce_only(
     - Hard exits (target=0): delisted, API-stale, BANNED_FLATTEN
     - Reduce-only (no exposure increase): instruments exiting universe
     - Reduce-only (zombie guard): instruments with non-zero target not in current snapshot
-    - Reduce-only (notes): instruments explicitly marked 'reduce_only' in current_positions.csv
-      These are frozen: no increases, no abrupt flatten. Position decays only via natural
-      step-by-step backtest reductions. Remove the note to allow full closure.
+    - Reduce-only (notes): instruments explicitly marked 'reduce_only' in current_positions.csv.
+      For these, if the backtest target is 0 (config-driven) and a shadow_target is provided,
+      uses shadow_target as the effective target (natural position decay via forecast ratio).
+      Without a shadow_target, the position is frozen at current until the note is removed.
 
     Also recomputes delta_notional and delta_weight for modified rows.
 
@@ -116,6 +221,7 @@ def apply_hard_exits_and_reduce_only(
         banned_instruments: set of banned instrument codes
         log: Logger
         reduce_only_instruments: set of instrument codes marked 'reduce_only' in positions notes
+        shadow_targets: dict {instrument: shadow_target_notional} from compute_shadow_targets()
 
     Returns:
         Number of instruments modified
@@ -232,14 +338,17 @@ def apply_hard_exits_and_reduce_only(
                     )
 
     # --- Notes-based reduce-only (explicit user override) ---
-    # Instruments marked 'reduce_only' in current_positions.csv notes are frozen:
+    # Instruments marked 'reduce_only' in current_positions.csv notes:
     # - No increases beyond current position
     # - No abrupt flatten (even if backtest says target=0 due to config change)
-    # - Step-by-step reductions from the backtest ARE allowed
+    # - If shadow_targets provides a shadow for this instrument, use it as the effective
+    #   target when backtest says 0 — this allows natural decay as forecast weakens.
+    #   Shadow=0 (forecast sign flip) is treated as a principled exit signal.
+    # - Without shadow, position is frozen until the note is removed.
     # Hard exits (delisted, banned, stale) still override this.
-    # To allow full closure: remove 'reduce_only' from the notes column.
 
     if reduce_only_instruments:
+        _shadow = shadow_targets or {}
         for inst in reduce_only_instruments:
             if inst not in trade_plan.index:
                 continue
@@ -253,27 +362,39 @@ def apply_hard_exits_and_reduce_only(
             if abs(current) < 0.01:
                 continue  # Position already closed, nothing to protect
 
-            # Cap in the direction of the existing position
-            if current > 0.0:
-                # Long: allow reduction toward zero but not increase or flip
-                new_target = max(min(target, current), 0.0)
+            # Determine effective target:
+            # - If backtest says 0 (config-driven) and shadow is available, use shadow
+            # - Otherwise use backtest target as-is
+            shadow = _shadow.get(inst)
+            if shadow is not None and abs(target) < 0.01:
+                effective_target = shadow
             else:
-                # Short: allow reduction toward zero but not increase or flip
-                new_target = min(max(target, current), 0.0)
+                effective_target = target
 
-            # Suppress abrupt flatten: if new_target would go to 0 from a
-            # meaningful position, hold at current instead. Config changes can
-            # drive target=0 without any signal — this prevents acting on them.
+            # Cap in the direction of the existing position (no increases, no flips)
+            if current > 0.0:
+                new_target = max(min(effective_target, current), 0.0)
+            else:
+                new_target = min(max(effective_target, current), 0.0)
+
+            # Suppress abrupt flatten only when there's no principled basis:
+            # shadow=None → no forecast info, hold at current
+            # shadow≠0 but capped to 0 → shouldn't happen (shadow non-zero lands non-zero)
+            # shadow=0 → forecast sign flipped, allow exit (don't suppress)
             if abs(new_target) < 0.01 and abs(current) > 0.01:
-                new_target = current
+                if shadow is None or abs(shadow) > 0.01:
+                    # No principled exit signal — hold at current
+                    new_target = current
+                # else: shadow=0 (sign flip) — allow exit, don't suppress
 
             if abs(new_target - target) > 1e-6:
                 trade_plan.loc[inst, 'target_notional'] = new_target
                 trade_plan.loc[inst, 'reason'] = 'reduce_only_notes'
                 modified += 1
+                shadow_note = f" [shadow={shadow:.0f}]" if shadow is not None else ""
                 log.info(
-                    f"Notes reduce-only: {inst} target {target:.0f} → {new_target:.0f} "
-                    f"(remove 'reduce_only' note to allow full close)"
+                    f"Notes reduce-only: {inst} target {target:.0f} → {new_target:.0f}"
+                    f"{shadow_note} (remove 'reduce_only' note to allow full close)"
                 )
 
     # Tag all reduce_only rows with a warning so they're visually distinct
@@ -510,6 +631,20 @@ Notes:
         except Exception as e:
             logger.warning(f"Could not load notes from positions file: {e}")
 
+        # Compute shadow targets for reduce_only instruments whose backtest target is 0
+        # (driven by config changes rather than forecast decay). Shadow target = natural
+        # position the instrument would have if still sized by the forecast ratio.
+        prev_backtest_dir = None
+        if hasattr(args, 'prev_universe_snapshot') and args.prev_universe_snapshot:
+            prev_backtest_dir = Path(args.prev_universe_snapshot).parent
+
+        shadow_targets = compute_shadow_targets(
+            reduce_only_instruments=reduce_only_instruments,
+            backtest_dir=args.backtest_dir,
+            prev_backtest_dir=prev_backtest_dir,
+            log=logger,
+        )
+
         n_modified = apply_hard_exits_and_reduce_only(
             trade_plan=trade_plan,
             new_snapshot=new_snapshot,
@@ -519,6 +654,7 @@ Notes:
             banned_instruments=banned_instruments,
             log=logger,
             reduce_only_instruments=reduce_only_instruments,
+            shadow_targets=shadow_targets,
         )
         if n_modified > 0:
             logger.info(
