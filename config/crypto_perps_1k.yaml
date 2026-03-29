@@ -64,7 +64,7 @@ system:
   allow_jagged: true
 
 percentage_vol_target: 25.0
-notional_trading_capital: 2000.0  # 2× phantom leverage (actual equity $1K): targets ~19% realized vol, Sharpe 1.43, Calmar 1.56
+notional_trading_capital: 2500.0  # 2.5× phantom leverage (actual equity $1K): targets ~24% realized vol, Sharpe 1.36, Calmar 1.35
 min_notional_position: 1.0
 
 # Dynamic universe systems need span=1 here. The pysystemtrade default (125) applies
