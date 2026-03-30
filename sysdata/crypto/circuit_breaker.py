@@ -14,11 +14,12 @@ from pathlib import Path
 
 import pandas as pd
 
-DEFAULTS = dict(max_daily_loss_pct=0.12, max_drawdown_pct=0.28)
-# Thresholds updated 2026-03-29: notional_trading_capital raised to $2,500 (2.5× phantom leverage
-# on $1K actual equity), expected MaxDD ~25% of actual equity.  Limits give ~3pp headroom:
-#   max_daily_loss_pct: 0.08 → 0.12
-#   max_drawdown_pct:   0.15 → 0.28
+DEFAULTS = dict(max_daily_loss_pct=0.10, max_drawdown_pct=0.22)
+# Thresholds updated 2026-03-30: notional_trading_capital set to $2,000 (2× phantom leverage
+# on $1K actual equity) with min_notional_position=$10 (HL constraint).
+# Expected MaxDD ~18% of actual equity.  Limits give ~4pp headroom:
+#   max_daily_loss_pct: 0.12 → 0.10
+#   max_drawdown_pct:   0.28 → 0.22
 
 
 class CircuitBreaker:

@@ -59,13 +59,27 @@ class CryptoPortfolios(Portfolios):
         prices = self.rawdata.get_daily_prices(instrument_code)
         prices = prices.reindex(position.index, method='ffill')
         notional = position.abs() * prices
-        filtered = position.where(notional >= min_notional, 0.0)
+
+        # HL policy: reduce-only orders are exempt from the minimum order size.
+        # A position change is a reduce when it moves toward zero:
+        #   same sign as previous (or one is zero) AND magnitude is decreasing.
+        # Uses unfiltered shift(1) as an approximation — a fully recursive filter
+        # is impractical in a single vectorised pass. Rare edge case (zeroed position
+        # immediately re-approached from below) is handled conservatively (stays zero).
+        prev_position = position.shift(1).fillna(0.0)
+        is_reducing = (
+            (position * prev_position >= 0)            # same direction, or one is zero
+            & (position.abs() <= prev_position.abs())  # magnitude decreasing or equal
+        )
+
+        should_zero = (notional < min_notional) & ~is_reducing
+        filtered = position.where(~should_zero, 0.0)
 
         n_zeroed = int((position.abs() > 0).sum() - (filtered.abs() > 0).sum())
         if n_zeroed > 0:
             self.log.debug(
                 f"{instrument_code}: {n_zeroed} position-days zeroed by "
-                f"${min_notional:.0f} min-notional filter "
+                f"${min_notional:.0f} min-notional filter (reduce-only exempt) "
                 f"({n_zeroed / max(len(position), 1):.1%} of history)",
                 instrument_code=instrument_code,
             )

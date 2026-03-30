@@ -1,24 +1,24 @@
 # Current Work Context
 
-## Current Baseline (2026-03-29, post-phantom-leverage-adoption)
+## Current Baseline (2026-03-30, min_notional=$10 + $2K notional)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K actual equity)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (300 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$1K / HL filter (2026-03-29, 2.5× phantom leverage, notional=$2.5K):**
-- Sharpe ~1.36, Calmar ~1.35, CAGR ~9.7% (re: $2.5K notional), MaxDD ~-10.0% (re: $2.5K notional)
-- **Live (re: $1K actual equity):** CAGR ~33.8%, MaxDD ~-25.1%, realized vol ~24.2%
-- Prior baseline (notional=$1K): Sharpe 1.40, Calmar 1.50, CAGR 12.8%, MaxDD -8.5%
+**$1K / HL filter (2026-03-30, 2× phantom leverage, notional=$2K, min_notional=$10):**
+- Sharpe ~1.35, Calmar ~1.45, CAGR ~12.7% (re: $2K notional), MaxDD ~-8.7% (re: $2K notional)
+- **Live (re: $1K actual equity):** CAGR ~26.1%, MaxDD ~-18.0%, realized vol ~18.8%
+- Prior baseline (notional=$2.5K, min_notional=$1): Sharpe 1.36, Calmar 1.35, live_MaxDD -25.1%
 
 **$10K full_rules (2026-03-28, skew_rv w=0.08, no phantom leverage):**
 - Sharpe ~1.37, Calmar ~1.95, CAGR ~14.84%, MaxDD ~-7.63%
 
 **Key config parameters (1k config, post-audit):**
 ```yaml
-notional_trading_capital: 2500.0  # 2.5× phantom leverage on $1K actual equity (adopted 2026-03-29)
-min_notional_position: 1.0    # Hyperliquid min ~$1 (vs Binance $25)
+notional_trading_capital: 2000.0  # 2× phantom leverage on $1K actual equity (adopted 2026-03-30)
+min_notional_position: 10.0   # HL minimum order size; reduce-only exempt (adopted 2026-03-30)
 lot_size_notional_override: 1.0  # USD-denominated lots for Hyperliquid
 top_k: 30
 entry_buffer: 3               # E3: was 5
@@ -33,9 +33,9 @@ taker_fee_frac: 0.00045       # corrected 2026-03-28: HL taker=0.045% (was 0.000
 vol_days: 63                  # D4: was 35
 ```
 
-**Circuit breaker (updated 2026-03-29 for 2× leverage):**
-- `max_daily_loss_pct`: 8% → 12%
-- `max_drawdown_pct`: 15% → 28%
+**Circuit breaker (updated 2026-03-30 for 2× leverage + $10 min):**
+- `max_daily_loss_pct`: 10% (~4pp above expected daily losses)
+- `max_drawdown_pct`: 22% (~4pp above expected MaxDD of 18%)
 
 **Forecast weights (as of 2026-03-26):**
 - gated_carry_10/30: 0.07 | gated_carry_60: 0.10
@@ -51,8 +51,9 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-03-30 | HL $10 min order + re-sweep | ADOPT min_notional=10 (reduce-only exempt). Re-sweep → adopt $2K (2×): Sharpe 1.35, Calmar 1.45, live_vol 19%, live_MaxDD 18%. CB updated: daily 10%, MaxDD 22%. |
 | 2026-03-29 | Units bug fix: positions.csv stores tokens not USD | CRITICAL BUG FIXED. trade_plan.py now multiplies backtest targets by last_prices.json. Live positions are ~10–157× too large; trade plan generated to reduce. |
-| 2026-03-29 | Phantom leverage sweep (notional_capital $1K→$6K) | ADOPT $2.5K (2.5×). Targets 25% realized vol. Live vol ~24%, live CAGR ~34%, live MaxDD ~25%. Sharpe ~1.36 (scale-invariant). CB updated: daily 12%, MaxDD 28%. |
+| 2026-03-29 | Phantom leverage sweep (notional_capital $1K→$6K) | ADOPT $2.5K (2.5×). Targets 25% realized vol. Live vol ~24%, live CAGR ~34%, live MaxDD ~25%. Sharpe ~1.36 (scale-invariant). CB updated: daily 12%, MaxDD 28%. Superseded 2026-03-30. |
 | 2026-03-28 | skew_rv re-sweep 0.03→0.08 | ADOPT: full_rules ΔSharpe +3.7%, ΔCalmar +6.2%. 1k ΔSharpe +4.9%, ΔCalmar +9.2%. Calmar peaks at w=0.08, narrows after. |
 | 2026-03-28 | Fee correction: HL taker 3.5→4.5bps, dataset patched | full_rules: Sharpe 1.3239, Calmar 1.8321. 1k: Sharpe 1.3315, Calmar 1.3779. Small but real cost increase. |
 | 2026-03-27 | demeaned_carry (idiosyncratic funding, ungated) | ADOPT: w=0.05/rule. full_rules ΔSharpe +3.4%, ΔCalmar +0.18. 1k ΔSharpe +2.6% (Calmar slight divergence). |

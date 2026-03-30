@@ -278,27 +278,26 @@ def estimate_trade_costs(
 
 def check_min_position_sizes(
     deltas: pd.DataFrame,
-    current_equity: float,
-    min_position_frac: float
+    min_order_notional: float,
 ) -> dict:
     """
-    Identify trades below minimum position size threshold.
+    Flag orders below HL's minimum order notional.
+    Reduce-only orders (target moves toward zero, same sign) are exempt.
 
     Returns:
         dict with keys: threshold_usd, below_threshold (list), status
     """
-    threshold_usd = current_equity * min_position_frac
-
-    # Find trades below threshold
-    below = deltas[deltas['delta_notional'].abs() < threshold_usd]
-    below_instruments = below.index.tolist()
-
-    status = 'pass' if len(below_instruments) == 0 else 'warn'
-
+    is_reducing = (
+        (deltas['target_notional'] * deltas['current_notional'] >= 0)
+        & (deltas['target_notional'].abs() <= deltas['current_notional'].abs())
+    )
+    below = deltas[
+        (deltas['delta_notional'].abs() < min_order_notional) & ~is_reducing
+    ]
     return {
-        'threshold_usd': round(threshold_usd, 2),
-        'below_threshold': below_instruments,
-        'status': status
+        'threshold_usd': round(min_order_notional, 2),
+        'below_threshold': below.index.tolist(),
+        'status': 'pass' if below.empty else 'warn',
     }
 
 
@@ -566,8 +565,8 @@ def generate_trade_plan(
     logger.info("Running sanity checks...")
 
     # Min position size check
-    min_position_frac = config.get('min_position_frac', 0.03)
-    min_size_check = check_min_position_sizes(deltas, current_equity, min_position_frac)
+    min_order_notional = config.get_element_or_default("min_notional_position", 10.0)
+    min_size_check = check_min_position_sizes(deltas, min_order_notional=min_order_notional)
 
     # Banned instruments
     banned_instruments = deltas[deltas['state'] == 'BANNED_FLATTEN'].index.tolist()
