@@ -281,18 +281,13 @@ def check_min_position_sizes(
     min_order_notional: float,
 ) -> dict:
     """
-    Flag orders below HL's minimum order notional.
-    Reduce-only orders (target moves toward zero, same sign) are exempt.
+    Flag orders below HL's minimum order notional. Applies to all orders including reductions.
 
     Returns:
         dict with keys: threshold_usd, below_threshold (list), status
     """
-    is_reducing = (
-        (deltas['target_notional'] * deltas['current_notional'] >= 0)
-        & (deltas['target_notional'].abs() <= deltas['current_notional'].abs())
-    )
     below = deltas[
-        (deltas['delta_notional'].abs() < min_order_notional) & ~is_reducing
+        deltas['delta_notional'].abs() < min_order_notional
     ]
     return {
         'threshold_usd': round(min_order_notional, 2),
