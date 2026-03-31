@@ -508,34 +508,61 @@ def generate_trade_plan(
     logger.info("Calculating position deltas...")
     deltas = calculate_position_deltas(targets, actuals, current_equity)
 
-    # 4.5. Identify buffer-suppressed trades (match run_dynamic_universe_backtest.py logic)
+    # 4.5. Apply Carver forecast-method live buffer check.
     #
-    # The backtest uses apply_position_buffering():
-    #   buffer_threshold = buffer_frac × mean(|target_notional|) per instrument
-    #   No trade if |delta_notional| < buffer_threshold
+    # Load today's buffer bounds (top_pos / bot_pos in token units) saved by the
+    # backtest, convert to USD via last_prices.json, then check each instrument:
     #
-    # For the live plan, we use the target notional as a proxy for avg_abs_position
-    # (we don't have the full history, but the target is the best single-day estimate).
-    buffer_frac = config.get('execution', {}).get('buffer_frac', 0.0)
+    #   current in [bot, top]  → in buffer zone: suppress trade (set delta = 0)
+    #   current > top          → breach high: trade to top edge only (not optimal)
+    #   current < bot          → breach low:  trade to bot edge only (not optimal)
+    #
+    # Trading to the edge rather than optimal minimises live turnover, matching
+    # the backtest state machine. Suppressed instruments get 'buffer_suppressed'
+    # in warnings so parse_trade_plan can exclude them from the notification count
+    # (their delta will also be ~0, so the delta<1e-6 filter catches them too).
     buffer_suppressed_instruments: set = set()
-    if buffer_frac > 0:
-        logger.info(f"Applying trading buffer (buffer_frac={buffer_frac})...")
+    buffer_bounds_path = backtest_dir / 'buffer_bounds_last.csv'
+    if buffer_bounds_path.exists():
+        logger.info("Applying Carver forecast-method live buffer check...")
+        bb = pd.read_csv(buffer_bounds_path, index_col=0)
+        prices_s = pd.Series(last_prices)
+        bb['top_usd'] = bb['top_pos'] * prices_s.reindex(bb.index)
+        bb['bot_usd'] = bb['bot_pos'] * prices_s.reindex(bb.index)
+
         for inst in deltas.index:
-            delta_notional = deltas.loc[inst, 'delta_notional']
-            if abs(delta_notional) < 1e-10:
+            if inst not in bb.index:
                 continue
-            target_notional = deltas.loc[inst, 'target_notional']
-            current_notional = deltas.loc[inst, 'current_notional']
-            # Use average of target and current as proxy for avg_abs_position
-            avg_abs_notional = abs((target_notional + current_notional) / 2.0)
-            if avg_abs_notional < 1e-10:
+            if abs(deltas.loc[inst, 'delta_notional']) < 1e-6:
+                continue  # Already no trade needed; buffer check irrelevant
+            current = deltas.loc[inst, 'current_notional']
+            top = bb.loc[inst, 'top_usd']
+            bot = bb.loc[inst, 'bot_usd']
+            if pd.isna(top) or pd.isna(bot):
                 continue
-            buffer_threshold = buffer_frac * avg_abs_notional
-            if abs(delta_notional) < buffer_threshold:
+
+            if bot <= current <= top:
+                # In buffer zone — no trade needed
+                deltas.loc[inst, 'target_notional'] = current
+                deltas.loc[inst, 'delta_notional'] = 0.0
                 buffer_suppressed_instruments.add(inst)
+            elif current > top:
+                # Trade to top edge only
+                deltas.loc[inst, 'target_notional'] = top
+                deltas.loc[inst, 'delta_notional'] = top - current
+            else:  # current < bot
+                # Trade to bottom edge only
+                deltas.loc[inst, 'target_notional'] = bot
+                deltas.loc[inst, 'delta_notional'] = bot - current
+
         logger.info(
-            f"  Buffer suppressed {len(buffer_suppressed_instruments)} trades: "
-            f"{sorted(buffer_suppressed_instruments)}"
+            f"  Buffer suppressed {len(buffer_suppressed_instruments)} trades "
+            f"(in-zone, no action needed): {sorted(buffer_suppressed_instruments)}"
+        )
+    else:
+        logger.warning(
+            "buffer_bounds_last.csv not found — live buffer check skipped. "
+            "Re-run backtest to generate it."
         )
 
     # 5. Estimate costs

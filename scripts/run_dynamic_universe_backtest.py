@@ -66,15 +66,18 @@ def apply_forecast_buffering(
     This is dynamic (~±$3-8 per instrument on a $2.5K/30-instrument account) vs.
     the prior static method (~±$0.1-2, diluted by out-of-universe zeros).
 
-    State machine (trade_to_edge=False — jump to optimal on breach):
-      last_pos > top_pos  →  current_pos = optimal
-      last_pos < bot_pos  →  current_pos = optimal
+    State machine (trade_to_edge=True — trade only to buffer edge on breach):
+      last_pos > top_pos  →  current_pos = top_pos  (move just inside top edge)
+      last_pos < bot_pos  →  current_pos = bot_pos  (move just inside bot edge)
       else                →  hold last_pos
+
+    Trading to the edge (not all the way to optimal) minimises turnover: we only
+    move enough to re-enter the buffer zone, never overshooting to optimal.
 
     Entry/exit with instrument_weight_ewma_span=1: weights jump 0↔1/N instantly.
     When an instrument exits, the buffer collapses to [0,0] and the state
     machine immediately exits the position. When it enters, the first-day
-    position (0) falls outside the new buffer zone and jumps to optimal.
+    position (0) falls outside the new buffer zone and trades to bot_pos ≈ optimal.
     Both are correct — entry/exit transitions are intentional, not noise.
     """
     buffered = {}
@@ -111,8 +114,10 @@ def apply_forecast_buffering(
                 result.append(current_pos)
                 continue
 
-            if current_pos > t or current_pos < b:
-                current_pos = optimal  # breach → jump to optimal
+            if current_pos > t:
+                current_pos = t    # breach high → trade to top edge
+            elif current_pos < b:
+                current_pos = b    # breach low  → trade to bot edge
             result.append(current_pos)
 
         buffered[instrument] = pd.Series(result, index=opt.index, name=instrument)
@@ -709,6 +714,29 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     positions_path = output_path / 'positions.csv'
     portfolio_positions.to_csv(positions_path)
     logger.info(f"  ✓ {positions_path}")
+
+    # 1b. buffer_bounds_last.csv — last-day top_pos / bot_pos per instrument.
+    # Used by trade_plan.py for the live Carver buffer check (trade to edge, not optimal).
+    # Units: base-asset tokens (same as positions.csv). Trade plan multiplies by
+    # last_prices.json to convert to USD, consistent with target position conversion.
+    # @output() caching makes these re-calls essentially free.
+    last_date = optimal_positions.index[-1]
+    bounds_records = []
+    for instrument in optimal_positions.columns:
+        try:
+            pos_buffers = system.portfolio.get_actual_buffers_for_position(instrument)
+            if last_date in pos_buffers.index:
+                bounds_records.append({
+                    'instrument': instrument,
+                    'top_pos': pos_buffers.loc[last_date, 'top_pos'],
+                    'bot_pos': pos_buffers.loc[last_date, 'bot_pos'],
+                })
+        except Exception as e:
+            logger.debug(f"No buffer bounds for {instrument}: {e}")
+    if bounds_records:
+        bounds_path = output_path / 'buffer_bounds_last.csv'
+        pd.DataFrame(bounds_records).set_index('instrument').to_csv(bounds_path)
+        logger.info(f"  ✓ {bounds_path} ({len(bounds_records)} instruments)")
 
     # 2. diagnostics.parquet (full system state)
     diagnostics_path = output_path / 'diagnostics.parquet'
