@@ -63,7 +63,7 @@ def apply_forecast_buffering(
 
     Buffer bounds come from system.portfolio.get_actual_buffers_for_position(),
     which computes: buffer_width = vol_scalar × instrument_weight × IDM × buffer_size.
-    This is dynamic (~±$3-8 per instrument on a $2.5K/30-instrument account) vs.
+    This is dynamic (~±$0.3-2 USD per instrument on a $2.5K/30-instrument account) vs.
     the prior static method (~±$0.1-2, diluted by out-of-universe zeros).
 
     State machine (trade_to_edge=False — jump to optimal on breach):
@@ -83,6 +83,7 @@ def apply_forecast_buffering(
     Both are correct — entry/exit transitions are intentional, not noise.
     """
     buffered = {}
+    min_notional = system.config.get_element_or_default("min_notional_position", 10.0)
 
     for instrument in optimal_positions.columns:
         opt = optimal_positions[instrument]
@@ -99,6 +100,12 @@ def apply_forecast_buffering(
 
         top_pos = pos_buffers['top_pos'].reindex(opt.index).ffill()
         bot_pos = pos_buffers['bot_pos'].reindex(opt.index).ffill()
+
+        try:
+            prices = system.rawdata.get_daily_prices(instrument).reindex(opt.index, method='ffill')
+            price_values = prices.values
+        except Exception:
+            price_values = np.full(len(opt), np.nan)
 
         values = opt.values
         top = top_pos.values
@@ -117,6 +124,13 @@ def apply_forecast_buffering(
                 continue
 
             if current_pos > t or current_pos < b:
+                if abs(optimal) > 1e-6:  # not a full close — check $10 minimum
+                    price = float(price_values[i])
+                    if not np.isnan(price) and price > 0:
+                        delta_notional = abs(optimal - current_pos) * price
+                        if delta_notional < min_notional:
+                            result.append(current_pos)  # sub-$10 trade — hold
+                            continue
                 current_pos = optimal  # breach → jump to optimal
             result.append(current_pos)
 
