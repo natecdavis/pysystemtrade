@@ -107,7 +107,9 @@ def parse_trade_plan(output_dir: Path) -> tuple[int, float]:
         return 0, 0.0
     try:
         df = pd.read_csv(candidates[-1])
-        # Filter to actionable trades only (above min size and not buffer-suppressed)
+        # Filter to actionable trades only: non-zero delta, above min size, not buffer-suppressed
+        if 'delta_notional' in df.columns:
+            df = df[df['delta_notional'].abs() > 1e-6]
         if 'warnings' in df.columns:
             df = df[
                 ~df['warnings'].fillna('').str.contains('below_min_trade_size') &
