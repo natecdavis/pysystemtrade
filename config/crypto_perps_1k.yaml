@@ -1161,8 +1161,11 @@ constraints:
 execution:
   buffer_frac: 0.1
 
-# Top-level alias so run_dynamic_universe_backtest.py can find it via hasattr(config, 'buffer_frac')
+# Top-level alias (kept for sweep_buffer_size.py hasattr check)
 buffer_frac: 0.1
+# Carver forecast-method buffer (pysystemtrade native, made explicit)
+buffer_method: forecast
+buffer_size: 0.1
 
 costs:
   spread_estimate: 0.0005

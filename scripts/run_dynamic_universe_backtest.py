@@ -54,64 +54,68 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def apply_position_buffering(
+def apply_forecast_buffering(
+    system,
     optimal_positions: pd.DataFrame,
-    buffer_size: float,
 ) -> pd.DataFrame:
     """
-    Apply position inertia (buffering) to optimal positions.
+    Apply Carver's forecast-method position buffer to optimal positions.
 
-    Positions are only updated when the optimal position moves outside
-    a buffer zone of ±(buffer_size × avg_position). This simulates
-    realistic trading where small position changes are ignored to
-    reduce transaction costs.
+    Buffer bounds come from system.portfolio.get_actual_buffers_for_position(),
+    which computes: buffer_width = vol_scalar × instrument_weight × IDM × buffer_size.
+    This is dynamic (~±$3-8 per instrument on a $2.5K/30-instrument account) vs.
+    the prior static method (~±$0.1-2, diluted by out-of-universe zeros).
 
-    Args:
-        optimal_positions: dates × instruments DataFrame of optimal positions
-        buffer_size: buffer threshold as fraction of average position
-                     (e.g. 0.10 = ±10% buffer zone)
+    State machine (trade_to_edge=False — jump to optimal on breach):
+      last_pos > top_pos  →  current_pos = optimal
+      last_pos < bot_pos  →  current_pos = optimal
+      else                →  hold last_pos
 
-    Returns:
-        buffered_positions: dates × instruments DataFrame with buffering applied
+    Entry/exit with instrument_weight_ewma_span=1: weights jump 0↔1/N instantly.
+    When an instrument exits, the buffer collapses to [0,0] and the state
+    machine immediately exits the position. When it enters, the first-day
+    position (0) falls outside the new buffer zone and jumps to optimal.
+    Both are correct — entry/exit transitions are intentional, not noise.
     """
-    if buffer_size == 0:
-        # No buffering, return optimal positions
-        return optimal_positions.copy()
-
     buffered = {}
 
     for instrument in optimal_positions.columns:
-        opt = optimal_positions[instrument].dropna()
-        if len(opt) == 0:
+        opt = optimal_positions[instrument]
+
+        try:
+            pos_buffers = system.portfolio.get_actual_buffers_for_position(instrument)
+        except Exception as e:
+            logger.warning(
+                f"Could not get buffer bounds for {instrument}, "
+                f"passing through unmodified: {e}"
+            )
             buffered[instrument] = opt
             continue
 
-        # Calculate buffer threshold for this instrument
-        # threshold = buffer_size × mean(abs(position))
-        avg_abs_position = abs(opt).mean()
-        buffer_threshold = buffer_size * avg_abs_position
+        top_pos = pos_buffers['top_pos'].reindex(opt.index).ffill()
+        bot_pos = pos_buffers['bot_pos'].reindex(opt.index).ffill()
 
-        # Apply buffering logic
-        buffered_series = [opt.iloc[0]]  # Start with first optimal position
-        current_pos = opt.iloc[0]
+        values = opt.values
+        top = top_pos.values
+        bot = bot_pos.values
 
-        for i in range(1, len(opt)):
-            optimal = opt.iloc[i]
+        current_pos = float(values[0]) if not np.isnan(values[0]) else 0.0
+        result = [current_pos]
 
-            # Check if optimal position is outside buffer zone
-            delta = abs(optimal - current_pos)
-            if delta > buffer_threshold:
-                # Breach buffer — update to optimal
-                current_pos = optimal
-            # else: Within buffer — hold current position
+        for i in range(1, len(values)):
+            optimal = float(values[i])
+            t = float(top[i])
+            b = float(bot[i])
 
-            buffered_series.append(current_pos)
+            if np.isnan(t) or np.isnan(b) or np.isnan(optimal):
+                result.append(current_pos)
+                continue
 
-        buffered[instrument] = pd.Series(
-            buffered_series,
-            index=opt.index,
-            name=instrument
-        )
+            if current_pos > t or current_pos < b:
+                current_pos = optimal  # breach → jump to optimal
+            result.append(current_pos)
+
+        buffered[instrument] = pd.Series(result, index=opt.index, name=instrument)
 
     return pd.DataFrame(buffered)
 
@@ -670,21 +674,14 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
 
     optimal_positions = pd.DataFrame(position_dict)
 
-    # Apply position buffering (inertia threshold)
-    # Positions only update when optimal moves outside buffer zone
-    # Check for both buffer_size (from sweep script) and buffer_frac (from YAML)
-    if hasattr(config, 'buffer_size'):
-        buffer_size = config.buffer_size
-    elif hasattr(config, 'buffer_frac'):
-        buffer_size = config.buffer_frac
-    else:
-        buffer_size = 0.0
+    # Apply Carver forecast-method buffering.
+    # buffer_width = vol_scalar × instrument_weight × IDM × buffer_size
+    # buffer_size is read from config by pysystemtrade (default 0.10).
+    logger.info("  Applying forecast-method buffering...")
 
-    logger.info(f"  Applying buffering (buffer_size={buffer_size:.2f})...")
-
-    portfolio_positions = apply_position_buffering(
+    portfolio_positions = apply_forecast_buffering(
+        system=system,
         optimal_positions=optimal_positions,
-        buffer_size=buffer_size,
     )
 
     logger.info(f"  Backtest completed:")
