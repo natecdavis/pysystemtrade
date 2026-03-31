@@ -1031,7 +1031,7 @@ xs_val_lookback: 30
 # Analysis: out/oi_trend_aware/ACUTE_CRASH_FINDINGS.md
 # ============================================================================
 
-use_oi_overlay: true  # ENABLED: Standard overlay (ADOPTED 2026-02-21)
+use_oi_overlay: true  # RE-CONFIRMED 2026-03-31: disabling gives -3.3% Sharpe/-2.3% Calmar vs current system. Prior rejection (2026-03-26) was pre-demeaned_carry/skew_rv changes.
 
 # OI overlay parameters (only used when use_oi_overlay: true)
 oi_overlay_params:
