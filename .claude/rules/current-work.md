@@ -1,15 +1,16 @@
 # Current Work Context
 
-## Current Baseline (2026-03-30, min_notional=$10 + $2.5K notional)
+## Current Baseline (2026-03-31, $10 min trade size enforced in backtest)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K actual equity)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (300 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$1K / HL filter (2026-03-30, 2.5× phantom leverage, notional=$2.5K, min_notional=$10):**
-- Sharpe ~1.29, Calmar ~1.20, CAGR ~12.65% (re: $2.5K notional), MaxDD ~-10.5% (re: $2.5K notional)
-- **Live (re: $1K actual equity):** CAGR ~31.6%, MaxDD ~-26.4%, realized vol ~23.9%
+**$1K / HL filter (2026-03-31, 2.5× phantom leverage, notional=$2.5K, min_notional=$10, $10 min trade in backtest):**
+- Sharpe ~1.242, Calmar ~1.200, CAGR ~11.60% (re: $2.5K notional), MaxDD ~-9.67% (re: $2.5K notional)
+- **Live (re: $1K actual equity):** CAGR ~29.0%, MaxDD ~-24.2%, realized vol ~23.9%
+- Prior baseline (2026-03-30, before backtest min-trade fix): Sharpe ~1.29, Calmar ~1.20, CAGR ~12.65%, MaxDD ~-10.5%
 - Notional choice: $2.5K selected to target ~24% live vol (Sharpe scale-invariant, vol is the right criterion)
 
 **$10K full_rules (2026-03-28, skew_rv w=0.08, no phantom leverage):**
@@ -51,6 +52,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-03-31 | $10 min trade size in backtest + buffer/live fixes | Backtest now models HL $10 min order (full-close exempt). Carver forecast buffer implemented live + backtest. New baseline: Sharpe 1.242, Calmar 1.200, CAGR 11.60%, MaxDD -9.67%. ΔSharpe -3.9% vs prior (correctness fix, not regression). |
 | 2026-03-30 | HL $10 min order + re-sweep | ADOPT min_notional=10 (reduce-only exempt). Re-sweep run; $2.5K retained (Sharpe scale-invariant — live vol 24% is the right criterion). CB: daily 12%, MaxDD 28%. |
 | 2026-03-29 | Units bug fix: positions.csv stores tokens not USD | CRITICAL BUG FIXED. trade_plan.py now multiplies backtest targets by last_prices.json. Live positions are ~10–157× too large; trade plan generated to reduce. |
 | 2026-03-29 | Phantom leverage sweep (notional_capital $1K→$6K) | ADOPT $2.5K (2.5×). Targets 25% realized vol. Live vol ~24%, live CAGR ~34%, live MaxDD ~25%. Sharpe ~1.36 (scale-invariant). CB updated: daily 12%, MaxDD 28%. Superseded 2026-03-30. |
