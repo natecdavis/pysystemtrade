@@ -66,18 +66,20 @@ def apply_forecast_buffering(
     This is dynamic (~±$3-8 per instrument on a $2.5K/30-instrument account) vs.
     the prior static method (~±$0.1-2, diluted by out-of-universe zeros).
 
-    State machine (trade_to_edge=True — trade only to buffer edge on breach):
-      last_pos > top_pos  →  current_pos = top_pos  (move just inside top edge)
-      last_pos < bot_pos  →  current_pos = bot_pos  (move just inside bot edge)
+    State machine (trade_to_edge=False — jump to optimal on breach):
+      last_pos > top_pos  →  current_pos = optimal
+      last_pos < bot_pos  →  current_pos = optimal
       else                →  hold last_pos
 
-    Trading to the edge (not all the way to optimal) minimises turnover: we only
-    move enough to re-enter the buffer zone, never overshooting to optimal.
+    Jumping to optimal (not just the edge) performs better in trending crypto:
+    discrete lot sizes mean partial edge trades often fall below the minimum
+    notional and get suppressed, while going straight to optimal ensures a clean
+    full rebalance. Trade-to-edge Sharpe was -2.8% vs this method on 6yr backtest.
 
     Entry/exit with instrument_weight_ewma_span=1: weights jump 0↔1/N instantly.
     When an instrument exits, the buffer collapses to [0,0] and the state
     machine immediately exits the position. When it enters, the first-day
-    position (0) falls outside the new buffer zone and trades to bot_pos ≈ optimal.
+    position (0) falls outside the new buffer zone and jumps to optimal.
     Both are correct — entry/exit transitions are intentional, not noise.
     """
     buffered = {}
@@ -114,10 +116,8 @@ def apply_forecast_buffering(
                 result.append(current_pos)
                 continue
 
-            if current_pos > t:
-                current_pos = t    # breach high → trade to top edge
-            elif current_pos < b:
-                current_pos = b    # breach low  → trade to bot edge
+            if current_pos > t or current_pos < b:
+                current_pos = optimal  # breach → jump to optimal
             result.append(current_pos)
 
         buffered[instrument] = pd.Series(result, index=opt.index, name=instrument)

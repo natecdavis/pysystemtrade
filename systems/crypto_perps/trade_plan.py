@@ -514,13 +514,12 @@ def generate_trade_plan(
     # backtest, convert to USD via last_prices.json, then check each instrument:
     #
     #   current in [bot, top]  → in buffer zone: suppress trade (set delta = 0)
-    #   current > top          → breach high: trade to top edge only (not optimal)
-    #   current < bot          → breach low:  trade to bot edge only (not optimal)
+    #   outside zone           → trade to optimal (positions.csv target, unchanged)
     #
-    # Trading to the edge rather than optimal minimises live turnover, matching
-    # the backtest state machine. Suppressed instruments get 'buffer_suppressed'
-    # in warnings so parse_trade_plan can exclude them from the notification count
-    # (their delta will also be ~0, so the delta<1e-6 filter catches them too).
+    # Backtest uses trade_to_edge=False (jump to optimal on breach), so positions.csv
+    # already holds the optimal target. Out-of-zone live positions just use that target
+    # as-is. Suppressed instruments get 'buffer_suppressed' in warnings so
+    # parse_trade_plan can exclude them from the notification count.
     buffer_suppressed_instruments: set = set()
     buffer_bounds_path = backtest_dir / 'buffer_bounds_last.csv'
     if buffer_bounds_path.exists():
@@ -546,14 +545,7 @@ def generate_trade_plan(
                 deltas.loc[inst, 'target_notional'] = current
                 deltas.loc[inst, 'delta_notional'] = 0.0
                 buffer_suppressed_instruments.add(inst)
-            elif current > top:
-                # Trade to top edge only
-                deltas.loc[inst, 'target_notional'] = top
-                deltas.loc[inst, 'delta_notional'] = top - current
-            else:  # current < bot
-                # Trade to bottom edge only
-                deltas.loc[inst, 'target_notional'] = bot
-                deltas.loc[inst, 'delta_notional'] = bot - current
+            # Outside zone: positions.csv target (optimal) stands unchanged
 
         logger.info(
             f"  Buffer suppressed {len(buffer_suppressed_instruments)} trades "
