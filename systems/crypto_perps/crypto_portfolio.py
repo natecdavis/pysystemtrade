@@ -42,7 +42,11 @@ class CryptoPortfolios(Portfolios):
     def get_notional_position(self, instrument_code: str) -> pd.Series:
         position = super().get_notional_position(instrument_code)
         position = self._round_to_lot_size(instrument_code, position)
-        position = self._apply_min_notional_filter(instrument_code, position)
+        # Note: min_notional_position ($10) is NOT applied here. The $10 minimum
+        # is an exchange execution constraint (HL rejects new/increasing orders < $10),
+        # not a portfolio optimization constraint. Existing positions below $10 should
+        # be held until the signal says to reduce, regardless of their dollar size.
+        # The constraint is enforced in the trade plan (check_min_position_sizes).
         return position
 
     def _round_to_lot_size(self, instrument_code: str, position: pd.Series) -> pd.Series:

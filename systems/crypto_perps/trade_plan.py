@@ -565,7 +565,7 @@ def generate_trade_plan(
     logger.info("Running sanity checks...")
 
     # Min position size check
-    min_order_notional = config.get_element_or_default("min_notional_position", 10.0)
+    min_order_notional = config.get("min_notional_position", 10.0) if isinstance(config, dict) else config.get_element_or_default("min_notional_position", 10.0)
     min_size_check = check_min_position_sizes(deltas, min_order_notional=min_order_notional)
 
     # Banned instruments
