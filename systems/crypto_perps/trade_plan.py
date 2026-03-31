@@ -281,13 +281,15 @@ def check_min_position_sizes(
     min_order_notional: float,
 ) -> dict:
     """
-    Flag orders below HL's minimum order notional. Applies to all orders including reductions.
+    Flag orders below HL's minimum order notional. Applies to all orders including reductions,
+    except full closes (target_notional ≈ 0) which HL allows regardless of size.
 
     Returns:
         dict with keys: threshold_usd, below_threshold (list), status
     """
+    is_full_close = deltas['target_notional'].abs() < 1e-6
     below = deltas[
-        deltas['delta_notional'].abs() < min_order_notional
+        (deltas['delta_notional'].abs() < min_order_notional) & ~is_full_close
     ]
     return {
         'threshold_usd': round(min_order_notional, 2),
