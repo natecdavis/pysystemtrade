@@ -1,20 +1,20 @@
 # Current Work Context
 
-## Current Baseline (2026-03-31, funding_mr adopted)
+## Current Baseline (2026-04-02, gated_carry raised to 0.15)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K actual equity)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
-**Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (300 instruments, 2020–2026)
+**Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (319 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$1K / HL filter (2026-03-31, 2.5× phantom leverage, notional=$2.5K, funding_mr w=0.25):**
-- Sharpe ~1.242, Calmar ~1.624, CAGR ~10.5% (re: $2.5K notional), MaxDD ~-6.47% (re: $2.5K notional)
-- **Live (re: $1K actual equity):** CAGR ~26.3%, MaxDD ~-16.2%, realized vol ~23.9%
-- Prior baseline (2026-03-31, before funding_mr): Sharpe ~1.242, Calmar ~1.200, CAGR ~11.60%, MaxDD ~-9.67%
+**$1K / HL filter (2026-04-02, 2.5× phantom leverage, notional=$2.5K, gated_carry 0.15×3, funding_mr w=0.25):**
+- Sharpe ~1.335, Calmar ~1.539, CAGR ~9.88% (re: $2.5K notional), MaxDD ~-6.42% (re: $2.5K notional)
+- **Live (re: $1K actual equity):** CAGR ~24.7%, MaxDD ~-16.1%, realized vol ~18.1%
+- Prior baseline (2026-03-31, gated_carry 0.07/0.07/0.10): Sharpe ~1.242, Calmar ~1.624, CAGR ~10.5%, MaxDD ~-6.47%
 - Notional choice: $2.5K selected to target ~24% live vol (Sharpe scale-invariant, vol is the right criterion)
 
 **$10K full_rules (2026-03-28, skew_rv w=0.08, no phantom leverage):**
-- Sharpe ~1.37, Calmar ~1.95, CAGR ~14.84%, MaxDD ~-7.63%
+- Sharpe ~1.37, Calmar ~1.95, CAGR ~14.84%, MaxDD ~-7.63% (not re-run after gated_carry raise)
 
 **Key config parameters (1k config, post-audit):**
 ```yaml
@@ -38,8 +38,8 @@ vol_days: 63                  # D4: was 35
 - `max_daily_loss_pct`: 12%
 - `max_drawdown_pct`: 28% (~2pp above expected MaxDD of 26%)
 
-**Forecast weights (as of 2026-03-26):**
-- gated_carry_10/30: 0.07 | gated_carry_60: 0.10
+**Forecast weights (as of 2026-04-02):**
+- gated_carry_10/30/60: 0.15 each  (raised 2026-04-02: was 0.07/0.07/0.10)
 - xs_carry/activity/val/inter_sector: 0.10 each
 - skew_abs_90/180/365: 0.0167 each
 - skew_rv_90/180/365: 0.08 each  (D1 re-sweep 2026-03-28: was 0.03)
@@ -52,6 +52,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-02 | gated_carry re-sweep post-funding_mr | ADOPT 0.15/0.15/0.15 (was 0.07/0.07/0.10). Sweep range 0.0→0.30: Sharpe/Calmar/MaxDD improve to w=0.20 peak, cliff at w=0.30 (trend diluted to 48%). Conservative w=0.15: ΔSharpe +7.5%, MaxDD -6.42%. New baseline: Sharpe 1.335, Calmar 1.539, MaxDD -6.42%. |
 | 2026-03-31 | funding_mr adopted at w=0.25 | ADOPT: ΔSharpe -0.1%, ΔCalmar +35.3%, MaxDD -9.67%→-6.47%. Acts as drawdown hedge (fires only at extreme funding z-scores). Live MaxDD ~-16% vs prior ~-24%. New baseline: Sharpe 1.242, Calmar 1.624, MaxDD -6.47%. |
 | 2026-03-31 | $10 min trade size in backtest + buffer/live fixes | Backtest now models HL $10 min order (full-close exempt). Carver forecast buffer implemented live + backtest. Baseline pre-funding_mr: Sharpe 1.242, Calmar 1.200, CAGR 11.60%, MaxDD -9.67%. |
 | 2026-03-30 | HL $10 min order + re-sweep | ADOPT min_notional=10 (reduce-only exempt). Re-sweep run; $2.5K retained (Sharpe scale-invariant — live vol 24% is the right criterion). CB: daily 12%, MaxDD 28%. |
