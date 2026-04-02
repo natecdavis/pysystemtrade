@@ -847,9 +847,11 @@ forecast_weights:
   # vol_norm_carry_10/30/60 removed from weights (rules kept for reference).
   # Sweep 2026-03-07 (carry_10/30): 1.4× empirical ratio → w=0.07 (Calmar peak, ΔSharpe +4.0%, ΔMaxDD -0.06pp)
   # Sweep 2026-03-07 (carry_60):    3.17× empirical ratio → w=0.10 (Calmar peak, ΔSharpe +2.6%, ΔMaxDD +1.16pp)
-  gated_carry_10:  0.07
-  gated_carry_30:  0.07
-  gated_carry_60:  0.10
+  # Sweep 2026-04-02 (post-funding_mr): equal weights, w=0.20 peak (ΔSharpe +38.6%, ΔCalmar +0.79, MaxDD -5.34%)
+  #   w=0.15 adopted (conservative; cliff at w=0.30, trend diluted to 48%). ΔSharpe +35.6%, ΔCalmar +0.48, MaxDD -6.42%
+  gated_carry_10:  0.15
+  gated_carry_30:  0.15
+  gated_carry_60:  0.15
   # gated_carry_90/180: held at 0.0 pending sweep_long_carry_weight.py
   gated_carry_90:  0.0
   gated_carry_180: 0.0
