@@ -278,6 +278,113 @@ def return_skew(price: pd.Series, window: int = 20) -> pd.Series:
     return -zscore
 
 
+def _get_round_numbers(price_series: pd.Series) -> list:
+    """
+    Return (round_number, significance_weight) pairs relevant to price_series range.
+    Uses 1-2-5 series: coefficients {1, 2, 5} × 10^n.
+    Weights: 1× multiples → 3 (most significant), 5× → 2, 2× → 1.
+    """
+    valid = price_series.dropna()
+    if valid.empty:
+        return []
+    lo = max(valid.min(), 1e-8)
+    hi = valid.max()
+    exp_lo = int(np.floor(np.log10(lo))) - 1
+    exp_hi = int(np.floor(np.log10(hi))) + 1
+    coeff_weight = {1: 3, 5: 2, 2: 1}
+    result = []
+    for exp in range(exp_lo, exp_hi + 1):
+        for coeff, w in coeff_weight.items():
+            rn = coeff * (10.0 ** exp)
+            if lo * 0.5 <= rn <= hi * 2.0:
+                result.append((rn, w))
+    result.sort(key=lambda x: x[0])
+    return result
+
+
+def round_number_break(price: pd.Series, lookback: int = 20) -> pd.Series:
+    """
+    Round-number breakout momentum.
+
+    When price crosses a psychologically significant level (1-2-5 series × 10^n),
+    clustered stop-losses and FOMO orders create a directional momentum burst.
+
+    Signal = sum over all round-number crossings in the past `lookback` days of
+    (significance_weight × linear_time_decay). Positive = net upward crossings.
+    Sparse by design (~60-80% zeros); walk-forward scalar normalises scale.
+
+    Args:
+        price:    Daily price series (data.daily_prices).
+        lookback: Days to accumulate crossing contributions (linear decay to 0).
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    round_numbers = _get_round_numbers(price)
+    if not round_numbers:
+        return pd.Series(0.0, index=price.index)
+
+    n = len(price)
+    signal = pd.Series(0.0, index=price.index)
+    price_filled = price.ffill().fillna(0.0)
+
+    # decay_weights[0]=1/L (oldest lag), decay_weights[L-1]=1.0 (most recent)
+    decay_weights = np.arange(1, lookback + 1, dtype=float) / lookback
+    # Reversed kernel for causal FIR: kernel[0]=1.0 (lag 0), kernel[L-1]=1/L (lag L-1)
+    kernel = decay_weights[::-1]
+
+    for rn, rn_weight in round_numbers:
+        side = np.sign(price_filled - rn)
+        side_prev = side.shift(1).fillna(0.0)
+        crossing = pd.Series(0.0, index=price.index)
+        crossing[(side_prev < 0) & (side > 0)] =  float(rn_weight)
+        crossing[(side_prev > 0) & (side < 0)] = -float(rn_weight)
+        # Causal FIR: output[t] = sum_{lag=0}^{L-1} crossing[t-lag] * kernel[lag]
+        conv = np.convolve(crossing.values, kernel, mode='full')[:n]
+        signal += pd.Series(conv, index=price.index)
+
+    return signal.fillna(0.0)
+
+
+def round_number_prox(price: pd.Series, proximity_pct: float = 0.03) -> pd.Series:
+    """
+    Round-number proximity: continuous amplifier for near-threshold positions.
+
+    Price approaching a round number from below → positive signal (stop-squeeze
+    building, limit sellers being absorbed). Price just above a round number →
+    negative signal (disappointed longs selling).
+
+    When combined additively with existing trend forecasts this naturally amplifies
+    positions when the trend direction aligns with an imminent round-number break:
+    trend-long + price below $100 = stronger combined long; opposing signals cancel.
+
+    Linear scale: 0 at outer edge of zone (±proximity_pct of rn), max at rn itself.
+
+    Args:
+        price:         Daily price series (data.daily_prices).
+        proximity_pct: Half-width of proximity zone as fraction of round number.
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    round_numbers = _get_round_numbers(price)
+    if not round_numbers:
+        return pd.Series(0.0, index=price.index)
+
+    price_filled = price.ffill().fillna(0.0)
+    signal = pd.Series(0.0, index=price.index)
+
+    for rn, rn_weight in round_numbers:
+        lo = rn * (1.0 - proximity_pct)
+        hi = rn * (1.0 + proximity_pct)
+        below = (price_filled >= lo) & (price_filled < rn)
+        above = (price_filled >  rn) & (price_filled <= hi)
+        signal[below] += float(rn_weight) * (price_filled[below] - lo) / (rn - lo)
+        signal[above] -= float(rn_weight) * (price_filled[above] - rn) / (hi - rn)
+
+    return signal.fillna(0.0)
+
+
 def mrinasset(index_price: pd.Series, ma_window: int = 1000) -> pd.Series:
     """
     Asset-class index mean-reversion: deviation from long-term MA, inverted.

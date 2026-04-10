@@ -612,6 +612,36 @@ trading_rules:
       - "data.get_skew_rv_365_forecast"
 
   # --------------------------------------------------------------------------
+  # BEHAVIORAL — Round-Number signals (2026-04-10)
+  # stop-losses and take-profits cluster at 1-2-5 series price levels.
+  # break: momentum burst after a level is crossed (sparse ~60-80% zeros).
+  # prox:  continuous amplifier when price is within 3% of a round number.
+  # --------------------------------------------------------------------------
+  round_number_break_10:
+    function: systems.crypto_perps.rules.rule_library.round_number_break
+    data:
+      - "data.daily_prices"
+    other_args: {lookback: 10}
+
+  round_number_break_20:
+    function: systems.crypto_perps.rules.rule_library.round_number_break
+    data:
+      - "data.daily_prices"
+    other_args: {lookback: 20}
+
+  round_number_break_40:
+    function: systems.crypto_perps.rules.rule_library.round_number_break
+    data:
+      - "data.daily_prices"
+    other_args: {lookback: 40}
+
+  round_number_prox:
+    function: systems.crypto_perps.rules.rule_library.round_number_prox
+    data:
+      - "data.daily_prices"
+    other_args: {proximity_pct: 0.03}
+
+  # --------------------------------------------------------------------------
   # CARRY — Trend-Gated (Carver-compliant, 2026-03-06 refactor)
   # Gate baked into rule: returns 0 when sign(carry) ≠ sign(per-instrument EWMAC).
   # Goes through standard forecast scalar → weighted avg → FDM pipeline.
@@ -911,6 +941,12 @@ forecast_weights:
   # Removed entirely (cost audit):
   #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each
   #   streversal_1:     424 rt/yr, annual drag 1.26 SR
+
+  # Round-number rules: sweep_round_number_weight.py to find optimal weights
+  round_number_break_10: 0.0
+  round_number_break_20: 0.0
+  round_number_break_40: 0.0
+  round_number_prox:     0.0
 
 forecast_cap: 20.0
 
