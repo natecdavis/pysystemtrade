@@ -941,11 +941,11 @@ forecast_weights:
   #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each
   #   streversal_1:     424 rt/yr, annual drag 1.26 SR
 
-  # Round-number rules: sweep_round_number_weight.py to find optimal weights
-  round_number_break_10: 0.0
-  round_number_break_20: 0.0
-  round_number_break_40: 0.0
-  round_number_prox:     0.0
+  # Round-number breakout: ADOPTED 2026-04-10, w_combined=0.08 (Calmar peak: +12.8%)
+  round_number_break_10: 0.026667
+  round_number_break_20: 0.026667
+  round_number_break_40: 0.026667
+  round_number_prox:     0.0       # REJECTED: ΔSharpe +0.6% < +1% threshold
 
 forecast_cap: 20.0
 
