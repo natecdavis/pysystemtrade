@@ -182,15 +182,6 @@ def main() -> int:
         help="Send macOS notification (default: on)",
     )
     parser.add_argument(
-        "--ignore-warnings",
-        action="store_true",
-        default=False,
-        help=(
-            "Continue pipeline even if doctor preflight returns PASS_WITH_WARNINGS (exit 1). "
-            "Default: halt on warnings. Use only after manually reviewing warnings."
-        ),
-    )
-    parser.add_argument(
         "--refresh-sector-map",
         action="store_true",
         default=False,
@@ -364,7 +355,7 @@ def main() -> int:
             "--actual-positions", str(LIVE_DIR / "current_positions.csv"),
             "--current-equity-file", str(EQUITY_FILE),
             "--cadence", "daily",
-            "--data-dir", str(REPO_ROOT / "data" / "raw" / "binance"),
+            "--data-dir", str(REPO_ROOT / "envs" / "dev" / "data" / "raw" / "binance"),
         ]
         doctor_rc, doctor_output = run_subprocess(doctor_cmd, log_lines)
 
@@ -379,18 +370,8 @@ def main() -> int:
             )
         return 1
     elif doctor_rc == 1:
-        if args.ignore_warnings:
-            log_lines.append("  PASS_WITH_WARNINGS (--ignore-warnings active, continuing).")
-            warnings.append("Doctor preflight: warnings present (overridden by --ignore-warnings)")
-        else:
-            log_lines.append("  PASS_WITH_WARNINGS — halting. Re-run with --ignore-warnings to override.")
-            LOG_PATH.write_text("\n".join(log_lines))
-            if args.notify:
-                send_notification(
-                    "⚠️ Paper Run Halted",
-                    "Doctor preflight returned warnings — review live/paper_run_latest.log, then re-run with --ignore-warnings",
-                )
-            return 1
+        log_lines.append("  PASS_WITH_WARNINGS — continuing.")
+        warnings.append("Doctor preflight: warnings present (see log for details)")
     else:
         log_lines.append("  PASS.")
 

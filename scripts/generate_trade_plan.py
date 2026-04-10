@@ -245,6 +245,7 @@ def apply_hard_exits_and_reduce_only(
     log,
     reduce_only_instruments=None,
     shadow_targets=None,
+    min_notional_position=10.0,
 ):
     """
     Apply hard exits and reduce-only constraints to trade plan.
@@ -476,6 +477,23 @@ def apply_hard_exits_and_reduce_only(
                 trade_plan.loc[changed_mask, 'delta_notional'] / equity
             )
 
+        # Re-apply min size check on recomputed deltas. The initial check in generate_trade_plan()
+        # ran before this post-processing step, so reduce-only constraints that shrink a delta
+        # below the minimum would otherwise slip through without a below_min_trade_size warning.
+        if 'warnings' in trade_plan.columns:
+            is_full_close = trade_plan.loc[changed_mask, 'target_notional'].abs() < 1e-6
+            newly_below_min = trade_plan.loc[changed_mask].loc[
+                (trade_plan.loc[changed_mask, 'delta_notional'].abs() < min_notional_position)
+                & ~is_full_close
+            ].index
+            for inst in newly_below_min:
+                existing = str(trade_plan.loc[inst, 'warnings'])
+                if 'below_min_trade_size' not in existing:
+                    if existing in ('', 'nan', 'None'):
+                        trade_plan.loc[inst, 'warnings'] = 'below_min_trade_size'
+                    else:
+                        trade_plan.loc[inst, 'warnings'] = existing + ',below_min_trade_size'
+
     return modified
 
 
@@ -698,6 +716,7 @@ Notes:
             log=logger,
             reduce_only_instruments=reduce_only_instruments,
             shadow_targets=shadow_targets,
+            min_notional_position=config.get('min_notional_position', 10.0),
         )
         if n_modified > 0:
             logger.info(
