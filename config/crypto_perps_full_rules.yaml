@@ -402,13 +402,26 @@ trading_rules:
     other_args: {smooth_days: 125}
 
   # --------------------------------------------------------------------------
-  # CONVERGENT SUB-A — FundingMR (1 variation)
-  # Mean-reversion from extreme funding rate z-scores
+  # CONVERGENT SUB-A — FundingMR + FundingCrowd
+  # Mean-reversion from extreme and persistent funding extremes
   # --------------------------------------------------------------------------
   funding_mr:
     function: systems.crypto_perps.rules.rule_library.funding_mr
     data:
       - "data.get_funding_rate"
+
+  # Persistent funding crowding (weight 0.0 pending sweep)
+  funding_crowd_5:
+    function: systems.crypto_perps.rules.rule_library.funding_crowd
+    data:
+      - "data.get_funding_rate"
+    other_args: {window: 60, threshold: 1.0, persist_days: 5}
+
+  funding_crowd_10:
+    function: systems.crypto_perps.rules.rule_library.funding_crowd
+    data:
+      - "data.get_funding_rate"
+    other_args: {window: 60, threshold: 1.0, persist_days: 10}
 
   # --------------------------------------------------------------------------
   # CONVERGENT SUB-B — STreversal (3 variations)
@@ -931,6 +944,10 @@ forecast_weights:
   demeaned_carry_gated_10: 0.0  # gated: overlap with gated_carry (Spearman 0.63), keep at 0
   demeaned_carry_gated_30: 0.0
   demeaned_carry_gated_60: 0.0
+
+  # Persistent funding crowding: sweep_funding_crowd_weight.py to find optimal weight
+  funding_crowd_5:  0.0
+  funding_crowd_10: 0.0
 
   # HL-filtered median variants — initialized 0.0, pending HL comparison test
   demeaned_carry_hl_10: 0.0

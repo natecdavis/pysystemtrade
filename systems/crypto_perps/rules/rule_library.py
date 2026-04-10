@@ -188,6 +188,47 @@ def funding_mr(
     return signal
 
 
+def funding_crowd(
+    funding_rates: pd.Series,
+    window: int = 60,
+    threshold: float = 1.0,
+    persist_days: int = 5,
+) -> pd.Series:
+    """
+    Persistent funding crowding: contrarian signal when funding stays elevated
+    or depressed for persist_days+ consecutive days.
+
+    Distinct from funding_mr which fires on single-day spikes (|z| > 2.0).
+    This rule fires on moderate but sustained crowding (|z| > 1.0 for N+ days),
+    capturing the regime where positions are building up before the washout.
+
+    Args:
+        funding_rates: Raw daily funding rate series (data.funding_rate).
+        window:        Rolling window in days for z-score (default 60).
+        threshold:     Z-score level to count as "crowded" (default 1.0).
+        persist_days:  Min consecutive days above threshold (default 5).
+    """
+    min_p = max(window // 2, 2)
+    roll_mean = funding_rates.rolling(window, min_periods=min_p).mean()
+    roll_std  = funding_rates.rolling(window, min_periods=min_p).std()
+    zscore    = (funding_rates - roll_mean) / roll_std.clip(lower=1e-8)
+
+    # Consecutive-day streaks above/below threshold
+    above = zscore >  threshold
+    below = zscore < -threshold
+    streak_long  = above.astype(int).groupby((above != above.shift()).cumsum()).cumsum()
+    streak_short = below.astype(int).groupby((below != below.shift()).cumsum()).cumsum()
+
+    # Signal: -zscore when active (same sign convention as funding_mr)
+    # Long crowding (z > threshold N+ days): short bias (negative)
+    # Short crowding (z < -threshold N+ days): long bias (positive)
+    signal = pd.Series(0.0, index=funding_rates.index)
+    signal[streak_long  >= persist_days] = -zscore[streak_long  >= persist_days]
+    signal[streak_short >= persist_days] = -zscore[streak_short >= persist_days]
+
+    return (signal * 10).fillna(0.0)
+
+
 def vol_normalized_carry(
     funding_rates: pd.Series,
     price: pd.Series,
