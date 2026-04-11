@@ -1246,6 +1246,72 @@ class parquetCryptoPerpsSimData(simData):
             return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
         return self._toptrader_lsr_df[bare_code].dropna()
 
+    def get_xs_vol_zscore(self, instrument_code: str, window: int = 60) -> pd.Series:
+        """
+        Cross-sectional universe median realized-vol z-score.
+
+        The ``instrument_code`` argument is ignored — the same series is returned
+        for every instrument. Used by the ``crowd_deleverage_trend`` trading rule.
+
+        Steps:
+          1. Compute rolling std of log-returns per instrument (window days).
+          2. Take cross-sectional median across all instruments each day.
+          3. Z-score the resulting univariate series (rolling, same window).
+
+        Returns:
+            pd.Series with a DatetimeIndex. Positive when universe realized vol
+            is above its recent rolling average (stress regime).
+        """
+        if hasattr(self, "_xs_vol_zscore_cache"):
+            return self._xs_vol_zscore_cache
+
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+        min_p = max(window // 2, 2)
+        # Per-instrument rolling realized vol
+        rv_panel = log_ret.rolling(window, min_periods=min_p).std()
+        # Cross-sectional median each day
+        median_rv = rv_panel.median(axis=1)
+        # Z-score the median series
+        roll_mean = median_rv.rolling(window, min_periods=min_p).mean()
+        roll_std = median_rv.rolling(window, min_periods=min_p).std().clip(lower=1e-8)
+        self._xs_vol_zscore_cache = (median_rv - roll_mean) / roll_std
+        return self._xs_vol_zscore_cache
+
+    def get_xs_oi_change_zscore(self, instrument_code: str, window: int = 60) -> pd.Series:
+        """
+        Cross-sectional universe median OI log-change z-score.
+
+        The ``instrument_code`` argument is ignored — the same series is returned
+        for every instrument. Used by the ``crowd_deleverage_trend`` trading rule.
+
+        Steps:
+          1. Compute daily log-change of OI per instrument.
+          2. Take cross-sectional median across all instruments each day.
+          3. Z-score the resulting univariate series (rolling, same window).
+
+        Returns:
+            pd.Series with a DatetimeIndex. Negative when OI is broadly declining
+            (forced deleveraging). Returns empty DatetimeIndex series if OI data
+            is unavailable (walk-forward scalar excludes NaN safely).
+        """
+        if hasattr(self, "_xs_oi_change_zscore_cache"):
+            return self._xs_oi_change_zscore_cache
+
+        if self._oi_df is None:
+            self._xs_oi_change_zscore_cache = pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+            return self._xs_oi_change_zscore_cache
+
+        min_p = max(window // 2, 2)
+        # Per-instrument daily log change of OI
+        log_oi_change = np.log(self._oi_df.clip(lower=1.0)).diff()
+        # Cross-sectional median each day
+        median_oi_chg = log_oi_change.median(axis=1)
+        # Z-score the median series
+        roll_mean = median_oi_chg.rolling(window, min_periods=min_p).mean()
+        roll_std = median_oi_chg.rolling(window, min_periods=min_p).std().clip(lower=1e-8)
+        self._xs_oi_change_zscore_cache = (median_oi_chg - roll_mean) / roll_std
+        return self._xs_oi_change_zscore_cache
+
     def get_oi_volume_ratio(self, instrument_code: str, window: int = 7) -> pd.Series:
         """
         Calculate OI/Volume ratio as a leverage indicator.

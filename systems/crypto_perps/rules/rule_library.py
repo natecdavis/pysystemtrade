@@ -724,6 +724,76 @@ def gated_carry(
     return carry.where(np.sign(carry) == np.sign(trend), other=0.0)
 
 
+def crowd_deleverage_trend(
+    price: pd.Series,
+    vol: pd.Series,
+    xs_vol_zscore: pd.Series,
+    xs_oi_change_zscore: pd.Series,
+    fast_span: int = 16,
+    slow_span: int = 64,
+    window: int = 60,
+) -> pd.Series:
+    """
+    Crowd-deleveraging trend amplifier.
+
+    Hypothesis (Levine): when realized vol spikes AND open interest falls, this
+    signals forced liquidation by vol-targeting leveraged players. These sellers
+    are directional (they must close in the direction of the move), so trend
+    signals are more predictive during these episodes.
+
+    Computes an EWMAC-style momentum signal and scales it up when both:
+      - Universe realized vol is elevated (xs_vol_zscore > 0)
+      - Universe OI is declining (xs_oi_change_zscore < 0)
+
+    In normal markets, stress_normalized ≈ 0 and the signal ≈ EWMAC(16, 64).
+    During crowd-deleverage episodes, the signal is amplified by 1× to ~3×.
+
+    Args:
+        price:               Daily price series (data.daily_prices).
+        vol:                 Daily price vol in price units (rawdata.daily_returns_volatility).
+        xs_vol_zscore:       Universe-median realized-vol z-score (data.get_xs_vol_zscore).
+        xs_oi_change_zscore: Universe-median OI log-change z-score (data.get_xs_oi_change_zscore).
+        fast_span:           Fast EWMA span in days (default 16).
+        slow_span:           Slow EWMA span in days (default 64).
+        window:              Rolling window for stress normalization (default 60).
+
+    Returns:
+        Unscaled, uncapped forecast series.
+    """
+    # Align all inputs on a shared index, dropping missing rows
+    df = pd.concat(
+        [price, vol, xs_vol_zscore, xs_oi_change_zscore],
+        axis=1,
+        keys=["price", "vol", "vol_z", "oi_z"],
+    ).dropna()
+
+    if df.empty:
+        return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+
+    price_a = df["price"]
+    vol_a = df["vol"].replace(0.0, np.nan).ffill().clip(lower=1e-12)
+
+    # EWMAC momentum component (vol-normalized)
+    ewma_fast = price_a.ewm(span=fast_span, min_periods=1).mean()
+    ewma_slow = price_a.ewm(span=slow_span, min_periods=1).mean()
+    ewmac_signal = (ewma_fast - ewma_slow) / vol_a
+
+    # Stress indicator: geometric mean of vol-up and OI-down components
+    # Only fires when BOTH conditions are active simultaneously
+    vol_up = df["vol_z"].clip(lower=0.0)          # positive when vol elevated
+    oi_down = (-df["oi_z"]).clip(lower=0.0)       # positive when OI falling
+    stress_raw = np.sqrt(vol_up * oi_down)
+
+    min_p = max(window // 2, 2)
+    stress_std = stress_raw.rolling(window, min_periods=min_p).std().clip(lower=1e-8)
+    stress_normalized = (stress_raw / stress_std).clip(0.0, 3.0)
+
+    # Amplify trend: normal markets → ×1.0; deleveraging episodes → ×(1 + stress)
+    raw = ewmac_signal * (1.0 + stress_normalized)
+
+    return (raw * 10.0).reindex(price.index)
+
+
 def demeaned_carry(
     funding_rates: pd.Series,
     market_funding: pd.Series,
