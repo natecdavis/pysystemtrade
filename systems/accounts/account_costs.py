@@ -132,6 +132,12 @@ class accountCosts(accountInputs):
         ]
         total_length = float(sum(forecast_lengths))
 
+        if total_length == 0:
+            # All forecasts are empty for this instrument pool/rule combination
+            # Return equal weights so SR cost estimation doesn't crash
+            n = len(instrument_code_list)
+            return [1.0 / n] * n if n > 0 else []
+
         weights = [
             forecast_length / total_length for forecast_length in forecast_lengths
         ]
