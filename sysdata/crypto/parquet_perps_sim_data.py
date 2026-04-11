@@ -128,13 +128,21 @@ class parquetCryptoPerpsSimData(simData):
             )
 
         # Load OI data if path provided (used by Phase 2 OI/Volume overlay)
-        # OI parquet has columns: date, instrument (no _PERP suffix), open_interest
+        # OI parquet has columns: date, instrument (no _PERP suffix), open_interest,
+        #   long_short_ratio, toptrader_long_short_ratio
         self._oi_df: Optional[pd.DataFrame] = None
+        self._lsr_df: Optional[pd.DataFrame] = None
+        self._toptrader_lsr_df: Optional[pd.DataFrame] = None
         if oi_data_path is not arg_not_supplied:
             raw = pd.read_parquet(oi_data_path)
             raw['date'] = pd.to_datetime(raw['date']).dt.normalize()
             # Pivot to wide format: index=date, columns=instrument (bare names, no _PERP)
-            self._oi_df = raw.set_index(['date', 'instrument'])['open_interest'].unstack('instrument')
+            indexed = raw.set_index(['date', 'instrument'])
+            self._oi_df = indexed['open_interest'].unstack('instrument')
+            if 'long_short_ratio' in raw.columns:
+                self._lsr_df = indexed['long_short_ratio'].unstack('instrument')
+            if 'toptrader_long_short_ratio' in raw.columns:
+                self._toptrader_lsr_df = indexed['toptrader_long_short_ratio'].unstack('instrument')
             self.log.info(
                 f"Loaded OI data from {oi_data_path}: "
                 f"{self._oi_df.shape[1]} instruments, "
@@ -1211,6 +1219,32 @@ class parquetCryptoPerpsSimData(simData):
             return pd.Series(dtype=float)
 
         return self._oi_df[bare_code].dropna()
+
+    def get_long_short_ratio(self, instrument_code: str) -> pd.Series:
+        """
+        Get daily retail long/short ratio for an instrument.
+
+        Returns empty series if LSR data is not loaded or instrument not found.
+        """
+        if self._lsr_df is None:
+            return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+        bare_code = instrument_code.replace('_PERP', '')
+        if bare_code not in self._lsr_df.columns:
+            return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+        return self._lsr_df[bare_code].dropna()
+
+    def get_toptrader_long_short_ratio(self, instrument_code: str) -> pd.Series:
+        """
+        Get daily top-trader (large-account) long/short ratio for an instrument.
+
+        Returns empty series if top-trader LSR data is not loaded or instrument not found.
+        """
+        if self._toptrader_lsr_df is None:
+            return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+        bare_code = instrument_code.replace('_PERP', '')
+        if bare_code not in self._toptrader_lsr_df.columns:
+            return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+        return self._toptrader_lsr_df[bare_code].dropna()
 
     def get_oi_volume_ratio(self, instrument_code: str, window: int = 7) -> pd.Series:
         """

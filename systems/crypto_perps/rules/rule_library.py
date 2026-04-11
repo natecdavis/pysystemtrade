@@ -229,6 +229,57 @@ def funding_crowd(
     return (signal * 10).fillna(0.0)
 
 
+def lsr_divergence(
+    toptrader_lsr: pd.Series,
+    lsr: pd.Series,
+    window: int = 60,
+) -> pd.Series:
+    """
+    Smart money vs retail divergence. Directional: long when smart money
+    more bullish than retail relative to history.
+
+    Uses log(toptrader_lsr / lsr) z-score. Positive divergence = top traders
+    more net-long than retail → follow smart money.
+
+    Args:
+        toptrader_lsr: Top-trader long/short ratio (data.get_toptrader_long_short_ratio).
+        lsr:           Retail long/short ratio (data.get_long_short_ratio).
+        window:        Rolling window for z-score (days).
+    """
+    combined = toptrader_lsr.to_frame('top').join(lsr.to_frame('retail'), how='inner')
+    combined = combined[(combined > 0).all(axis=1)]
+    if combined.empty:
+        return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+
+    log_ratio = np.log(combined['top'] / combined['retail'])
+    roll_mean = log_ratio.rolling(window, min_periods=window // 2).mean()
+    roll_std  = log_ratio.rolling(window, min_periods=window // 2).std()
+    zscore    = (log_ratio - roll_mean) / roll_std.clip(lower=1e-8)
+    return (zscore * 10).fillna(0.0)
+
+
+def lsr_retail_crowding(
+    lsr: pd.Series,
+    window: int = 60,
+) -> pd.Series:
+    """
+    Contrarian retail crowding. Short bias when retail accounts are very long,
+    long bias when retail accounts are very short.
+
+    Uses z-score of log(lsr), negated. Orthogonal to funding_mr (different data
+    source: account positioning, not funding rate).
+
+    Args:
+        lsr:    Retail long/short ratio (data.get_long_short_ratio).
+        window: Rolling window for z-score (days).
+    """
+    log_lsr   = np.log(lsr.clip(lower=1e-4))
+    roll_mean = log_lsr.rolling(window, min_periods=window // 2).mean()
+    roll_std  = log_lsr.rolling(window, min_periods=window // 2).std()
+    zscore    = (log_lsr - roll_mean) / roll_std.clip(lower=1e-8)
+    return (-zscore * 10).fillna(0.0)
+
+
 def vol_normalized_carry(
     funding_rates: pd.Series,
     price: pd.Series,

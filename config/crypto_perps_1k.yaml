@@ -429,6 +429,20 @@ trading_rules:
       - "data.get_funding_rate"
     other_args: {window: 60, threshold: 1.0, persist_days: 10}
 
+  # LSR-based signals (weight 0.0 pending sweep_oi_lsr_weight.py)
+  lsr_divergence:
+    function: systems.crypto_perps.rules.rule_library.lsr_divergence
+    data:
+      - "data.get_toptrader_long_short_ratio"
+      - "data.get_long_short_ratio"
+    other_args: {window: 60}
+
+  lsr_retail_crowding:
+    function: systems.crypto_perps.rules.rule_library.lsr_retail_crowding
+    data:
+      - "data.get_long_short_ratio"
+    other_args: {window: 60}
+
   # --------------------------------------------------------------------------
   # CONVERGENT SUB-B — STreversal (3 variations)
   # Short-term price reversal
@@ -949,6 +963,10 @@ forecast_weights:
   # Persistent funding crowding: sweep_funding_crowd_weight.py to find optimal weight
   funding_crowd_5:  0.0
   funding_crowd_10: 0.0
+
+  # LSR-based signals: sweep_oi_lsr_weight.py to find optimal weight
+  lsr_divergence:      0.0
+  lsr_retail_crowding: 0.0
 
   # HL-filtered median variants — initialized 0.0, pending HL comparison test
   demeaned_carry_hl_10: 0.0
