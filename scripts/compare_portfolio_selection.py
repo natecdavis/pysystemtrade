@@ -427,7 +427,15 @@ def print_comparison(results: dict, schedule_df: pd.DataFrame = None) -> None:
         print("-" * 95)
 
     _row("wf_topk", results.get("wf_topk", {}), ref)
-    _row("greedy", results.get("greedy", {}), ref)
+    print("-" * 95)
+    for scheme, label in [
+        ("greedy_daily",   "greedy (daily)"),
+        ("greedy_weekly",  "greedy (weekly)"),
+        ("greedy_monthly", "greedy (monthly)"),
+        ("greedy",         "greedy (daily)"),   # legacy alias
+    ]:
+        if scheme in results:
+            _row(label, results[scheme], ref)
     print("=" * 95)
     print("\nNote: reference uses K=30, entry_buffer=3, exit_buffer=15 — chosen retrospectively.")
     print("      wf_topk: expanding-window Calmar selects K/buffers quarterly (out-of-sample).")
@@ -468,9 +476,10 @@ def main() -> None:
     parser.add_argument("--panels",  default=DEFAULT_PANELS, help="Forecast panels directory")
     parser.add_argument("--outdir",  default=DEFAULT_OUTDIR)
     parser.add_argument(
-        "--schemes", nargs="+", default=["wf_topk", "greedy"],
-        choices=["wf_topk", "greedy"],
-        help="Schemes to run (default: both)",
+        "--schemes", nargs="+",
+        default=["wf_topk", "greedy_daily", "greedy_weekly", "greedy_monthly"],
+        choices=["wf_topk", "greedy_daily", "greedy_weekly", "greedy_monthly", "greedy"],
+        help="Schemes to run (greedy = alias for greedy_daily)",
     )
     parser.add_argument(
         "--force", action="store_true",
@@ -615,43 +624,60 @@ def main() -> None:
             print(f"WF-K result: Sharpe={r['sharpe']:.4f}, Calmar={r['calmar']:.4f}, "
                   f"MaxDD={r['max_dd']*100:.2f}%")
 
-    # ── Greedy ─────────────────────────────────────────────────────────────
-    if "greedy" in args.schemes:
-        print(f"\n{'='*60}")
-        print("Greedy: Carver integer-lot optimiser")
-        print(f"{'='*60}")
-        print("  shadow_cost=100, long_only=False, lot_size_notional_override=10")
-        print("  WARNING: greedy runs the optimiser for every day × instrument.")
-        print("           This can take 2–4 hours for a 6-year backtest.")
+    # ── Greedy variants ────────────────────────────────────────────────────
+    # "greedy" is a legacy alias for "greedy_daily"
+    greedy_variants = {
+        "greedy_daily":   ("D",  "daily"),
+        "greedy_weekly":  ("W",  "weekly"),
+        "greedy_monthly": ("ME", "month-end"),
+        "greedy":         ("D",  "daily"),   # alias
+    }
+    base_greedy_config = {
+        "use_greedy_portfolio": True,
+        "lot_size_notional_override": 10,
+        "greedy_params": {
+            "shadow_cost": 100,
+            "long_only": False,
+            "tracking_error_buffer": 0.0125,
+            "correlation_span": 60,
+            "min_history_days": 30,
+        },
+    }
 
-        greedy_dir = out_dir / "backtest_greedy"
+    for scheme in args.schemes:
+        if scheme not in greedy_variants:
+            continue
+
+        freq, freq_label = greedy_variants[scheme]
+        print(f"\n{'='*60}")
+        print(f"Greedy ({freq_label}): shadow_cost=100, long_only=False, lot=$10")
+        print(f"{'='*60}")
+        if freq == "D":
+            print("  WARNING: daily greedy runs the optimiser for every day. "
+                  "This can take 2–4 hours.")
+
+        greedy_dir = out_dir / f"backtest_{scheme}"
         summary_path = greedy_dir / "performance_summary.json"
 
         if force_backtest or not summary_path.exists():
+            extra = {k: v for k, v in base_greedy_config.items()}
+            # Deep-copy greedy_params and inject rebalance_freq
+            extra["greedy_params"] = dict(base_greedy_config["greedy_params"])
+            extra["greedy_params"]["rebalance_freq"] = freq
             run_backtest(
                 config_path=args.config,
                 data_path=args.data,
                 outdir=greedy_dir,
-                extra_config={
-                    "use_greedy_portfolio": True,
-                    "lot_size_notional_override": 10,
-                    "greedy_params": {
-                        "shadow_cost": 100,
-                        "long_only": False,
-                        "tracking_error_buffer": 0.0125,
-                        "correlation_span": 60,
-                        "min_history_days": 30,
-                    },
-                },
+                extra_config=extra,
             )
         else:
-            print(f"\nGreedy backtest results exist at {greedy_dir}")
+            print(f"  Results exist at {greedy_dir}")
 
-        results["greedy"] = load_metrics(greedy_dir)
-        if results["greedy"]:
-            r = results["greedy"]
-            print(f"Greedy result: Sharpe={r['sharpe']:.4f}, Calmar={r['calmar']:.4f}, "
-                  f"MaxDD={r['max_dd']*100:.2f}%")
+        results[scheme] = load_metrics(greedy_dir)
+        if results[scheme]:
+            r = results[scheme]
+            print(f"  Sharpe={r['sharpe']:.4f}, Calmar={r['calmar']:.4f}, "
+                  f"MaxDD={r['max_dd']*100:.2f}%, Turnover={r['turnover']:.1f}x")
 
     # ── Print comparison ───────────────────────────────────────────────────
     print_comparison(results, schedule_df if args.show_schedule else None)

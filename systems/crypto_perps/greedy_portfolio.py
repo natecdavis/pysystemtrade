@@ -89,6 +89,9 @@ class MrGreedyPortfolio(Portfolios):
         # Cache for daily optimization results
         self._optimization_cache: Dict[pd.Timestamp, portfolioWeights] = {}
 
+        # Memoize full optimization result (same across all instruments)
+        self._all_positions_memo: Optional[pd.DataFrame] = None
+
         # Cache for expensive intermediate calculations
         self._covariance_cache: Dict[str, covarianceEstimate] = {}  # key: f"{date}_{instrument_hash}"
         self._sr_cost_cache: Dict[str, meanEstimates] = {}  # key: f"{date}_{instrument_hash}"
@@ -164,6 +167,11 @@ class MrGreedyPortfolio(Portfolios):
         Returns:
             pd.DataFrame with dates as index, instruments as columns
         """
+        # Memoize: this method is called once per instrument by get_notional_position()
+        # but the result is the same for all instruments, so cache it on first call.
+        if hasattr(self, '_all_positions_memo') and self._all_positions_memo is not None:
+            return self._all_positions_memo
+
         # Get ideal fractional positions from PositionSizing stage
         ideal_positions_df = self._get_ideal_fractional_positions()
 
@@ -176,10 +184,48 @@ class MrGreedyPortfolio(Portfolios):
         dates = ideal_positions_df.index
         optimized_df = pd.DataFrame(0.0, index=dates, columns=instruments)
 
+        # Rebalance frequency: only run optimizer on scheduled dates.
+        # Between rebalance dates, carry forward the previous positions unchanged.
+        # "D" = daily (every date), "W" = weekly, "ME" = month-end, "QS" = quarterly.
+        config = self.parent.config
+        greedy_params = config.get_element_or_default('greedy_params', {})
+        rebalance_freq = greedy_params.get('rebalance_freq', 'D')
+
+        if rebalance_freq == 'D':
+            rebalance_set = set(dates)
+        else:
+            scheduled = pd.date_range(start=dates[0], end=dates[-1], freq=rebalance_freq)
+            # Snap each scheduled date to the nearest actual date in the index
+            rebalance_set = set()
+            dates_arr = np.array(dates, dtype='datetime64[ns]')
+            for sched_date in scheduled:
+                idx = np.searchsorted(dates_arr, np.datetime64(sched_date, 'ns'))
+                idx = min(idx, len(dates) - 1)
+                rebalance_set.add(dates[idx])
+            # Always include the first date
+            rebalance_set.add(dates[0])
+
+        n_rebalance = len(rebalance_set)
+        self.log.info(
+            f"Greedy: rebalance_freq='{rebalance_freq}', "
+            f"optimising on {n_rebalance}/{len(dates)} dates"
+        )
+
         # Optimize for each date
         previous_positions = None
         for i, date in enumerate(dates):
-            if i % 100 == 0:
+            is_rebalance = date in rebalance_set
+
+            if not is_rebalance:
+                # Hold previous positions unchanged
+                if previous_positions is not None:
+                    for instrument_code in instruments:
+                        optimized_df.loc[date, instrument_code] = previous_positions.get(
+                            instrument_code, 0.0
+                        )
+                continue
+
+            if i % 100 == 0 or rebalance_freq != 'D':
                 self.log.info(f"Optimizing positions for date {i+1}/{len(dates)}: {date.date()}")
 
             try:
@@ -223,6 +269,7 @@ class MrGreedyPortfolio(Portfolios):
             f"Avg positions per day: {(optimized_df != 0).sum(axis=1).mean():.1f}"
         )
 
+        self._all_positions_memo = optimized_df
         return optimized_df
 
     def _get_ideal_fractional_positions(self) -> pd.DataFrame:
