@@ -624,8 +624,13 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
     use_fg_overlay = config.get_element_or_default('use_fg_overlay', False)
     use_mvrv_overlay = config.get_element_or_default('use_mvrv_overlay', False)
     use_any_overlay = use_oi_overlay or use_fg_overlay or use_mvrv_overlay
+    use_greedy_portfolio = config_dict.get('use_greedy_portfolio', False)
 
-    if use_dynamic_universe:
+    if use_greedy_portfolio:
+        from systems.crypto_perps.greedy_portfolio import MrGreedyPortfolio
+        portfolio_stage = MrGreedyPortfolio()
+        logger.info("  Using Mr Greedy portfolio (integer lot optimiser)")
+    elif use_dynamic_universe:
         if use_any_overlay:
             portfolio_stage = CryptoDynamicPortfolioWithOIOverlay()
             overlay_desc = " + ".join(filter(None, [
@@ -693,28 +698,47 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
 
     optimal_positions = pd.DataFrame(position_dict)
 
-    # Apply Carver forecast-method buffering.
-    # buffer_width = vol_scalar × instrument_weight × IDM × buffer_size
-    # buffer_size is read from config by pysystemtrade (default 0.10).
-    logger.info("  Applying forecast-method buffering...")
-
-    portfolio_positions = apply_forecast_buffering(
-        system=system,
-        optimal_positions=optimal_positions,
-    )
+    if use_greedy_portfolio:
+        # Greedy positions are in integer lots (lot_size_notional_override USD each).
+        # Convert to base-asset units so _compute_calendar_pnl works correctly:
+        #   base_asset = lots × lot_value / price
+        # Forecast buffering is skipped — the greedy shadow cost already provides inertia.
+        lot_value = float(config_dict.get('lot_size_notional_override', 1.0))
+        logger.info(f"  Greedy: converting integer lots → base-asset units (lot_value=${lot_value})")
+        prices_wide = data._prices_df.reindex(columns=optimal_positions.columns)
+        prices_aligned = prices_wide.reindex(optimal_positions.index, method='ffill')
+        # Avoid division by zero / NaN prices
+        prices_safe = prices_aligned.replace(0, np.nan).ffill()
+        portfolio_positions = optimal_positions * lot_value / prices_safe
+        portfolio_positions = portfolio_positions.fillna(0.0)
+        logger.info(f"  Greedy positions converted. Avg non-zero per day: "
+                    f"{(portfolio_positions.abs() > 0).sum(axis=1).mean():.1f}")
+    else:
+        # Apply Carver forecast-method buffering.
+        # buffer_width = vol_scalar × instrument_weight × IDM × buffer_size
+        # buffer_size is read from config by pysystemtrade (default 0.10).
+        logger.info("  Applying forecast-method buffering...")
+        portfolio_positions = apply_forecast_buffering(
+            system=system,
+            optimal_positions=optimal_positions,
+        )
 
     logger.info(f"  Backtest completed:")
     logger.info(f"    Date range: {portfolio_positions.index[0].date()} to {portfolio_positions.index[-1].date()}")
     logger.info(f"    N days: {len(portfolio_positions)}")
     logger.info(f"    Instruments: {len(portfolio_positions.columns)}")
 
-    # Get instrument weights for diagnostic
-    weights = system.portfolio.get_instrument_weights()
+    # Get instrument weights for diagnostic (greedy: derive from positions)
+    if use_greedy_portfolio:
+        weights = (portfolio_positions.abs() > 0).astype(float)
+        weights = weights.div(weights.sum(axis=1).replace(0, np.nan), axis=0).fillna(0.0)
+    else:
+        weights = system.portfolio.get_instrument_weights()
     universe_size = (weights > 0).sum(axis=1)
     logger.info(f"    Universe size: min={universe_size.min():.0f}, max={universe_size.max():.0f}, avg={universe_size.mean():.1f}")
 
     # Write universe snapshot from Stage 2 selector output
-    if use_dynamic_universe:
+    if use_dynamic_universe and not use_greedy_portfolio:
         _write_universe_snapshot(
             system=system,
             output_path=output_path,

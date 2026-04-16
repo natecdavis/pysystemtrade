@@ -147,6 +147,17 @@ class CryptoDynamicPortfolio(CryptoPortfolios):
             self.log.debug("Stage 2 (Top-K) not configured — using Stage 1 eligibility only")
             return eligibility_df
 
+        # Precomputed eligibility override: load from parquet if path configured.
+        # Used by compare_portfolio_selection.py to inject walk-forward selected
+        # K/buffer schedule without re-running the standalone simulation.
+        precomputed_path = du_config.get('top_k_precomputed_eligibility_path', None)
+        if precomputed_path:
+            self.log.info(f"Stage 2: loading precomputed Top-K eligibility from {precomputed_path}")
+            precomputed = pd.read_parquet(precomputed_path)
+            precomputed = precomputed.reindex(index=eligibility_df.index, method='ffill')
+            precomputed = precomputed.reindex(columns=eligibility_df.columns, fill_value=False)
+            return precomputed.fillna(False).astype(bool)
+
         from sysdata.crypto.top_k_selector import TopKInstrumentSelector
 
         K = du_config.get('top_k', 30)
