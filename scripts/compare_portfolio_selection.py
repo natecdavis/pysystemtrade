@@ -429,17 +429,18 @@ def print_comparison(results: dict, schedule_df: pd.DataFrame = None) -> None:
     _row("wf_topk", results.get("wf_topk", {}), ref)
     print("-" * 95)
     for scheme, label in [
-        ("greedy_daily",   "greedy (daily)"),
-        ("greedy_weekly",  "greedy (weekly)"),
-        ("greedy_monthly", "greedy (monthly)"),
-        ("greedy",         "greedy (daily)"),   # legacy alias
+        ("greedy_daily",        "greedy (daily)"),
+        ("greedy_weekly",       "greedy (weekly)"),
+        ("greedy_monthly",      "greedy (monthly, sc=10)"),
+        ("greedy_monthly_sc20", "greedy (monthly, sc=20)"),
+        ("greedy",              "greedy (daily)"),   # legacy alias
     ]:
         if scheme in results:
             _row(label, results[scheme], ref)
     print("=" * 95)
     print("\nNote: reference uses K=30, entry_buffer=3, exit_buffer=15 — chosen retrospectively.")
     print("      wf_topk: expanding-window Calmar selects K/buffers quarterly (out-of-sample).")
-    print("      greedy: Carver integer-lot optimizer, shadow_cost=100, long_only=False, lot=$10.\n")
+    print("      greedy: Carver integer-lot optimizer, long_only=False, lot=$10/lot (fraction-of-capital units).\n")
 
     if schedule_df is not None and not schedule_df.empty:
         print("Walk-forward K/buffer schedule (quarterly winners):")
@@ -478,7 +479,8 @@ def main() -> None:
     parser.add_argument(
         "--schemes", nargs="+",
         default=["wf_topk", "greedy_daily", "greedy_weekly", "greedy_monthly"],
-        choices=["wf_topk", "greedy_daily", "greedy_weekly", "greedy_monthly", "greedy"],
+        choices=["wf_topk", "greedy_daily", "greedy_weekly", "greedy_monthly",
+                 "greedy_monthly_sc20", "greedy"],
         help="Schemes to run (greedy = alias for greedy_daily)",
     )
     parser.add_argument(
@@ -625,32 +627,26 @@ def main() -> None:
                   f"MaxDD={r['max_dd']*100:.2f}%")
 
     # ── Greedy variants ────────────────────────────────────────────────────
-    # "greedy" is a legacy alias for "greedy_daily"
+    # Each entry: (rebalance_freq, display_label, shadow_cost)
+    # shadow_cost calibration (after units fix — per_contract_value in capital
+    # fractions, cost as fraction of value):
+    #   condition to add lots: vol/sqrt(N) > cost_frac * shadow_cost
+    #   0.63/sqrt(200) ≈ 0.045  →  shadow_cost < 22 to allow N=200 instruments
     greedy_variants = {
-        "greedy_daily":   ("D",  "daily"),
-        "greedy_weekly":  ("W",  "weekly"),
-        "greedy_monthly": ("ME", "month-end"),
-        "greedy":         ("D",  "daily"),   # alias
-    }
-    base_greedy_config = {
-        "use_greedy_portfolio": True,
-        "lot_size_notional_override": 10,
-        "greedy_params": {
-            "shadow_cost": 100,
-            "long_only": False,
-            "tracking_error_buffer": 0.0125,
-            "correlation_span": 60,
-            "min_history_days": 30,
-        },
+        "greedy_daily":        ("D",  "daily",      10),
+        "greedy_weekly":       ("W",  "weekly",     10),
+        "greedy_monthly":      ("ME", "month-end",  10),
+        "greedy_monthly_sc20": ("ME", "month-end",  20),
+        "greedy":              ("D",  "daily",      10),  # alias
     }
 
     for scheme in args.schemes:
         if scheme not in greedy_variants:
             continue
 
-        freq, freq_label = greedy_variants[scheme]
+        freq, freq_label, shadow_cost = greedy_variants[scheme]
         print(f"\n{'='*60}")
-        print(f"Greedy ({freq_label}): shadow_cost=100, long_only=False, lot=$10")
+        print(f"Greedy ({freq_label}): shadow_cost={shadow_cost}, long_only=False, lot=$10")
         print(f"{'='*60}")
         if freq == "D":
             print("  WARNING: daily greedy runs the optimiser for every day. "
@@ -660,10 +656,19 @@ def main() -> None:
         summary_path = greedy_dir / "performance_summary.json"
 
         if force_backtest or not summary_path.exists():
-            extra = {k: v for k, v in base_greedy_config.items()}
-            # Deep-copy greedy_params and inject rebalance_freq
-            extra["greedy_params"] = dict(base_greedy_config["greedy_params"])
-            extra["greedy_params"]["rebalance_freq"] = freq
+            extra = {
+                "use_greedy_portfolio": True,
+                "lot_size_notional_override": 10,
+                "min_notional_position": 10.0,  # HL minimum $10 (not old Binance $25)
+                "greedy_params": {
+                    "shadow_cost": shadow_cost,
+                    "long_only": False,
+                    "tracking_error_buffer": 0.0125,
+                    "correlation_span": 60,
+                    "min_history_days": 30,
+                    "rebalance_freq": freq,
+                },
+            }
             run_backtest(
                 config_path=args.config,
                 data_path=args.data,
@@ -677,7 +682,8 @@ def main() -> None:
         if results[scheme]:
             r = results[scheme]
             print(f"  Sharpe={r['sharpe']:.4f}, Calmar={r['calmar']:.4f}, "
-                  f"MaxDD={r['max_dd']*100:.2f}%, Turnover={r['turnover']:.1f}x")
+                  f"MaxDD={r['max_dd']*100:.2f}%, AvgPos={r['avg_pos']:.1f}, "
+                  f"Turnover={r['turnover']:.1f}x")
 
     # ── Print comparison ───────────────────────────────────────────────────
     print_comparison(results, schedule_df if args.show_schedule else None)

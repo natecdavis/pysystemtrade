@@ -122,6 +122,22 @@ class MrGreedyPortfolio(Portfolios):
 
 
     @output()
+    def get_actual_position(self, instrument_code: str) -> pd.Series:
+        """
+        Override base class to bypass capital_multiplier.
+
+        The base class multiplies notional_position by capital_multiplier() from
+        the accounts stage.  For the greedy this is wrong: greedy positions are in
+        integer lot counts, not token units, so the accounts stage computes wildly
+        incorrect daily P&L (lot_counts × Δtoken_price instead of lots × $lot_usd ×
+        return).  That sends capital to near-zero on the first big drawdown day,
+        making capital_multiplier ≈ 0 and zeroing out all subsequent positions.
+
+        Since notional_capital == actual_capital for our backtests the multiplier
+        should be 1.0 throughout; just return the notional position directly.
+        """
+        return self.get_notional_position(instrument_code)
+
     def get_notional_position(self, instrument_code: str) -> pd.Series:
         """
         Get notional position using Mr Greedy optimizer.
@@ -351,8 +367,13 @@ class MrGreedyPortfolio(Portfolios):
         # Get ideal positions for this date
         ideal_positions_series = ideal_positions_df.loc[date]
 
-        # Filter to non-zero positions (instruments with signals)
-        active_instruments = ideal_positions_series[ideal_positions_series.abs() > 0.001].index.tolist()
+        # Filter to non-zero positions (instruments with signals).
+        # Use a near-zero threshold in TOKEN units — not 0.001, which incorrectly
+        # excludes high-priced tokens (BTC at $50K: ideal_pos ≈ 0.0004 BTC tokens,
+        # which is $20 of exposure, well worth trading, but below 0.001 tokens).
+        # The fractional-lot filter inside _build_optimization_inputs handles the
+        # real minimum (instruments whose USD position rounds to < 0.001 lots).
+        active_instruments = ideal_positions_series[ideal_positions_series.abs() > 1e-9].index.tolist()
 
         if len(active_instruments) == 0:
             self.log.debug(f"{date.date()}: No active signals, returning zero positions")
@@ -455,17 +476,28 @@ class MrGreedyPortfolio(Portfolios):
 
             if notional_override is not None:
                 # Venue has negligible minimum lot size (e.g. Hyperliquid).
-                # Treat each $notional_override as one lot, working entirely
-                # in USD space. fractional_lots = position_usd / notional_override.
+                # Treat each $notional_override as one lot. per_contract_value must
+                # be expressed as a FRACTION OF CAPITAL so that portfolio weights
+                # (contracts × per_contract_value) are dimensionless fractions and
+                # tracking error is in annualised-return units — comparable to the
+                # tracking_error_buffer of 0.0125.  Using raw USD here makes TE
+                # ~10,000× too large and renders the buffer inoperative.
+                trading_capital = self.parent.positionSize.get_notional_trading_capital()
                 position_usd = notional_position * price
                 fractional_lots = position_usd / notional_override
-                lot_value = notional_override
+                lot_value = notional_override / trading_capital  # fraction of capital
             else:
                 lot_size = self.lot_size_provider.get_lot_size(instrument_code)
                 fractional_lots = self.lot_size_provider.convert_notional_to_lots(
                     notional_position, lot_size
                 )
                 lot_value = self.lot_size_provider.get_lot_value(instrument_code, price)
+
+            # Skip instruments whose ideal position rounds to zero lots.
+            # This keeps the optimization tractable without excluding high-priced
+            # tokens: BTC ideal ≈ 1.9 fractional lots ($19 USD) >> 0.1 threshold.
+            if abs(fractional_lots) < 0.1:
+                continue
 
             contracts_optimal_dict[instrument_code] = fractional_lots
             per_contract_value_dict[instrument_code] = lot_value
@@ -595,14 +627,27 @@ class MrGreedyPortfolio(Portfolios):
         if len(returns_dict) == 0:
             raise Exception(f"No returns available for covariance estimation at {date}")
 
-        # Align returns on common index
+        # Build aligned returns DataFrame.
+        # With 100+ instruments in a jagged universe, joint dropna() discards most
+        # rows (one gap in any instrument drops the whole day), leaving < min_history
+        # rows and causing the optimizer to fall back to empty positions on most dates.
+        #
+        # Fix: filter to instruments with at least half the window of observations
+        # (handles recently-listed coins and data quality gaps), then fill residual
+        # NaN with 0 (neutral day) so EWMA always has a full window to work with.
         returns_df = pd.DataFrame(returns_dict)
-        returns_df = returns_df.dropna()
 
-        if len(returns_df) < min_history:
+        min_obs_in_window = max(min_history, correlation_span // 2)
+        obs_count = returns_df.notna().sum()
+        instruments_with_data = obs_count[obs_count >= min_obs_in_window].index.tolist()
+
+        if len(instruments_with_data) == 0:
             raise Exception(
-                f"Insufficient aligned returns for covariance: {len(returns_df)} < {min_history}"
+                f"No instruments with sufficient history for covariance at {date}"
             )
+
+        returns_df = returns_df[instruments_with_data]
+        returns_df = returns_df.fillna(0.0)
 
         # Calculate EWMA covariance matrix
         # Using pandas ewm with span parameter
@@ -632,73 +677,34 @@ class MrGreedyPortfolio(Portfolios):
         instruments: list,
     ) -> meanEstimates:
         """
-        Get SR costs for instruments at a specific date.
-        Results are cached to avoid expensive recalculation.
+        Get cost per unit of weight change for each instrument.
 
-        Uses a simplified cost model:
-        - Spread: 10 bps (conservative estimate for liquid crypto perps)
-        - Fee: 5 bps one-way (2x for round-trip = 10 bps)
-        - Total: 20 bps per round-trip
-        - SR cost = total_cost / annual_vol
+        Returns cost as a fraction of value traded (e.g. 0.002 for 20 bps),
+        matching Carver's cost_per_notional_weight_as_proportion_of_capital
+        convention.  Do NOT divide by vol: the objective function compares this
+        against tracking error in annualised-return units; shadow_cost handles
+        the time-scaling.
+
+        Fixed model: 10 bps spread + 5 bps taker fee × 2 (round-trip) = 20 bps.
 
         Args:
-            date: Date to get costs for
+            date: Date to get costs for (unused; costs are time-invariant here)
             instruments: List of instruments
 
         Returns:
-            meanEstimates with SR costs
+            meanEstimates with cost fractions
         """
-        # Check cache first
         cache_key = f"{date.date()}_{hash(tuple(sorted(instruments)))}"
         if cache_key in self._sr_cost_cache:
             return self._sr_cost_cache[cache_key]
 
-        cost_dict = {}
+        spread_bps = 10.0
+        fee_bps = 5.0
+        total_cost_fraction = (spread_bps + 2 * fee_bps) / 10000  # 0.002
 
-        # Fixed cost assumptions (conservative)
-        spread_bps = 10.0  # 10 bps spread
-        fee_bps = 5.0      # 5 bps taker fee
-        total_cost_fraction = (spread_bps + 2 * fee_bps) / 10000  # 20 bps total
-
-        for instrument_code in instruments:
-            try:
-                # Use cached prices to avoid repeated data loads
-                if instrument_code not in self._price_cache:
-                    self._price_cache[instrument_code] = self.rawdata.get_daily_prices(instrument_code)
-
-                prices = self._price_cache[instrument_code]
-
-                # Filter to data before date
-                prices = prices[prices.index < date]
-
-                if len(prices) < 35:
-                    cost_dict[instrument_code] = 0.10  # Default high cost
-                    continue
-
-                # Calculate trailing volatility
-                returns = np.log(prices / prices.shift(1)).dropna()
-                daily_vol = returns.iloc[-35:].std()
-                annual_vol = daily_vol * np.sqrt(252)
-
-                if annual_vol <= 0 or np.isnan(annual_vol):
-                    cost_dict[instrument_code] = 0.10  # Default high cost
-                    continue
-
-                # SR cost = total cost / annual vol
-                sr_cost = total_cost_fraction / annual_vol
-
-                cost_dict[instrument_code] = sr_cost
-
-            except Exception as e:
-                # Suppress verbose warnings during bulk processing
-                cost_dict[instrument_code] = 0.10  # Default high cost
-
-        # Convert to meanEstimates
+        cost_dict = {instr: total_cost_fraction for instr in instruments}
         costs = meanEstimates(cost_dict)
-
-        # Store in cache
         self._sr_cost_cache[cache_key] = costs
-
         return costs
 
     def _get_constraints(self) -> constraintsForDynamicOpt:
@@ -799,9 +805,17 @@ class MrGreedyPortfolio(Portfolios):
         if min_notional <= 0:
             return position
 
-        prices = self.rawdata.get_daily_prices(instrument_code)
-        prices = prices.reindex(position.index, method='ffill')
-        notional = position.abs() * prices
+        # Greedy positions are in integer lots, not token units.
+        # notional = lots × $/lot (NOT lots × token_price — that gives nonsense for
+        # high-priced tokens like BTC and wrongly zeros low-priced alts like DOGE).
+        lot_usd = self.config.get_element_or_default("lot_size_notional_override", None)
+        if lot_usd is not None:
+            notional = position.abs() * float(lot_usd)
+        else:
+            prices = self.rawdata.get_daily_prices(instrument_code)
+            prices = prices.reindex(position.index, method='ffill')
+            notional = position.abs() * prices
+
         filtered = position.where(notional >= min_notional, 0.0)
 
         n_zeroed = int((position.abs() > 0).sum() - (filtered.abs() > 0).sum())
@@ -875,6 +889,14 @@ class MrGreedyPortfolio(Portfolios):
         For greedy portfolio, we use equal weights as the starting point.
         The optimizer will select which instruments to hold.
 
+        NOTE: using 1/top_k here causes over-leverage: with 149 instruments
+        having non-zero signals at weight=1/30 each, the ideal portfolio is
+        5× leveraged and the greedy selects ~65 instruments (2.15× leverage).
+        The shadow cost can't limit positions because cost_per_lot is too small
+        ($10 lot / $10K capital = 0.001; cost = 0.00045 × 0.001 = 4.5e-7 per
+        lot) relative to TE improvements.  Using 1/N_universe keeps ideal
+        positions at ~1 lot each so the shadow cost naturally terminates at K≈30.
+
         Args:
             instrument_code: Instrument code
 
@@ -884,7 +906,7 @@ class MrGreedyPortfolio(Portfolios):
         # Get all instruments
         instruments = self.get_instrument_list()
 
-        # Equal weight
+        # Equal weight over full universe
         weight = 1.0 / len(instruments)
 
         # Create constant weight series
