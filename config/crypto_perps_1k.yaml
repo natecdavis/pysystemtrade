@@ -134,8 +134,8 @@ dynamic_universe:
 
   # Stage 2 — Top-K selection with hysteresis (criterion specified above)
   top_k: 30
-  entry_buffer: 3
-  exit_buffer: 15
+  entry_buffer: 2
+  exit_buffer: 10
 
   # Binance lot-size gate: exclude instruments whose minimum lot (in USD) exceeds
   # this value. Prevents counting instruments in K that can't be meaningfully sized.
