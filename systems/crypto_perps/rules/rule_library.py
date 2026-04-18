@@ -641,6 +641,143 @@ def residual_momentum(
 
 
 # ============================================================================
+# ATTENTION / NEWS PROXY SIGNALS (OI-based, Phase 1)
+# ============================================================================
+
+
+def attn_exhaustion_fade(
+    price: pd.Series,
+    vol: pd.Series,
+    open_interest: pd.Series,
+    oi_window: int = 60,
+    oi_threshold: float = 2.0,
+    ret_threshold: float = 1.5,
+) -> pd.Series:
+    """
+    Per-instrument OI-spike + return-spike exhaustion fade (attention proxy S1).
+
+    Hypothesis: when an instrument sees extreme OI surge AND a large price move
+    simultaneously, the position is crowded and due for reversal. Fades the
+    direction of the move only when both OI and return clear their thresholds.
+
+    Inputs: price, vol (daily_returns_volatility), open_interest (get_open_interest).
+    Returns zero (not NaN) before OI data begins so scalar calibration is clean.
+    """
+    if open_interest is None or len(open_interest.dropna()) < oi_window:
+        return pd.Series(dtype=float, index=price.index)
+
+    df = pd.concat(
+        [price, vol, open_interest], axis=1, keys=["price", "vol", "oi"]
+    ).dropna(subset=["oi"])
+    if df.empty:
+        return pd.Series(dtype=float, index=price.index)
+
+    log_oi = np.log(df["oi"].clip(lower=1.0))
+    log_oi_chg = log_oi.diff()
+    min_p = max(oi_window // 2, 2)
+    oi_ts_z = (log_oi_chg - log_oi_chg.rolling(oi_window, min_periods=min_p).mean()) / (
+        log_oi_chg.rolling(oi_window, min_periods=min_p).std().clip(lower=1e-8)
+    )
+
+    ret_1d = df["price"].pct_change()
+    ret_3d = (1 + ret_1d).rolling(3).apply(np.prod, raw=True) - 1
+    ret_z_3d = ret_3d / df["vol"].clip(lower=1e-8)
+
+    oi_excess = (oi_ts_z - oi_threshold).clip(lower=0.0)
+    ret_excess = (ret_z_3d.abs() - ret_threshold).clip(lower=0.0)
+    raw = -oi_excess * ret_excess * np.sign(ret_z_3d)
+
+    return (raw * 10.0).reindex(price.index)
+
+
+def attn_panic_rebound(
+    price: pd.Series,
+    vol: pd.Series,
+    open_interest: pd.Series,
+    oi_window: int = 60,
+    panic_oi_threshold: float = 1.5,
+    panic_ret_threshold: float = 2.0,
+) -> pd.Series:
+    """
+    Per-instrument OI-spike + panic selloff + stabilization → long rebound (S3 proxy).
+
+    Hypothesis: OI-driven panic conditions (high OI + extreme down move) create
+    overshoot. After next-day stabilization (positive daily return), signal is long.
+    Distinct from funding_mr, which fades extreme funding rather than OI-driven panics.
+
+    Inputs: price, vol (daily_returns_volatility), open_interest (get_open_interest).
+    """
+    if open_interest is None or len(open_interest.dropna()) < oi_window:
+        return pd.Series(dtype=float, index=price.index)
+
+    df = pd.concat(
+        [price, vol, open_interest], axis=1, keys=["price", "vol", "oi"]
+    ).dropna(subset=["oi"])
+    if df.empty:
+        return pd.Series(dtype=float, index=price.index)
+
+    log_oi = np.log(df["oi"].clip(lower=1.0))
+    log_oi_chg = log_oi.diff()
+    min_p = max(oi_window // 2, 2)
+    oi_ts_z = (log_oi_chg - log_oi_chg.rolling(oi_window, min_periods=min_p).mean()) / (
+        log_oi_chg.rolling(oi_window, min_periods=min_p).std().clip(lower=1e-8)
+    )
+
+    ret_1d = df["price"].pct_change()
+    ret_3d = (1 + ret_1d).rolling(3).apply(np.prod, raw=True) - 1
+    ret_z_3d = ret_3d / df["vol"].clip(lower=1e-8)
+
+    panic_strength = (
+        (oi_ts_z - panic_oi_threshold).clip(lower=0.0)
+        * (-ret_z_3d - panic_ret_threshold).clip(lower=0.0)
+    )
+    stabilized = (ret_1d >= 0).astype(float)
+    raw = panic_strength * stabilized
+
+    return (raw * 10.0).reindex(price.index)
+
+
+# ============================================================================
+# CALENDAR SEASONALITY (contrarian annual mean-reversion)
+# ============================================================================
+
+
+def seasonality(price: pd.Series, n_lags_min: int = 2, n_lags_max: int = 5) -> pd.Series:
+    """
+    Contrarian same-calendar-month seasonality (Wang 2024 / crypto adaptation).
+
+    At each month-end, averages the monthly return from the NEXT calendar month
+    in prior years (annual lags t-n_lags_min through t-n_lags_max, skipping t-1).
+    Negated: high historical same-month performance predicts underperformance
+    (annual mean-reversion; TS IC = -0.07, t = -4.3 in 2020-2026 crypto perps).
+
+    Signal is constant within each calendar month (forward-filled from month-end).
+    """
+    monthly = price.resample("ME").last()
+    monthly_rets = monthly.pct_change()
+
+    scores = {}
+    for dt in monthly_rets.index:
+        target = dt + pd.DateOffset(months=1)
+        month_num = target.month
+        year_num = target.year
+        lags = []
+        for k in range(n_lags_min, n_lags_max + 1):
+            lag_dates = monthly_rets.index[
+                (monthly_rets.index.month == month_num)
+                & (monthly_rets.index.year == year_num - k)
+            ]
+            if len(lag_dates) == 1:
+                val = monthly_rets.loc[lag_dates[0]]
+                if not np.isnan(val):
+                    lags.append(val)
+        scores[dt] = -float(np.mean(lags)) if lags else np.nan  # negated: contrarian
+
+    score_series = pd.Series(scores)
+    return score_series.reindex(price.index, method="ffill")
+
+
+# ============================================================================
 # PASSTHROUGH (for pre-computed cross-sectional signals)
 # ============================================================================
 

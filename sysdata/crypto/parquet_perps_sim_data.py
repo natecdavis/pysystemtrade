@@ -93,6 +93,7 @@ class parquetCryptoPerpsSimData(simData):
         mvrv_data_path: str = arg_not_supplied,
         active_addresses_data_path: str = arg_not_supplied,
         market_cap_data_path: str = arg_not_supplied,
+        hl_instruments_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -100,6 +101,11 @@ class parquetCryptoPerpsSimData(simData):
         self._dataset_path = Path(dataset_path)
         self._config_path = config_path
         self._env_root = env_root
+        self._hl_instruments_path = (
+            Path(hl_instruments_path)
+            if hl_instruments_path is not arg_not_supplied
+            else None
+        )
         self._use_dynamic_universe = use_dynamic_universe
 
         # Load parquet panel
@@ -271,6 +277,9 @@ class parquetCryptoPerpsSimData(simData):
         self._skew_rv_panel_90: Optional[pd.DataFrame] = None
         self._skew_rv_panel_180: Optional[pd.DataFrame] = None
         self._skew_rv_panel_365: Optional[pd.DataFrame] = None
+        # xs_oi_attention panel (cross-sectional OI-flow rank, contrarian)
+        self._xs_oi_attention_lookback = int(_raw_cfg.get('xs_oi_attention_lookback', 5))
+        self._xs_oi_attention_panel: Optional[pd.DataFrame] = None
 
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
@@ -1163,7 +1172,7 @@ class parquetCryptoPerpsSimData(simData):
             return self._hl_median_funding_cache
 
         # Load HL symbol set and filter columns
-        hl_symbols = load_hl_symbols()
+        hl_symbols = load_hl_symbols(path=self._hl_instruments_path)
         if not hl_symbols:
             self.log.warning(
                 "hyperliquid_instruments.json not found; "
@@ -2033,6 +2042,63 @@ class parquetCryptoPerpsSimData(simData):
         if self._xs_activity_panel.empty or instrument_code not in self._xs_activity_panel.columns:
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._xs_activity_panel[instrument_code]
+
+    def _compute_xs_oi_attention_panel(self, lookback: int = 5) -> pd.DataFrame:
+        """
+        Build cross-sectional OI-flow attention forecast panel (dates × instruments).
+
+        For each date, ranks instruments by their EWM-smoothed daily log-OI-change
+        cross-sectionally → percentile [0, 1] → contrarian forecast [-20, +20].
+
+        Sign: high OI inflow rank (pct≈1.0) → forecast -20 (SHORT / fade crowding).
+        Contrarian: instrument gaining OI relative to peers → crowded → mean-revert.
+        ~300 instruments covered (all with OI data from binance_oi_processed.parquet).
+
+        Differs from get_xs_oi_change_zscore, which is a universe-scalar (same value
+        for all instruments). This gives per-instrument cross-sectional ranking.
+        """
+        if self._oi_df is None:
+            return pd.DataFrame()
+
+        instrument_list = self.get_instrument_list()
+        oi_change_dict = {}
+        for instr in instrument_list:
+            bare = instr.replace('_PERP', '')
+            if bare not in self._oi_df.columns:
+                continue
+            oi = self._oi_df[bare].dropna()
+            if len(oi) < max(lookback * 2, 10):
+                continue
+            log_oi_change = np.log(oi.clip(lower=1.0)).diff()
+            if lookback > 1:
+                log_oi_change = log_oi_change.ewm(span=lookback, min_periods=1).mean()
+            oi_change_dict[instr] = log_oi_change
+
+        if not oi_change_dict:
+            return pd.DataFrame()
+
+        oi_df = pd.DataFrame(oi_change_dict)
+        pct_rank = oi_df.rank(axis=1, pct=True)
+        forecast_panel = (pct_rank - 0.5) * -40.0  # contrarian: high OI inflow → short
+        return forecast_panel
+
+    def get_xs_oi_attention_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return cross-sectional OI-flow attention forecast for one instrument (±20 scale).
+
+        Contrarian: instrument gaining OI vs peers today → short signal.
+        Returns all-NaN Series (with DatetimeIndex) for instruments without OI data.
+        """
+        if self._xs_oi_attention_panel is None:
+            self._xs_oi_attention_panel = self._compute_xs_oi_attention_panel(
+                self._xs_oi_attention_lookback
+            )
+        if (
+            self._xs_oi_attention_panel.empty
+            or instrument_code not in self._xs_oi_attention_panel.columns
+        ):
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_oi_attention_panel[instrument_code]
 
     def _compute_xs_val_panel(self, lookback: int = 30) -> pd.DataFrame:
         """

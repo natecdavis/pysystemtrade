@@ -65,7 +65,7 @@ system:
 
 percentage_vol_target: 25.0
 notional_trading_capital: 10000.0
-min_notional_position: 25.0
+min_notional_position: 10.0  # HL minimum order size; full closes exempt
 
 # Dynamic universe systems need span=1 here. The pysystemtrade default (125) applies
 # EWMA smoothing to weight transitions, which is appropriate for static Carver universes
@@ -673,6 +673,33 @@ trading_rules:
     other_args: {proximity_pct: 0.03}
 
   # --------------------------------------------------------------------------
+  # ATTENTION PROXY SIGNALS — OI-based, Phase 1 (2026-04-18)
+  # No external news/sentiment data required. Uses per-instrument OI from
+  # binance_oi_processed.parquet (coverage 2021-12-01 onward, 300 instruments).
+  # --------------------------------------------------------------------------
+
+  xs_oi_attention:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_xs_oi_attention_forecast"
+
+  attn_exhaustion_fade:
+    function: systems.crypto_perps.rules.rule_library.attn_exhaustion_fade
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+      - "data.get_open_interest"
+    other_args: {oi_window: 60, oi_threshold: 2.0, ret_threshold: 1.5}
+
+  attn_panic_rebound:
+    function: systems.crypto_perps.rules.rule_library.attn_panic_rebound
+    data:
+      - "data.daily_prices"
+      - "rawdata.daily_returns_volatility"
+      - "data.get_open_interest"
+    other_args: {oi_window: 60, panic_oi_threshold: 1.5, panic_ret_threshold: 2.0}
+
+  # --------------------------------------------------------------------------
   # CARRY — Trend-Gated (Carver-compliant, 2026-03-06 refactor)
   # Gate baked into rule: returns 0 when sign(carry) ≠ sign(per-instrument EWMAC).
   # Goes through standard forecast scalar → weighted avg → FDM pipeline.
@@ -868,66 +895,66 @@ forecast_weights:
   #
   # EWMAC: 3 rules × 4.762% = 14.286%
   # (ewmac_4 removed: 77 rt/yr, 62% instruments fail annual SR cost test)
-  ewmac_8: 0.017857
+  ewmac_8: 0.016949
 
-  ewmac_16: 0.017857
+  ewmac_16: 0.016949
 
-  ewmac_32: 0.017857
+  ewmac_32: 0.016949
 
 
   # Breakout: 4 rules × 3.571% = 14.284%
   # (breakout_10 removed: 132 rt/yr, 100% fail)
-  breakout_20: 0.017857
+  breakout_20: 0.016949
 
-  breakout_40: 0.017857
+  breakout_40: 0.016949
 
-  breakout_80: 0.017857
+  breakout_80: 0.016949
 
-  breakout_160: 0.017857
+  breakout_160: 0.016949
 
 
   # Normmom: 3 rules × 4.762% = 14.286%
   # (normmom_4 removed: 68 rt/yr, 37% fail)
-  normmom_8: 0.017857
+  normmom_8: 0.016949
 
-  normmom_16: 0.017857
+  normmom_16: 0.016949
 
-  normmom_32: 0.017857
+  normmom_32: 0.016949
 
 
   # Accel: 3 rules × 4.762% = 14.286%
-  accel_16: 0.017857
+  accel_16: 0.016949
 
-  accel_32: 0.017857
+  accel_32: 0.016949
 
-  accel_64: 0.017857
+  accel_64: 0.016949
 
 
   # Assettrend: 4 rules × 3.571% = 14.284%
-  assettrend_8: 0.017857
+  assettrend_8: 0.016949
 
-  assettrend_16: 0.017857
+  assettrend_16: 0.016949
 
-  assettrend_32: 0.017857
+  assettrend_32: 0.016949
 
-  assettrend_64: 0.017857
+  assettrend_64: 0.016949
 
 
   # Relmomentum: 2 rules × 7.143% = 14.286%
   # (relmomentum_10 removed: 132 rt/yr, 100% fail)
-  relmomentum_20: 0.017857
+  relmomentum_20: 0.016949
 
-  relmomentum_40: 0.017857
+  relmomentum_40: 0.016949
 
 
   # ResidualMomentum: 3 rules × 4.762% = 14.286%
   # IC audit 2026-02-18: resmom is #1 family (IC@5d=0.077, t=2.8, IC@21d=0.112)
   # Ranks: resmom_16=#7, resmom_32=#13, resmom_64=#14 out of 48 rules
-  residual_momentum_16: 0.017857
+  residual_momentum_16: 0.016949
 
-  residual_momentum_32: 0.017857
+  residual_momentum_32: 0.016949
 
-  residual_momentum_64: 0.017857
+  residual_momentum_64: 0.016949
 
 
   # SectorMomentum — TESTED & REJECTED (2026-02-28): Sharpe 0.96 vs 0.99 baseline (-3.0%)
@@ -943,29 +970,29 @@ forecast_weights:
   # Sweep 2026-03-07 (carry_60):    3.17× empirical ratio → w=0.10 (Calmar peak, ΔSharpe +2.6%, ΔMaxDD +1.16pp)
   # Sweep 2026-04-02 (post-funding_mr): equal weights, w=0.20 peak (ΔSharpe +38.6%, ΔCalmar +0.79, MaxDD -5.34%)
   #   w=0.15 adopted (conservative; cliff at w=0.30, trend diluted to 48%). ΔSharpe +35.6%, ΔCalmar +0.48, MaxDD -6.42%
-  gated_carry_10: 0.017857
+  gated_carry_10: 0.016949
 
-  gated_carry_30: 0.017857
+  gated_carry_30: 0.016949
 
-  gated_carry_60: 0.017857
+  gated_carry_60: 0.016949
 
   # gated_carry_90/180: included at 1/N (flat-56 adoption 2026-04-15)
-  gated_carry_90: 0.017857
+  gated_carry_90: 0.016949
 
-  gated_carry_180: 0.017857
+  gated_carry_180: 0.016949
 
 
   # Cross-sectional signals (moved from additive sleeves, 2026-03-06 refactor)
   # Sweep 2026-03-07: w=0.10 (Calmar peak, ΔSharpe +2.9%, ΔCalmar +0.067, ΔMaxDD +1.20pp)
   # Calmar peaks at 0.10 (0.993 vs 0.926 baseline) — same Calmar-peak criterion as carry sweeps.
   # Uncovered instruments get NaN → weight renormalized to 0 for that instrument.
-  xs_carry: 0.017857
+  xs_carry: 0.016949
 
-  xs_activity: 0.017857
+  xs_activity: 0.016949
 
-  xs_val: 0.017857
+  xs_val: 0.016949
 
-  inter_sector: 0.017857
+  inter_sector: 0.016949
 
 
   # CS Mean Reversion: REJECTED 2026-03-10
@@ -981,11 +1008,11 @@ forecast_weights:
   # ΔSharpe +1.3%, ΔCalmar -0.005 (noise-level), ΔMaxDD -0.07pp vs no-skew baseline.
   # 365-only at equivalent budget is strictly worse on both Sharpe and Calmar —
   # 90d/180d provide genuine diversification in the 6-year crypto dataset.
-  skew_abs_90: 0.017857
+  skew_abs_90: 0.016949
 
-  skew_abs_180: 0.017857
+  skew_abs_180: 0.016949
 
-  skew_abs_365: 0.017857
+  skew_abs_365: 0.016949
 
 
   # Skew-rv: Carver (2020) relative-value skew signal, 3 lookbacks.
@@ -993,51 +1020,51 @@ forecast_weights:
   # Sweep 2026-03-08: Calmar-peak at w_combined=0.05 (0.0167/rule).
   # ΔSharpe +1.0%, ΔCalmar +0.011 (Calmar peaks ABOVE baseline), ΔMaxDD -0.11pp.
   # D1 re-sweep 2026-03-28: Calmar-peak at 0.08 (1.9461, +6.2%). Window narrows after 0.08.
-  skew_rv_90: 0.017857  # was 0.03 (D1 2026-03-27); re-sweep confirms 0.08 is Calmar-peak
-  skew_rv_180: 0.017857
+  skew_rv_90: 0.016949  # was 0.03 (D1 2026-03-27); re-sweep confirms 0.08 is Calmar-peak
+  skew_rv_180: 0.016949
 
-  skew_rv_365: 0.017857
+  skew_rv_365: 0.016949
 
 
   # De-meaned carry: ADOPTED 2026-03-27 — ungated variant, w_combined=0.15 (0.05/rule)
   # Phase 1: ungated ΔSharpe +3.4% vs gated +1.8% → ungated wins (lower overlap with gated_carry)
   # Phase 2: Calmar peaks at w=0.15 (1.8351 vs 1.6532 baseline). ΔSharpe +3.4%, ΔMaxDD +0.90pp (improved)
   # Distinct from gated_carry (raw vs history) and xs_carry (rank vs absolute deviation from mean)
-  demeaned_carry_10: 0.017857
+  demeaned_carry_10: 0.016949
 
-  demeaned_carry_30: 0.017857
+  demeaned_carry_30: 0.016949
 
-  demeaned_carry_60: 0.017857
+  demeaned_carry_60: 0.016949
 
-  demeaned_carry_gated_10: 0.017857  # gated variant; included at 1/N per flat-56 adoption
-  demeaned_carry_gated_30: 0.017857
+  demeaned_carry_gated_10: 0.016949  # gated variant; included at 1/N per flat-56 adoption
+  demeaned_carry_gated_30: 0.016949
 
-  demeaned_carry_gated_60: 0.017857
+  demeaned_carry_gated_60: 0.016949
 
-  funding_mr: 0.017857  # mean-reversion at extreme funding z-scores; adopted full_rules 2026-04-15
+  funding_mr: 0.016949  # mean-reversion at extreme funding z-scores; adopted full_rules 2026-04-15
 
   # Persistent funding crowding: sweep_funding_crowd_weight.py to find optimal weight
-  funding_crowd_5: 0.017857
+  funding_crowd_5: 0.016949
 
-  funding_crowd_10: 0.017857
+  funding_crowd_10: 0.016949
 
 
   # LSR-based signals: sweep_oi_lsr_weight.py to find optimal weight
-  lsr_divergence: 0.017857
+  lsr_divergence: 0.016949
 
-  lsr_retail_crowding: 0.017857
+  lsr_retail_crowding: 0.016949
 
 
   # Crowd-deleveraging trend amplifier: sweep_crowd_deleverage_weight.py to find optimal weight
-  crowd_deleverage_trend: 0.017857
+  crowd_deleverage_trend: 0.016949
 
 
   # HL-filtered median variants — included at 1/N (flat-56 adoption)
-  demeaned_carry_hl_10: 0.017857
+  demeaned_carry_hl_10: 0.016949
 
-  demeaned_carry_hl_30: 0.017857
+  demeaned_carry_hl_30: 0.016949
 
-  demeaned_carry_hl_60: 0.017857
+  demeaned_carry_hl_60: 0.016949
 
 
   # Removed entirely (cost audit):
@@ -1045,13 +1072,23 @@ forecast_weights:
   #   streversal_1:     424 rt/yr, annual drag 1.26 SR
 
   # Round-number breakout: ADOPTED 2026-04-10, w_combined=0.08 (Calmar peak: +12.8%)
-  round_number_break_10: 0.017857
+  round_number_break_10: 0.016949
 
-  round_number_break_20: 0.017857
+  round_number_break_20: 0.016949
 
-  round_number_break_40: 0.017857
+  round_number_break_40: 0.016949
 
-  round_number_prox: 0.017857       # static sweep rejected; included at 1/N per flat-56 adoption
+  round_number_prox: 0.016949       # static sweep rejected; included at 1/N per flat-59 adoption
+
+  # Attention proxy signals — ADOPTED 2026-04-18, flat-59 (each = 1/59 = 0.016949)
+  # Ablation results vs baseline (Sharpe=1.3651, Calmar=1.7148, MaxDD=-8.20%):
+  #   xs_oi_attention:     Sharpe=1.3923, Calmar=1.8571, MaxDD=-8.00%
+  #   attn_exhaustion_fade: Sharpe=1.3898, Calmar=1.9460, MaxDD=-7.59%
+  #   attn_panic_rebound:  Sharpe=1.3900, Calmar=1.8322, MaxDD=-8.08%
+  #   All 3 combined:      Sharpe=1.3889, Calmar=1.8737, MaxDD=-7.87%
+  xs_oi_attention: 0.016949
+  attn_exhaustion_fade: 0.016949
+  attn_panic_rebound: 0.016949
 
 forecast_cap: 20.0
 
