@@ -299,6 +299,9 @@ class parquetCryptoPerpsSimData(simData):
         # xs_volume panel (cross-sectional volume-flow rank, contrarian)
         self._xs_volume_lookback = int(_raw_cfg.get('xs_volume_lookback', 5))
         self._xs_volume_panel: Optional[pd.DataFrame] = None
+        # xs_low_vol panels (cross-sectional low-vol anomaly, full 319-instrument coverage)
+        self._xs_low_vol_20_panel: Optional[pd.DataFrame] = None
+        self._xs_low_vol_60_panel: Optional[pd.DataFrame] = None
 
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
@@ -2186,6 +2189,35 @@ class parquetCryptoPerpsSimData(simData):
         ):
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._xs_volume_panel[instrument_code]
+
+    def _compute_xs_low_vol_panel(self, lookback: int = 20) -> pd.DataFrame:
+        """
+        Cross-sectional low-vol forecast panel (dates × instruments).
+
+        Low realized vol → +20 (long). Full 319-instrument coverage (from self._prices_df).
+        Sign: low-vol pct_rank≈0 → (pct_rank - 0.5) * -40 → +20. Same formula as xs_oi_attention.
+        """
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+        min_p = max(lookback // 2, 2)
+        rv = log_ret.rolling(lookback, min_periods=min_p).std()
+        pct_rank = rv.rank(axis=1, pct=True)
+        return (pct_rank - 0.5) * -40.0
+
+    def get_xs_low_vol_20_forecast(self, instrument_code: str) -> pd.Series:
+        """Per-instrument XS low-vol forecast (20-day realized vol ranking). Low vol → +20."""
+        if self._xs_low_vol_20_panel is None:
+            self._xs_low_vol_20_panel = self._compute_xs_low_vol_panel(lookback=20)
+        if instrument_code not in self._xs_low_vol_20_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_low_vol_20_panel[instrument_code]
+
+    def get_xs_low_vol_60_forecast(self, instrument_code: str) -> pd.Series:
+        """Per-instrument XS low-vol forecast (60-day realized vol ranking). Low vol → +20."""
+        if self._xs_low_vol_60_panel is None:
+            self._xs_low_vol_60_panel = self._compute_xs_low_vol_panel(lookback=60)
+        if instrument_code not in self._xs_low_vol_60_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_low_vol_60_panel[instrument_code]
 
     def _compute_xs_val_panel(self, lookback: int = 30) -> pd.DataFrame:
         """

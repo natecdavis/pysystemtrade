@@ -891,6 +891,49 @@ def volume_price_divergence(
     return (raw * 10.0).reindex(price.index)
 
 
+def vol_regime_trend(
+    price: pd.Series,
+    vol: pd.Series,
+    trend_fast: int = 32,
+    trend_slow: int = 128,
+    rv_short: int = 20,
+    rv_long: int = 60,
+) -> pd.Series:
+    """
+    TS rule: per-instrument vol contraction amplifies price trend; expansion attenuates.
+
+    Vol-targeting funds add exposure when per-instrument vol falls → trend persists.
+    Distinct from crowd_deleverage_trend: per-instrument (not portfolio-level), continuous
+    modulation (not a rare stress-episode trigger), no OI component.
+    """
+    if len(price.dropna()) < trend_slow:
+        return pd.Series(dtype=float, index=price.index)
+
+    df = pd.concat([price, vol], axis=1, keys=["price", "vol"]).ffill()
+    vol_floor = df["vol"].clip(lower=1e-8)
+
+    # Price trend: EWMAC vol-normalized
+    ewma_f = df["price"].ewm(span=trend_fast, min_periods=trend_fast // 2).mean()
+    ewma_s = df["price"].ewm(span=trend_slow, min_periods=trend_slow // 2).mean()
+    price_ewmac = (ewma_f - ewma_s) / vol_floor
+
+    # Per-instrument realized vol (computed from log-returns inside rule)
+    log_ret = np.log(df["price"] / df["price"].shift(1))
+    rv_s = log_ret.rolling(rv_short, min_periods=rv_short // 2).std()
+    rv_l = log_ret.rolling(rv_long, min_periods=rv_long // 2).std().clip(lower=1e-8)
+
+    # Vol direction: negative = contracting, positive = expanding
+    vol_direction = (rv_s / rv_l) - 1.0
+    vol_dir_std = vol_direction.rolling(rv_long, min_periods=rv_long // 2).std().clip(lower=1e-8)
+    vol_dir_z = (vol_direction / vol_dir_std).clip(-1.0, 1.0)
+
+    # Modifier: 1.5 when vol contracting strongly, 0.5 when expanding strongly
+    vol_modifier = 1.0 - vol_dir_z * 0.5
+
+    raw = price_ewmac * vol_modifier
+    return (raw * 10.0).reindex(price.index)
+
+
 # ============================================================================
 # TREND-GATED CARRY (Carver-compliant replacement for additive sleeve)
 # ============================================================================
