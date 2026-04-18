@@ -1,0 +1,61 @@
+terms:
+  BTCUSDT_PERP:
+    primary: bitcoin
+    alts: [btc]
+  ETHUSDT_PERP:
+    primary: ethereum
+    alts: [eth]
+  SOLUSDT_PERP:
+    primary: solana
+    alts: [sol]
+  XRPUSDT_PERP:
+    primary: xrp
+    alts: [ripple]
+  DOGEUSDT_PERP:
+    primary: dogecoin
+    alts: [doge]
+  BNBUSDT_PERP:
+    primary: bnb
+    alts: []
+  ADAUSDT_PERP:
+    primary: cardano
+    alts: [ada]
+  LINKUSDT_PERP:
+    primary: chainlink
+    alts: []
+  AVAXUSDT_PERP:
+    primary: avalanche crypto
+    alts: [avax]
+  DOTUSDT_PERP:
+    primary: polkadot crypto
+    alts: [dot crypto]
+  LTCUSDT_PERP:
+    primary: litecoin
+    alts: [ltc]
+  MATICUSDT_PERP:
+    primary: polygon crypto
+    alts: [matic]
+  SHIBUSDT_PERP:
+    primary: shiba inu crypto
+    alts: [shib]
+  UNIUSDT_PERP:
+    primary: uniswap
+    alts: []
+  ATOMUSDT_PERP:
+    primary: cosmos crypto
+    alts: [atom crypto]
+  NEARUSDT_PERP:
+    primary: near protocol
+    alts: []
+  APTUSDT_PERP:
+    primary: aptos crypto
+    alts: [apt crypto]
+  SUIUSDT_PERP:
+    primary: sui crypto
+    alts: []
+  ARBUSDT_PERP:
+    primary: arbitrum
+    alts: [arb crypto]
+  OPUSDT_PERP:
+    primary: optimism crypto
+    alts: []

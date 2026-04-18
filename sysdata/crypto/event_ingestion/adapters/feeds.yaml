@@ -1,0 +1,30 @@
+feeds:
+  - source_name: coindesk
+    url: https://www.coindesk.com/arc/outboundfeeds/rss/
+    fetch_type: rss
+    tier_weight: 1.0
+    enabled: true
+
+  - source_name: theblock
+    url: https://www.theblock.co/rss.xml
+    fetch_type: rss
+    tier_weight: 1.0
+    enabled: false  # Cloudflare 403
+
+  - source_name: blockworks
+    url: https://blockworks.co/news
+    fetch_type: archive_html
+    tier_weight: 1.0
+    enabled: false  # 403 Forbidden
+
+  - source_name: decrypt
+    url: https://decrypt.co/news
+    fetch_type: archive_html
+    tier_weight: 0.9
+    enabled: true
+
+  - source_name: cointelegraph
+    url: https://cointelegraph.com/rss
+    fetch_type: rss
+    tier_weight: 0.8
+    enabled: true
