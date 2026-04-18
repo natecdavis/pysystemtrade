@@ -795,6 +795,103 @@ def passthrough_forecast(signal: pd.Series) -> pd.Series:
 
 
 # ============================================================================
+# VOLUME-BASED RULES
+# ============================================================================
+
+
+def volume_surge_momentum(
+    price: pd.Series,
+    vol: pd.Series,
+    daily_volume: pd.Series,
+    vol_window: int = 63,
+    vol_threshold: float = 1.5,
+) -> pd.Series:
+    """
+    Divergent TS rule: volume surge in the direction of a price move predicts continuation.
+
+    Hypothesis: when a price move is accompanied by abnormally high volume,
+    it reflects conviction behind the trend rather than noise.
+
+    Inputs: price, vol (daily_returns_volatility), daily_volume (get_daily_volume).
+    Returns empty Series if fewer than vol_window days of volume data are available.
+    """
+    if daily_volume is None or len(daily_volume.dropna()) < vol_window:
+        return pd.Series(dtype=float, index=price.index)
+
+    df = pd.concat(
+        [price, vol, daily_volume], axis=1, keys=["price", "vol", "volume"]
+    ).dropna(subset=["volume"])
+    if df.empty:
+        return pd.Series(dtype=float, index=price.index)
+
+    log_vol = np.log(df["volume"].clip(lower=1.0))
+    log_vol_chg = log_vol.diff()
+    min_p = max(vol_window // 2, 10)
+    vol_z = (log_vol_chg - log_vol_chg.rolling(vol_window, min_periods=min_p).mean()) / (
+        log_vol_chg.rolling(vol_window, min_periods=min_p).std().clip(lower=1e-8)
+    )
+
+    ret_1d = df["price"].pct_change()
+    ret_3d = (1 + ret_1d).rolling(3).apply(np.prod, raw=True) - 1
+    ret_z_3d = ret_3d / df["vol"].clip(lower=1e-8)
+
+    vol_excess = (vol_z - vol_threshold).clip(lower=0.0)
+    raw = np.sign(ret_z_3d) * vol_excess
+    smoothed = raw.ewm(span=5, min_periods=2).mean()
+
+    return (smoothed * 10.0).reindex(price.index)
+
+
+def volume_price_divergence(
+    price: pd.Series,
+    vol: pd.Series,
+    daily_volume: pd.Series,
+    fast: int = 32,
+    slow: int = 128,
+) -> pd.Series:
+    """
+    Convergent TS rule: price-trend and volume-trend divergence signals weakening momentum.
+
+    Hypothesis: when price trends up but volume trends down (or vice versa),
+    the move lacks conviction and is likely to fade.
+
+    Inputs: price, vol (daily_returns_volatility), daily_volume (get_daily_volume).
+    Returns empty Series if fewer than slow days of volume data are available.
+    """
+    if daily_volume is None or len(daily_volume.dropna()) < slow:
+        return pd.Series(dtype=float, index=price.index)
+
+    df = pd.concat(
+        [price, vol, daily_volume], axis=1, keys=["price", "vol", "volume"]
+    ).dropna(subset=["volume"])
+    if df.empty:
+        return pd.Series(dtype=float, index=price.index)
+
+    min_p = max(fast, 2)
+    price_ewmac = (
+        df["price"].ewm(span=fast, min_periods=min_p).mean()
+        - df["price"].ewm(span=slow, min_periods=min_p).mean()
+    )
+
+    log_vol = np.log(df["volume"].clip(lower=1.0))
+    vol_ewmac = (
+        log_vol.ewm(span=fast, min_periods=min_p).mean()
+        - log_vol.ewm(span=slow, min_periods=min_p).mean()
+    )
+
+    price_vol_norm = df["vol"].rolling(slow, min_periods=min_p).mean().clip(lower=1e-8)
+    price_norm = price_ewmac / (df["price"].rolling(slow, min_periods=min_p).mean().clip(lower=1e-8) * price_vol_norm)
+
+    vol_std = vol_ewmac.rolling(slow, min_periods=min_p).std().clip(lower=1e-8)
+    vol_norm = vol_ewmac / vol_std
+
+    divergence = price_norm * vol_norm
+    raw = -np.sign(price_norm) * (price_norm.abs() * (-vol_norm).clip(lower=0.0))
+
+    return (raw * 10.0).reindex(price.index)
+
+
+# ============================================================================
 # TREND-GATED CARRY (Carver-compliant replacement for additive sleeve)
 # ============================================================================
 

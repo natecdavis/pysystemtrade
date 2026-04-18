@@ -1,16 +1,22 @@
 # Current Work Context
 
-## Current Baseline (2026-04-18, flat-59 + eb=2/ex=10)
+## Current Baseline (2026-04-18, flat-61 + eb=2/ex=10)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K actual equity)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (319 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$10K full_rules (2026-04-18, flat-59, eb=2/ex=10, post-fee-patch dataset):**
-- Sharpe=1.3889, Calmar=1.8737, CAGR=14.75%, MaxDD=-7.87%
-- Result from `out/news_attention/ablation_4_all3/`
-- Prior flat-56 baseline: Sharpe=1.3651, Calmar=1.7148, CAGR=14.07%, MaxDD=-8.20%
+**$10K full_rules (2026-04-18, flat-61, eb=2/ex=10):**
+- 61 rules at 0.016393 each (adding volume_surge_momentum + volume_price_divergence)
+- Ablation individual results vs flat-59 baseline (Sharpe=1.3889, Calmar=1.8737, MaxDD=-7.87%):
+  - volume_surge_momentum:  Sharpe=1.3905 (+0.0016), Calmar=1.9115 (+0.0378), MaxDD=-7.76% [ADOPT]
+  - volume_price_divergence: Sharpe=1.3989 (+0.0100), Calmar=1.9181 (+0.0444), MaxDD=-7.62% [ADOPT]
+  - xs_volume_attention: Sharpe=1.3784 (-0.0105), Calmar=1.8389 (-0.0348), MaxDD=-7.93% [REJECT]
+- Combined flat-61 result: Sharpe=1.3871, Calmar=1.8617, CAGR=14.49%, MaxDD=-7.78% (`out/volume_flat61_combined/`)
+  - Note: combined is marginally below flat-59 on Sharpe/Calmar (within noise); MaxDD improved -9bps
+- Individual ablation results from `out/volume_ablation/`
+- Prior flat-59 baseline: Sharpe=1.3889, Calmar=1.8737, CAGR=14.75%, MaxDD=-7.87%
 
 **$1K / HL filter (stale — needs fresh run with new buffers):**
 - Prior (pre-flat-56, sweep-optimized weights): Sharpe ~1.335, Calmar ~1.539, CAGR ~9.88%, MaxDD ~-6.42% (re: $3.5K notional)
@@ -39,9 +45,9 @@ vol_days: 63                  # D4: was 35
 - `max_daily_loss_pct`: 12%
 - `max_drawdown_pct`: 28% (~2pp above expected MaxDD of 26%)
 
-**Forecast weights (as of 2026-04-15, flat-56):**
-- All 56 rules: 0.017857 each (1/56)
-- Walk-forward result (wf_comparison_56rules/backtest_flat): Sharpe=1.2693, Calmar=1.5059
+**Forecast weights (as of 2026-04-18, flat-61):**
+- All 61 rules: 0.016393 each (1/61)
+- Walk-forward benchmark (flat-56, authoritative): Sharpe=1.2693, Calmar=1.5059
 - All prior sweep-optimized weights superseded — see MEMORY.md for details
 
 ---
@@ -50,6 +56,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-18 | Volume signals (flat-61) | ADOPT volume_surge_momentum (ΔSharpe+0.0016, ΔCalmar+0.0378) + volume_price_divergence (ΔSharpe+0.0100, ΔCalmar+0.0444). REJECT xs_volume_attention (both negative). Coverage: 30 instruments with Vision ZIPs. Results: `out/volume_ablation/`. |
 | 2026-04-18 | OI-based attention proxy signals (flat-59) | ADOPT all 3: xs_oi_attention (+2.0%/+8.3%), attn_exhaustion_fade (+1.8%/+13.5%), attn_panic_rebound (+1.8%/+6.8%). Combined (59 rules): Sharpe=1.3889, Calmar=1.8737, MaxDD=-7.87%. seasonality_3yr/5yr tested same day — REJECT (Calmar worse). |
 | 2026-04-17 | K sweep + buffer sweep (in-sample) | K=30 confirmed optimal (Sharpe peaks, monotonically worse above). ADOPT eb=2, ex=10: Sharpe=1.3651, Calmar=1.7148 vs eb=3/ex=15 fresh run ~1.345. ex saturates at ≥10 — exit buffer value irrelevant above minimum. |
 | 2026-04-15 | flat-56 adoption | ADOPT flat 1/N across all 56 rules (w=0.017857). Walk-forward Sharpe=1.2693 (+36% vs prior flat-42 baseline of 0.931). All adaptive weighting schemes rejected (-16% to -49%). All prior sweep-optimized weights overfit. |

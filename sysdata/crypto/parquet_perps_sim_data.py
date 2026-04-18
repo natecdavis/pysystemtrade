@@ -94,6 +94,7 @@ class parquetCryptoPerpsSimData(simData):
         active_addresses_data_path: str = arg_not_supplied,
         market_cap_data_path: str = arg_not_supplied,
         hl_instruments_path: str = arg_not_supplied,
+        volume_data_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -153,6 +154,21 @@ class parquetCryptoPerpsSimData(simData):
                 f"Loaded OI data from {oi_data_path}: "
                 f"{self._oi_df.shape[1]} instruments, "
                 f"{self._oi_df.index.min().date()} to {self._oi_df.index.max().date()}"
+            )
+
+        # Load daily volume data if path provided (used by volume signal family)
+        # Parquet columns: date, instrument (XUSDT_PERP form), quote_volume (USDT notional)
+        self._volume_df: Optional[pd.DataFrame] = None
+        if volume_data_path is not arg_not_supplied:
+            raw_vol = pd.read_parquet(volume_data_path)
+            raw_vol['date'] = pd.to_datetime(raw_vol['date']).dt.normalize()
+            self._volume_df = raw_vol.pivot_table(
+                index='date', columns='instrument', values='quote_volume'
+            )
+            self.log.info(
+                f"Loaded volume data from {volume_data_path}: "
+                f"{self._volume_df.shape[1]} instruments, "
+                f"{self._volume_df.index.min().date()} to {self._volume_df.index.max().date()}"
             )
 
         # Load sector map if path provided (used by sector_momentum rule family)
@@ -280,6 +296,9 @@ class parquetCryptoPerpsSimData(simData):
         # xs_oi_attention panel (cross-sectional OI-flow rank, contrarian)
         self._xs_oi_attention_lookback = int(_raw_cfg.get('xs_oi_attention_lookback', 5))
         self._xs_oi_attention_panel: Optional[pd.DataFrame] = None
+        # xs_volume panel (cross-sectional volume-flow rank, contrarian)
+        self._xs_volume_lookback = int(_raw_cfg.get('xs_volume_lookback', 5))
+        self._xs_volume_panel: Optional[pd.DataFrame] = None
 
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
@@ -2099,6 +2118,74 @@ class parquetCryptoPerpsSimData(simData):
         ):
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._xs_oi_attention_panel[instrument_code]
+
+    def get_daily_volume(self, instrument_code: str) -> pd.Series:
+        """
+        Return daily USDT-notional trading volume for one instrument.
+
+        Returns empty Series if volume data not loaded or instrument not covered.
+        Coverage: ~30 most liquid instruments, 2020-2026 (Vision ZIPs + API cache).
+        """
+        if self._volume_df is None:
+            return pd.Series(dtype=float)
+        if instrument_code not in self._volume_df.columns:
+            return pd.Series(dtype=float)
+        return self._volume_df[instrument_code].dropna()
+
+    def _compute_xs_volume_panel(self, lookback: int = 5) -> pd.DataFrame:
+        """
+        Build cross-sectional volume-flow attention forecast panel (dates × instruments).
+
+        For each date, ranks instruments by their EWM-smoothed daily log-volume-change
+        cross-sectionally → percentile [0, 1] → contrarian forecast [-20, +20].
+
+        Sign: high volume inflow rank (pct≈1.0) → forecast -20 (SHORT / fade crowding).
+        Contrarian: instrument gaining volume vs peers → crowded episode → mean-revert.
+        ~30 most liquid instruments covered (binance_volume_daily.parquet).
+
+        Distinct from xs_oi_attention: volume = trading turnover; OI = open position size.
+        """
+        if self._volume_df is None:
+            return pd.DataFrame()
+
+        instrument_list = self.get_instrument_list()
+        vol_change_dict = {}
+        for instr in instrument_list:
+            if instr not in self._volume_df.columns:
+                continue
+            vol = self._volume_df[instr].dropna()
+            if len(vol) < max(lookback * 2, 10):
+                continue
+            log_vol_change = np.log(vol.clip(lower=1.0)).diff()
+            if lookback > 1:
+                log_vol_change = log_vol_change.ewm(span=lookback, min_periods=1).mean()
+            vol_change_dict[instr] = log_vol_change
+
+        if not vol_change_dict:
+            return pd.DataFrame()
+
+        vol_df = pd.DataFrame(vol_change_dict)
+        pct_rank = vol_df.rank(axis=1, pct=True)
+        forecast_panel = (pct_rank - 0.5) * -40.0  # contrarian: high volume inflow → short
+        return forecast_panel
+
+    def get_xs_volume_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Return cross-sectional volume-flow forecast for one instrument (±20 scale).
+
+        Contrarian: instrument gaining volume vs peers today → short signal.
+        Returns all-NaN Series for instruments without volume data.
+        """
+        if self._xs_volume_panel is None:
+            self._xs_volume_panel = self._compute_xs_volume_panel(
+                self._xs_volume_lookback
+            )
+        if (
+            self._xs_volume_panel.empty
+            or instrument_code not in self._xs_volume_panel.columns
+        ):
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_volume_panel[instrument_code]
 
     def _compute_xs_val_panel(self, lookback: int = 30) -> pd.DataFrame:
         """

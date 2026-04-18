@@ -459,7 +459,23 @@ def _compute_performance_metrics(
         logger.info(f"  ✓ {returns_path}")
 
 
-def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_universe: bool = True, macro_data_path: str = None, capital_override: float = None, spread_multiplier: float = 1.0):
+def run_backtest(
+    config_path: str,
+    data_path: str,
+    output_dir: str,
+    use_dynamic_universe: bool = True,
+    macro_data_path: str = None,
+    oi_data_path: str = None,
+    sector_map_path: str = None,
+    fg_data_path: str = None,
+    mvrv_data_path: str = None,
+    active_addresses_data_path: str = None,
+    market_cap_data_path: str = None,
+    hl_instruments_path: str = None,
+    volume_data_path: str = None,
+    capital_override: float = None,
+    spread_multiplier: float = 1.0,
+):
     """
     Run pysystemtrade backtest with parquet-backed data adapter.
 
@@ -537,65 +553,94 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         macro_data_path if macro_data_path is not None else _arg_not_supplied
     )
 
+    # Auto-discover volume data if not explicitly provided
+    if volume_data_path is None:
+        vol_candidate = Path(data_path).parent / 'binance_volume_daily.parquet'
+        if vol_candidate.exists():
+            volume_data_path = str(vol_candidate)
+            logger.info(f"Auto-discovered volume data: {volume_data_path}")
+        else:
+            logger.info("binance_volume_daily.parquet not found — volume rules will produce empty forecasts")
+    volume_kwarg = volume_data_path if volume_data_path is not None else _arg_not_supplied
+
     # Auto-discover OI data if not explicitly provided
-    oi_data_path = None
-    oi_candidate = Path(data_path).parent / 'binance_oi_processed.parquet'
-    if oi_candidate.exists():
-        oi_data_path = str(oi_candidate)
-        logger.info(f"Auto-discovered OI data: {oi_data_path}")
-    else:
-        logger.info("binance_oi_processed.parquet not found — OI overlay will use funding proxy")
+    if oi_data_path is None:
+        oi_candidate = Path(data_path).parent / 'binance_oi_processed.parquet'
+        if oi_candidate.exists():
+            oi_data_path = str(oi_candidate)
+            logger.info(f"Auto-discovered OI data: {oi_data_path}")
+        else:
+            logger.info("binance_oi_processed.parquet not found — OI/LSR rules will produce empty forecasts")
     oi_kwarg = oi_data_path if oi_data_path is not None else _arg_not_supplied
 
     # Auto-discover sector map if not explicitly provided
-    sector_map_path = None
-    sector_candidate = Path(data_path).parent / 'sector_map.json'
-    if sector_candidate.exists():
-        sector_map_path = str(sector_candidate)
-        logger.info(f"Auto-discovered sector map: {sector_candidate}")
-    else:
-        logger.info("sector_map.json not found — sector_momentum rules will produce NaN forecasts")
+    if sector_map_path is None:
+        sector_candidate = Path(data_path).parent / 'sector_map.json'
+        if sector_candidate.exists():
+            sector_map_path = str(sector_candidate)
+            logger.info(f"Auto-discovered sector map: {sector_candidate}")
+        else:
+            logger.info("sector_map.json not found — sector/inter-sector rules will produce NaN forecasts")
     sector_kwarg = sector_map_path if sector_map_path is not None else _arg_not_supplied
 
     # Auto-discover Fear & Greed index if not explicitly provided
-    fg_data_path = None
-    fg_candidate = Path(data_path).parent / 'fg_index.parquet'
-    if fg_candidate.exists():
-        fg_data_path = str(fg_candidate)
-        logger.info(f"Auto-discovered F&G index: {fg_candidate}")
-    else:
-        logger.info("fg_index.parquet not found — F&G overlay disabled (run scripts/download_fg_index.py)")
+    if fg_data_path is None:
+        fg_candidate = Path(data_path).parent / 'fg_index.parquet'
+        if fg_candidate.exists():
+            fg_data_path = str(fg_candidate)
+            logger.info(f"Auto-discovered F&G index: {fg_candidate}")
+        else:
+            logger.info("fg_index.parquet not found — F&G overlay disabled (run scripts/download_fg_index.py)")
     fg_kwarg = fg_data_path if fg_data_path is not None else _arg_not_supplied
 
     # Auto-discover MVRV index if not explicitly provided
-    mvrv_data_path = None
-    mvrv_candidate = Path(data_path).parent / 'mvrv_index.parquet'
-    if mvrv_candidate.exists():
-        mvrv_data_path = str(mvrv_candidate)
-        logger.info(f"Auto-discovered MVRV index: {mvrv_candidate}")
-    else:
-        logger.info("mvrv_index.parquet not found — MVRV overlay disabled (run scripts/download_mvrv_index.py)")
+    if mvrv_data_path is None:
+        mvrv_candidate = Path(data_path).parent / 'mvrv_index.parquet'
+        if mvrv_candidate.exists():
+            mvrv_data_path = str(mvrv_candidate)
+            logger.info(f"Auto-discovered MVRV index: {mvrv_candidate}")
+        else:
+            logger.info("mvrv_index.parquet not found — MVRV overlay disabled (run scripts/download_mvrv_index.py)")
     mvrv_kwarg = mvrv_data_path if mvrv_data_path is not None else _arg_not_supplied
 
     # Auto-discover active addresses data if not explicitly provided
-    aa_data_path = None
-    aa_candidate = Path(data_path).parent / 'active_addresses.parquet'
-    if aa_candidate.exists():
-        aa_data_path = str(aa_candidate)
-        logger.info(f"Auto-discovered active addresses: {aa_candidate}")
-    else:
-        logger.info("active_addresses.parquet not found — XS activity sleeve disabled (run scripts/download_active_addresses.py)")
-    aa_kwarg = aa_data_path if aa_data_path is not None else _arg_not_supplied
+    if active_addresses_data_path is None:
+        aa_candidate = Path(data_path).parent / 'active_addresses.parquet'
+        if aa_candidate.exists():
+            active_addresses_data_path = str(aa_candidate)
+            logger.info(f"Auto-discovered active addresses: {aa_candidate}")
+        else:
+            logger.info("active_addresses.parquet not found — XS activity rule will produce NaN forecasts")
+    aa_kwarg = (
+        active_addresses_data_path
+        if active_addresses_data_path is not None
+        else _arg_not_supplied
+    )
 
     # Auto-discover market cap data if not explicitly provided
-    mcap_data_path = None
-    mcap_candidate = Path(data_path).parent / 'market_cap.parquet'
-    if mcap_candidate.exists():
-        mcap_data_path = str(mcap_candidate)
-        logger.info(f"Auto-discovered market cap data: {mcap_candidate}")
-    else:
-        logger.info("market_cap.parquet not found — XS VAL sleeve disabled (run scripts/download_market_cap.py)")
-    mcap_kwarg = mcap_data_path if mcap_data_path is not None else _arg_not_supplied
+    if market_cap_data_path is None:
+        mcap_candidate = Path(data_path).parent / 'market_cap.parquet'
+        if mcap_candidate.exists():
+            market_cap_data_path = str(mcap_candidate)
+            logger.info(f"Auto-discovered market cap data: {mcap_candidate}")
+        else:
+            logger.info("market_cap.parquet not found — XS VAL rule will produce NaN forecasts")
+    mcap_kwarg = (
+        market_cap_data_path
+        if market_cap_data_path is not None
+        else _arg_not_supplied
+    )
+
+    if hl_instruments_path is None:
+        hl_candidate = Path(data_path).parent / 'hyperliquid_instruments.json'
+        if hl_candidate.exists():
+            hl_instruments_path = str(hl_candidate)
+            logger.info(f"Auto-discovered Hyperliquid instruments: {hl_candidate}")
+    hl_kwarg = (
+        hl_instruments_path
+        if hl_instruments_path is not None
+        else _arg_not_supplied
+    )
 
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
@@ -610,6 +655,8 @@ def run_backtest(config_path: str, data_path: str, output_dir: str, use_dynamic_
         mvrv_data_path=mvrv_kwarg,
         active_addresses_data_path=aa_kwarg,
         market_cap_data_path=mcap_kwarg,
+        hl_instruments_path=hl_kwarg,
+        volume_data_path=volume_kwarg,
     )
 
     data._spread_multiplier = spread_multiplier
@@ -915,6 +962,54 @@ def main():
         help='Path to macro factors parquet (spx, dxy, us10y columns); required for residual_momentum rules'
     )
     parser.add_argument(
+        '--oi-data',
+        type=Path,
+        default=None,
+        help='Path to Binance OI/LSR processed parquet'
+    )
+    parser.add_argument(
+        '--sector-map',
+        type=Path,
+        default=None,
+        help='Path to sector_map.json'
+    )
+    parser.add_argument(
+        '--fg-data',
+        type=Path,
+        default=None,
+        help='Path to Fear & Greed parquet'
+    )
+    parser.add_argument(
+        '--mvrv-data',
+        type=Path,
+        default=None,
+        help='Path to MVRV parquet'
+    )
+    parser.add_argument(
+        '--active-addresses-data',
+        type=Path,
+        default=None,
+        help='Path to active addresses parquet'
+    )
+    parser.add_argument(
+        '--market-cap-data',
+        type=Path,
+        default=None,
+        help='Path to market cap parquet'
+    )
+    parser.add_argument(
+        '--hl-instruments',
+        type=Path,
+        default=None,
+        help='Path to hyperliquid_instruments.json'
+    )
+    parser.add_argument(
+        '--volume-data',
+        type=Path,
+        default=None,
+        help='Path to binance_volume_daily.parquet (auto-discovered if omitted)'
+    )
+    parser.add_argument(
         '--capital',
         type=float,
         default=None,
@@ -941,6 +1036,24 @@ def main():
             output_dir=str(args.outdir),
             use_dynamic_universe=use_dynamic,
             macro_data_path=str(args.macro_data) if args.macro_data else None,
+            oi_data_path=str(args.oi_data) if args.oi_data else None,
+            sector_map_path=str(args.sector_map) if args.sector_map else None,
+            fg_data_path=str(args.fg_data) if args.fg_data else None,
+            mvrv_data_path=str(args.mvrv_data) if args.mvrv_data else None,
+            active_addresses_data_path=(
+                str(args.active_addresses_data)
+                if args.active_addresses_data
+                else None
+            ),
+            market_cap_data_path=(
+                str(args.market_cap_data)
+                if args.market_cap_data
+                else None
+            ),
+            hl_instruments_path=(
+                str(args.hl_instruments) if args.hl_instruments else None
+            ),
+            volume_data_path=str(args.volume_data) if args.volume_data else None,
             capital_override=args.capital,
         )
 
