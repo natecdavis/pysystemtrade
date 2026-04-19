@@ -596,6 +596,30 @@ trading_rules:
     - data.get_us10y_yield
     other_args:
       Lfast: 16
+
+  # --------------------------------------------------------------------------
+  # FUNDING RATE MOMENTUM — trend on funding rate level (2026-04-19)
+  # EWMAC on annualised funding rate itself (not level, not extremes, not XS).
+  # Rising funding trend → bullish (demand building); falling → bearish.
+  # Orthogonal to: gated_carry (level), demeaned_carry (idiosyncratic level),
+  # funding_mr (extreme spikes), funding_crowd (persistence).
+  # Coverage: ~300 instruments (same as gated_carry).
+  # --------------------------------------------------------------------------
+
+  funding_momentum_16:
+    function: systems.crypto_perps.rules.rule_library.funding_momentum
+    data:
+    - data.get_funding_rate
+    other_args:
+      Lfast: 16
+
+  funding_momentum_32:
+    function: systems.crypto_perps.rules.rule_library.funding_momentum
+    data:
+    - data.get_funding_rate
+    other_args:
+      Lfast: 32
+
   btc_dom_rotation_16:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:

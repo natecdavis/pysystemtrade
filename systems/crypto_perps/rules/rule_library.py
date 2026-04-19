@@ -129,6 +129,40 @@ def funding_carry(funding_rates: pd.Series, smooth_days: int = 30) -> pd.Series:
     return -smoothed
 
 
+def funding_momentum(
+    funding_rates: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Funding rate trend: EWMAC on the annualised funding rate level.
+
+    Captures whether funding is trending up or down over multi-week horizons.
+    Rising funding trend → bullish (demand building, buyers paying more premium).
+    Falling funding trend → bearish (sentiment souring).
+
+    Orthogonal to:
+    - funding_carry: trades the current level, not the trend direction
+    - demeaned_carry: trades idiosyncratic level vs cross-section
+    - funding_mr: fires only at extreme z-score spikes
+
+    Args:
+        funding_rates: Raw 8-hourly funding rate series (data.get_funding_rate).
+        Lfast: Fast EWM span (slow = Lfast × 4).
+    """
+    if len(funding_rates.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=funding_rates.index)
+
+    ann_funding = funding_rates * 3 * 365
+    Lslow = Lfast * 4
+    min_p = max(Lfast // 2, 2)
+    raw = (
+        ann_funding.ewm(span=Lfast, min_periods=min_p).mean()
+        - ann_funding.ewm(span=Lslow, min_periods=min_p).mean()
+    )
+    roll_std = raw.rolling(Lslow * 2, min_periods=Lslow).std().clip(lower=1e-8)
+    return (raw / roll_std).clip(-2.0, 2.0) * 10.0
+
+
 def relcarry(
     funding_rates: pd.Series,
     median_funding: pd.Series,
