@@ -75,6 +75,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-19 | Return skew ablation (flat-64) | REJECT both: return_skew_20 (ΔSharpe-0.0268, ΔCalmar-0.2134), return_skew_60 (ΔSharpe-0.0405, ΔCalmar-0.1043). Pass 1 "bad reversion" verdict confirmed at flat-64. Results: `out/return_skew_ablation/`. |
 | 2026-04-19 | K re-sweep at flat-64 | K=30 confirmed optimal (Sharpe=1.4296, Calmar=2.5659 with proportional buffers). Monotonically worse above and below. Buffer sweep (eb × ex) aborted early — eb=1 results below baseline, no structural reason for optimal (eb=2, ex=10) to shift with new rules. K=30/eb=2/ex=10 retained. |
 | 2026-04-18 | BTC dominance signals | REJECT all 3: btc_dom_rotation_16 (ΔSharpe-0.0323, ΔCalmar-0.0636), btc_dom_rotation_32 (ΔSharpe-0.0190, ΔCalmar-0.0541), btc_dom_level_120 (ΔSharpe-0.0258, ΔCalmar-0.0913). BTC dominance cycle already captured by relmomentum/inter_sector. Results: `out/btc_dom_ablation/`. |
 | 2026-04-18 | Macro direction signals (flat-64) | ADOPT dxy_momentum_16 (ΔSharpe+0.0342, ΔCalmar+0.2842, MaxDD -7.25%→-6.46%). REJECT macro_momentum_16/32 (OLS fitted values, both negative). Combined flat-64: Sharpe=1.4325, Calmar=2.2198, MaxDD=-6.46%. Results: `out/macro_ablation/`. |
