@@ -50,6 +50,9 @@ def download_macro_factors(
         "spx": "^GSPC",
         "dxy": "DX-Y.NYB",
         "us10y": "^TNX",
+        "gold": "GC=F",
+        "vix": "^VIX",
+        "oil": "CL=F",
     }
 
     series_dict = {}
@@ -84,7 +87,7 @@ def download_macro_factors(
     # Combine into a single DataFrame on the union of all dates
     df = pd.DataFrame(series_dict)
 
-    # Drop rows where ALL three columns are NaN (weekends with no data at all)
+    # Drop rows where ALL columns are NaN (weekends with no data at all)
     df = df.dropna(how="all")
 
     # Forward-fill individual NaN values (e.g., US holidays where DXY trades
@@ -126,7 +129,7 @@ def main():
 
     # Basic sanity checks
     assert len(df) > 1000, f"Expected >1000 rows, got {len(df)}"
-    assert set(df.columns) == {"spx", "dxy", "us10y"}, f"Unexpected columns: {df.columns.tolist()}"
+    assert set(df.columns) == {"spx", "dxy", "us10y", "gold", "vix", "oil"}, f"Unexpected columns: {df.columns.tolist()}"
     assert df.isna().sum().sum() == 0, "Unexpected NaN values in output"
     print("\n✓ Sanity checks passed")
 

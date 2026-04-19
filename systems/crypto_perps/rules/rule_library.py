@@ -816,6 +816,79 @@ def us10y_momentum(
     return (-raw * 10.0).reindex(price.index)
 
 
+def gold_momentum(
+    price: pd.Series,
+    gold_price: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Portfolio-level macro signal: rising gold → short crypto (risk-off).
+
+    EWMAC on gold log-returns, inverted. Gold rising signals risk-off sentiment
+    which is a headwind for crypto as a risk asset.
+    Orthogonal to dxy_momentum (dollar) and us10y_momentum (rates).
+    Same forecast for all instruments.
+    """
+    if len(gold_price.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    gold_ret = np.log(gold_price / gold_price.shift(1))
+    cum_gold = gold_ret.cumsum()
+    unit_vol = pd.Series(1.0, index=cum_gold.index)
+    raw = ewmac(cum_gold, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    return (-raw * 10.0).reindex(price.index)  # inverted: gold up → short crypto
+
+
+def vix_momentum(
+    price: pd.Series,
+    vix_level: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Portfolio-level macro signal: rising VIX → short crypto (fear / risk-off).
+
+    EWMAC on VIX level normalized by rolling std (VIX has extreme spikes that
+    dwarf normal variation — raw EWMAC needs explicit normalization).
+    Rising fear index = equity volatility regime = crypto headwind.
+    Same forecast for all instruments.
+    """
+    if len(vix_level.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    min_p = max(Lfast // 2, 2)
+    raw = (
+        vix_level.ewm(span=Lfast, min_periods=min_p).mean()
+        - vix_level.ewm(span=Lslow, min_periods=min_p).mean()
+    )
+    roll_std = raw.rolling(Lslow * 2, min_periods=Lslow).std().clip(lower=1e-8)
+    scaled = (raw / roll_std).clip(-2.0, 2.0) * 10.0
+    return (-scaled).reindex(price.index)  # inverted: VIX up → short crypto
+
+
+def oil_momentum(
+    price: pd.Series,
+    oil_price: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Portfolio-level macro signal: EWMAC on WTI crude oil log-returns.
+
+    Not inverted — tested as directional (oil up → long crypto via risk-on / inflation regime).
+    Hypothesis: oil rising signals economic expansion → risk appetite → crypto tailwind.
+    Alternatively, oil up → inflation → Fed tightening → headwind (polarity uncertain).
+    Ablation determines whether this directional hypothesis is correct.
+    Same forecast for all instruments.
+    """
+    if len(oil_price.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    oil_ret = np.log(oil_price.clip(lower=0.01) / oil_price.clip(lower=0.01).shift(1))
+    cum_oil = oil_ret.cumsum()
+    unit_vol = pd.Series(1.0, index=cum_oil.index)
+    raw = ewmac(cum_oil, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    return (raw * 10.0).reindex(price.index)  # not inverted: test natural polarity
+
+
 # ============================================================================
 # VOLATILITY TIME-SERIES SIGNALS (TS, price-based, full 319-instrument coverage)
 # ============================================================================

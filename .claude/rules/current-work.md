@@ -1,6 +1,18 @@
 # Current Work Context
 
-## Current Baseline (2026-04-19, flat-66 + eb=2/ex=10)
+## Current Baseline (2026-04-19, flat-67 + eb=2/ex=10)
+
+**$10K full_rules (2026-04-19, flat-67, eb=2/ex=10):**
+- 67 rules at 0.01492537 each (adding oil_momentum_16)
+- Combined flat-67 result: Sharpe=1.45, Calmar=2.53, CAGR=13.8%, MaxDD=-5.4% (`out/oil_mom_flat67_combined/`)
+- Ablation individual results vs flat-66 baseline (Sharpe=1.4253, Calmar=2.4762, MaxDD=-5.60%):
+  - gold_momentum_16: Sharpe=1.4588 (+0.0335), Calmar=2.3684 (-0.1078), MaxDD=-5.87% [REJECT]
+  - vix_momentum_16:  Sharpe=1.3724 (-0.0529), Calmar=2.1374 (-0.3388), MaxDD=-6.25% [REJECT]
+  - oil_momentum_16:  Sharpe=1.4452 (+0.0199), Calmar=2.5345 (+0.0583), MaxDD=-5.43% [ADOPT]
+- Individual ablation results from `out/macro_ext2_ablation/`
+- Prior flat-66 baseline: Sharpe=1.4253, Calmar=2.4762, CAGR=13.87%, MaxDD=-5.60%
+
+## Prior Baseline (2026-04-19, flat-66 + eb=2/ex=10) — superseded
 
 **$10K full_rules (2026-04-19, flat-66, eb=2/ex=10):**
 - 66 rules at 0.01515152 each (adding vol_zscore_ts — user override: Calmar/MaxDD improvement accepted despite ΔSharpe<0)
@@ -94,6 +106,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-19 | Macro ext2 signals (flat-67) | ADOPT oil_momentum_16 (ΔSharpe+0.0199, ΔCalmar+0.0583, MaxDD -5.60%→-5.43%). REJECT gold_momentum_16 (ΔCalmar-0.1078) + vix_momentum_16 (both strongly negative). Combined flat-67: Sharpe=1.45, Calmar=2.53, MaxDD=-5.4%. Results: `out/macro_ext2_ablation/`, `out/oil_mom_flat67_combined/`. |
 | 2026-04-19 | Limit order simulation | REJECT limit orders: fee savings trivial (0.35% p.a. max), signal lag cost enormous (0.84%/day). maker_instant: ΔSharpe-0.0001 (negligible). maker_1day: ΔSharpe-0.1568 (catastrophic). Root cause: buffers reduce effective turnover to ~2.5 rt/yr, so fees are not the binding cost. Breakeven fill rate = 844% (impossible). Stick with taker. Results: `out/limit_order_simulation/`. |
 | 2026-04-19 | vol_zscore_ts adoption (flat-66) | ADOPT (user override): ΔSharpe-0.0178, ΔCalmar+0.0833, MaxDD -5.97%→-5.60%. Drawdown hedge value accepted despite ΔSharpe<0. Combined flat-66: Sharpe=1.4253, Calmar=2.4762, MaxDD=-5.60%. xs_oi_trend and vol_trend_16 remain rejected (both metrics negative). |
 | 2026-04-19 | OI trend + vol TS ablation (flat-65) | REJECT all 3 by dual criterion: xs_oi_trend (ΔSharpe-0.0263, ΔCalmar-0.0764), vol_trend_16 (ΔSharpe-0.0259, ΔCalmar-0.0651), vol_zscore_ts (ΔSharpe-0.0178, ΔCalmar+0.0833). Results: `out/oi_vol_ablation/`. |

@@ -17,6 +17,7 @@ data_acquisition:
 pinned_instruments: []
 banned_instruments: []
 dynamic_universe:
+  exchange_filter: hyperliquid
   selection_criterion: adv
   max_sr_cost_per_trade: 0.01
   max_sr_cost_annual: 0.13
@@ -629,7 +630,6 @@ trading_rules:
     - data.get_gold_price
     other_args:
       Lfast: 16
-
   vix_momentum_16:
     function: systems.crypto_perps.rules.rule_library.vix_momentum
     data:
@@ -637,7 +637,6 @@ trading_rules:
     - data.get_vix_level
     other_args:
       Lfast: 16
-
   oil_momentum_16:
     function: systems.crypto_perps.rules.rule_library.oil_momentum
     data:
@@ -645,7 +644,6 @@ trading_rules:
     - data.get_oil_price
     other_args:
       Lfast: 16
-
   btc_dom_rotation_16:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
@@ -957,6 +955,9 @@ constraints:
   correlation_min_periods: 20
 execution:
   buffer_frac: 0.1
+buffer_frac: 0.1
+buffer_method: forecast
+buffer_size: 0.1
 costs:
   spread_estimate: 0.0005
   taker_fee_frac: 0.00045
@@ -968,3 +969,4 @@ output:
   diagnostics_file: diagnostics.parquet
 diagnostics:
   enabled: true
+lot_size_notional_override: 1.0

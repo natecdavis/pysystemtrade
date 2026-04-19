@@ -1923,6 +1923,18 @@ class parquetCryptoPerpsSimData(simData):
         """
         return self._get_macro_column('us10y', instrument_code)
 
+    def get_gold_price(self, instrument_code: str) -> pd.Series:
+        """Gold futures (GC=F) daily close price series. instrument_code ignored."""
+        return self._get_macro_column('gold', instrument_code)
+
+    def get_vix_level(self, instrument_code: str) -> pd.Series:
+        """CBOE VIX daily close series. instrument_code ignored."""
+        return self._get_macro_column('vix', instrument_code)
+
+    def get_oil_price(self, instrument_code: str) -> pd.Series:
+        """WTI crude oil futures (CL=F) daily close price series. instrument_code ignored."""
+        return self._get_macro_column('oil', instrument_code)
+
     def _get_macro_column(self, col: str, instrument_code: str) -> pd.Series:
         """
         Internal helper: return a single column from the macro factors DataFrame.
