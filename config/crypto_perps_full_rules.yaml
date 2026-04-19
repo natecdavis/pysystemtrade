@@ -596,47 +596,32 @@ trading_rules:
     - data.get_us10y_yield
     other_args:
       Lfast: 16
-
-  # --------------------------------------------------------------------------
-  # FUNDING RATE MOMENTUM — trend on funding rate level (2026-04-19)
-  # EWMAC on annualised funding rate itself (not level, not extremes, not XS).
-  # Rising funding trend → bullish (demand building); falling → bearish.
-  # Orthogonal to: gated_carry (level), demeaned_carry (idiosyncratic level),
-  # funding_mr (extreme spikes), funding_crowd (persistence).
-  # Coverage: ~300 instruments (same as gated_carry).
-  # --------------------------------------------------------------------------
-
   funding_momentum_16:
     function: systems.crypto_perps.rules.rule_library.funding_momentum
     data:
     - data.get_funding_rate
     other_args:
       Lfast: 16
-
   funding_momentum_32:
     function: systems.crypto_perps.rules.rule_library.funding_momentum
     data:
     - data.get_funding_rate
     other_args:
       Lfast: 32
-
   xs_oi_trend:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
     - data.get_xs_oi_trend_forecast
-
   vol_trend_16:
     function: systems.crypto_perps.rules.rule_library.vol_trend_16
     data:
     - data.daily_prices
     - rawdata.daily_returns_volatility
-
   vol_zscore_ts:
     function: systems.crypto_perps.rules.rule_library.vol_zscore_ts
     data:
     - data.daily_prices
     - rawdata.daily_returns_volatility
-
   btc_dom_rotation_16:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
@@ -823,71 +808,72 @@ trading_rules:
       smooth_days: 60
       vol_floor: 0.01
 forecast_weights:
-  ewmac_8: 0.01538462
-  ewmac_16: 0.01538462
-  ewmac_32: 0.01538462
-  breakout_20: 0.01538462
-  breakout_40: 0.01538462
-  breakout_80: 0.01538462
-  breakout_160: 0.01538462
-  normmom_8: 0.01538462
-  normmom_16: 0.01538462
-  normmom_32: 0.01538462
-  accel_16: 0.01538462
-  accel_32: 0.01538462
-  accel_64: 0.01538462
-  assettrend_8: 0.01538462
-  assettrend_16: 0.01538462
-  assettrend_32: 0.01538462
-  assettrend_64: 0.01538462
-  relmomentum_20: 0.01538462
-  relmomentum_40: 0.01538462
-  residual_momentum_16: 0.01538462
-  residual_momentum_32: 0.01538462
-  residual_momentum_64: 0.01538462
-  gated_carry_10: 0.01538462
-  gated_carry_30: 0.01538462
-  gated_carry_60: 0.01538462
-  gated_carry_90: 0.01538462
-  gated_carry_180: 0.01538462
-  xs_carry: 0.01538462
-  xs_activity: 0.01538462
-  xs_val: 0.01538462
-  inter_sector: 0.01538462
-  skew_abs_90: 0.01538462
-  skew_abs_180: 0.01538462
-  skew_abs_365: 0.01538462
-  skew_rv_90: 0.01538462
-  skew_rv_180: 0.01538462
-  skew_rv_365: 0.01538462
-  demeaned_carry_10: 0.01538462
-  demeaned_carry_30: 0.01538462
-  demeaned_carry_60: 0.01538462
-  demeaned_carry_gated_10: 0.01538462
-  demeaned_carry_gated_30: 0.01538462
-  demeaned_carry_gated_60: 0.01538462
-  funding_mr: 0.01538462
-  funding_crowd_5: 0.01538462
-  funding_crowd_10: 0.01538462
-  lsr_divergence: 0.01538462
-  lsr_retail_crowding: 0.01538462
-  crowd_deleverage_trend: 0.01538462
-  demeaned_carry_hl_10: 0.01538462
-  demeaned_carry_hl_30: 0.01538462
-  demeaned_carry_hl_60: 0.01538462
-  round_number_break_10: 0.01538462
-  round_number_break_20: 0.01538462
-  round_number_break_40: 0.01538462
-  round_number_prox: 0.01538462
-  xs_oi_attention: 0.01538462
-  attn_exhaustion_fade: 0.01538462
-  attn_panic_rebound: 0.01538462
-  volume_surge_momentum: 0.01538462
-  volume_price_divergence: 0.01538462
-  xs_low_vol_20: 0.01538462
-  xs_low_vol_60: 0.01538462
-  dxy_momentum_16: 0.01538462
-  us10y_momentum_16: 0.01538462
+  ewmac_8: 0.01515152
+  ewmac_16: 0.01515152
+  ewmac_32: 0.01515152
+  breakout_20: 0.01515152
+  breakout_40: 0.01515152
+  breakout_80: 0.01515152
+  breakout_160: 0.01515152
+  normmom_8: 0.01515152
+  normmom_16: 0.01515152
+  normmom_32: 0.01515152
+  accel_16: 0.01515152
+  accel_32: 0.01515152
+  accel_64: 0.01515152
+  assettrend_8: 0.01515152
+  assettrend_16: 0.01515152
+  assettrend_32: 0.01515152
+  assettrend_64: 0.01515152
+  relmomentum_20: 0.01515152
+  relmomentum_40: 0.01515152
+  residual_momentum_16: 0.01515152
+  residual_momentum_32: 0.01515152
+  residual_momentum_64: 0.01515152
+  gated_carry_10: 0.01515152
+  gated_carry_30: 0.01515152
+  gated_carry_60: 0.01515152
+  gated_carry_90: 0.01515152
+  gated_carry_180: 0.01515152
+  xs_carry: 0.01515152
+  xs_activity: 0.01515152
+  xs_val: 0.01515152
+  inter_sector: 0.01515152
+  skew_abs_90: 0.01515152
+  skew_abs_180: 0.01515152
+  skew_abs_365: 0.01515152
+  skew_rv_90: 0.01515152
+  skew_rv_180: 0.01515152
+  skew_rv_365: 0.01515152
+  demeaned_carry_10: 0.01515152
+  demeaned_carry_30: 0.01515152
+  demeaned_carry_60: 0.01515152
+  demeaned_carry_gated_10: 0.01515152
+  demeaned_carry_gated_30: 0.01515152
+  demeaned_carry_gated_60: 0.01515152
+  funding_mr: 0.01515152
+  funding_crowd_5: 0.01515152
+  funding_crowd_10: 0.01515152
+  lsr_divergence: 0.01515152
+  lsr_retail_crowding: 0.01515152
+  crowd_deleverage_trend: 0.01515152
+  demeaned_carry_hl_10: 0.01515152
+  demeaned_carry_hl_30: 0.01515152
+  demeaned_carry_hl_60: 0.01515152
+  round_number_break_10: 0.01515152
+  round_number_break_20: 0.01515152
+  round_number_break_40: 0.01515152
+  round_number_prox: 0.01515152
+  xs_oi_attention: 0.01515152
+  attn_exhaustion_fade: 0.01515152
+  attn_panic_rebound: 0.01515152
+  volume_surge_momentum: 0.01515152
+  volume_price_divergence: 0.01515152
+  xs_low_vol_20: 0.01515152
+  xs_low_vol_60: 0.01515152
+  dxy_momentum_16: 0.01515152
+  us10y_momentum_16: 0.01515152
+  vol_zscore_ts: 0.01515152
 forecast_cap: 20.0
 use_gated_carry: true
 xsmom_long_only: false
