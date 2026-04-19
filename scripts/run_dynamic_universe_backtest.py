@@ -660,6 +660,7 @@ def run_backtest(
     )
 
     data._spread_multiplier = spread_multiplier
+    data._maker_frac = float(config_dict.get('maker_frac', 0.0))
 
     instruments = data.get_instrument_list()
     logger.info(f"  Loaded {len(instruments)} instruments")
@@ -911,9 +912,16 @@ def run_backtest(
     logger.info(f"  ✓ {last_prices_path} ({len(last_prices)} instruments)")
 
     # 5. Performance metrics
+    # fill_delay_days: shift positions forward N days to simulate limit-order fill delay.
+    # Fractional values (e.g. 0.5) are rounded to nearest integer for the shift.
+    fill_delay_days = int(round(float(config_dict.get('fill_delay_days', 0))))
+    positions_for_metrics = portfolio_positions
+    if fill_delay_days > 0:
+        logger.info(f"  Fill delay: shifting positions by {fill_delay_days} day(s) (limit order simulation)")
+        positions_for_metrics = portfolio_positions.shift(fill_delay_days)
     _compute_performance_metrics(
         system=system,
-        portfolio_positions=portfolio_positions,
+        portfolio_positions=positions_for_metrics,
         weights=weights,
         output_path=output_path,
         data=data,

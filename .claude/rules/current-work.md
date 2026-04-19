@@ -94,6 +94,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-19 | Limit order simulation | REJECT limit orders: fee savings trivial (0.35% p.a. max), signal lag cost enormous (0.84%/day). maker_instant: ΔSharpe-0.0001 (negligible). maker_1day: ΔSharpe-0.1568 (catastrophic). Root cause: buffers reduce effective turnover to ~2.5 rt/yr, so fees are not the binding cost. Breakeven fill rate = 844% (impossible). Stick with taker. Results: `out/limit_order_simulation/`. |
 | 2026-04-19 | vol_zscore_ts adoption (flat-66) | ADOPT (user override): ΔSharpe-0.0178, ΔCalmar+0.0833, MaxDD -5.97%→-5.60%. Drawdown hedge value accepted despite ΔSharpe<0. Combined flat-66: Sharpe=1.4253, Calmar=2.4762, MaxDD=-5.60%. xs_oi_trend and vol_trend_16 remain rejected (both metrics negative). |
 | 2026-04-19 | OI trend + vol TS ablation (flat-65) | REJECT all 3 by dual criterion: xs_oi_trend (ΔSharpe-0.0263, ΔCalmar-0.0764), vol_trend_16 (ΔSharpe-0.0259, ΔCalmar-0.0651), vol_zscore_ts (ΔSharpe-0.0178, ΔCalmar+0.0833). Results: `out/oi_vol_ablation/`. |
 | 2026-04-19 | Funding momentum ablation (flat-65) | REJECT both: funding_momentum_16 (ΔSharpe-0.0122, ΔCalmar-0.0533), funding_momentum_32 (ΔSharpe-0.0121, ΔCalmar-0.0625). Root cause: gated_carry/demeaned_carry already capture rate-trend information via level. Rules in trading_rules only. Results: `out/funding_momentum_ablation/`. |

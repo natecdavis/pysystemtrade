@@ -43,6 +43,7 @@ from sysdata.crypto.config_helpers import (
 
 
 TAKER_FEE_FRAC = 0.00045  # 4.5 bps — Hyperliquid taker fee (0.045% at standard capital level)
+MAKER_FEE_FRAC = 0.00015  # 1.5 bps — Hyperliquid maker fee (0.0150% at standard capital level)
 
 
 class parquetCryptoPerpsSimData(simData):
@@ -460,7 +461,15 @@ class parquetCryptoPerpsSimData(simData):
         # notional trade value:
         #   one-way cost = half_spread + fee
         #   round-trip   = spread + 2×fee
-        one_way_cost_frac = (spread_bps / 2.0 / 10000.0) + TAKER_FEE_FRAC
+        # maker_frac ∈ [0, 1]: fraction of trades executed as maker (limit orders).
+        # Taker: pay half-spread + TAKER_FEE_FRAC.
+        # Maker: receive half-spread (negative cost) + MAKER_FEE_FRAC.
+        # Default maker_frac=0.0 preserves existing behaviour.
+        maker_frac = float(getattr(self, '_maker_frac', 0.0))
+        half_spread = spread_bps / 2.0 / 10000.0
+        taker_one_way = half_spread + TAKER_FEE_FRAC
+        maker_one_way = -half_spread + MAKER_FEE_FRAC
+        one_way_cost_frac = (1.0 - maker_frac) * taker_one_way + maker_frac * maker_one_way
         return instrumentCosts(
             price_slippage=0.0,
             value_of_block_commission=0.0,
