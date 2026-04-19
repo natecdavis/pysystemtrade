@@ -87,6 +87,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-19 | OI trend + vol TS ablation (flat-65) | REJECT all 3: xs_oi_trend (ΔSharpe-0.0263, ΔCalmar-0.0764), vol_trend_16 (ΔSharpe-0.0259, ΔCalmar-0.0651), vol_zscore_ts (ΔSharpe-0.0178, ΔCalmar+0.0833 — near-miss: improves MaxDD -5.97%→-5.60% but Sharpe negative). Rules in trading_rules only. Results: `out/oi_vol_ablation/`. |
 | 2026-04-19 | Funding momentum ablation (flat-65) | REJECT both: funding_momentum_16 (ΔSharpe-0.0122, ΔCalmar-0.0533), funding_momentum_32 (ΔSharpe-0.0121, ΔCalmar-0.0625). Root cause: gated_carry/demeaned_carry already capture rate-trend information via level. Rules in trading_rules only. Results: `out/funding_momentum_ablation/`. |
 | 2026-04-19 | Macro ext signals (flat-65) | ADOPT us10y_momentum_16 (ΔSharpe+0.0106, ΔCalmar+0.1731, MaxDD -6.46%→-5.97%). REJECT spx_momentum_16/32 (both negative — SPX redundant with crypto trend rules). Combined flat-65: Sharpe=1.4431, Calmar=2.3929. Results: `out/macro_ext_ablation/`. |
 | 2026-04-19 | Return skew ablation (flat-64) | REJECT both: return_skew_20 (ΔSharpe-0.0268, ΔCalmar-0.2134), return_skew_60 (ΔSharpe-0.0405, ΔCalmar-0.1043). Pass 1 "bad reversion" verdict confirmed at flat-64. Results: `out/return_skew_ablation/`. |

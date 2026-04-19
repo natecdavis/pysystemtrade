@@ -620,6 +620,23 @@ trading_rules:
     other_args:
       Lfast: 32
 
+  xs_oi_trend:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+    - data.get_xs_oi_trend_forecast
+
+  vol_trend_16:
+    function: systems.crypto_perps.rules.rule_library.vol_trend_16
+    data:
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+
+  vol_zscore_ts:
+    function: systems.crypto_perps.rules.rule_library.vol_zscore_ts
+    data:
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+
   btc_dom_rotation_16:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:

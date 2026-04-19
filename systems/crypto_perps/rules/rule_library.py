@@ -817,6 +817,61 @@ def us10y_momentum(
 
 
 # ============================================================================
+# VOLATILITY TIME-SERIES SIGNALS (TS, price-based, full 319-instrument coverage)
+# ============================================================================
+
+
+def vol_trend_16(
+    price: pd.Series,
+    vol: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Volatility trend: EWMAC on per-instrument realized volatility.
+
+    Hypothesis: rising volatility predicts further volatility clustering (GARCH effect).
+    Used as a directional forecast — short when vol trending up, long when vol declining.
+
+    Inverted: rising vol → short (instruments with expanding vol tend to sell off).
+    Orthogonal to xs_low_vol (cross-sectional ranking) — this is the per-instrument TS trend.
+    """
+    if len(vol.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    min_p = max(Lfast // 2, 2)
+    raw = (
+        vol.ewm(span=Lfast, min_periods=min_p).mean()
+        - vol.ewm(span=Lslow, min_periods=min_p).mean()
+    )
+    roll_std = raw.rolling(Lslow * 2, min_periods=Lslow).std().clip(lower=1e-8)
+    scaled = (raw / roll_std).clip(-2.0, 2.0) * 10.0
+    return (-scaled).reindex(price.index)  # inverted: rising vol → short
+
+
+def vol_zscore_ts(
+    price: pd.Series,
+    vol: pd.Series,
+    lookback: int = 252,
+) -> pd.Series:
+    """
+    Volatility mean-reversion: per-instrument RV z-score vs own rolling history.
+
+    When current vol is extreme relative to its own history, it tends to revert.
+    High vol z-score → short (expect vol contraction and price reversal).
+    Low vol z-score → long (calm regime, trend-following friendly).
+
+    Distinct from vol_trend_16 (trend direction) and xs_low_vol (cross-sectional rank).
+    """
+    if len(vol.dropna()) < lookback // 2:
+        return pd.Series(dtype=float, index=price.index)
+    min_p = max(lookback // 4, 20)
+    roll_mean = vol.rolling(lookback, min_periods=min_p).mean()
+    roll_std = vol.rolling(lookback, min_periods=min_p).std().clip(lower=1e-8)
+    z = ((vol - roll_mean) / roll_std).clip(-3.0, 3.0)
+    return (-z * (20.0 / 3.0)).reindex(price.index)  # inverted: high vol z → short
+
+
+# ============================================================================
 # ATTENTION / NEWS PROXY SIGNALS (OI-based, Phase 1)
 # ============================================================================
 

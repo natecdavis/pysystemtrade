@@ -302,6 +302,8 @@ class parquetCryptoPerpsSimData(simData):
         # xs_low_vol panels (cross-sectional low-vol anomaly, full 319-instrument coverage)
         self._xs_low_vol_20_panel: Optional[pd.DataFrame] = None
         self._xs_low_vol_60_panel: Optional[pd.DataFrame] = None
+        # xs_oi_trend panel (cross-sectional OI level trend, EWMAC(30,120), directional)
+        self._xs_oi_trend_panel: Optional[pd.DataFrame] = None
         # BTC dominance panels (41-instrument market cap coverage)
         self._btc_dom_16_panel: Optional[pd.DataFrame] = None
         self._btc_dom_32_panel: Optional[pd.DataFrame] = None
@@ -2125,6 +2127,59 @@ class parquetCryptoPerpsSimData(simData):
         ):
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._xs_oi_attention_panel[instrument_code]
+
+    def _compute_xs_oi_trend_panel(self, Lfast: int = 30, Lslow: int = 120) -> pd.DataFrame:
+        """
+        Cross-sectional OI-level trend forecast panel (dates × instruments).
+
+        EWMAC(Lfast, Lslow) on log(OI) per instrument, then XS-ranked cross-sectionally.
+        Instruments with growing OI trend vs peers → long (accumulation/conviction building).
+        Instruments with declining OI trend vs peers → short (de-risking).
+
+        Directional (not contrarian): high OI trend rank → +20 (LONG).
+        Distinct from xs_oi_attention (which ranks OI *change* spike, contrarian short-term).
+        ~300 instruments covered (all with OI data from binance_oi_processed.parquet).
+        """
+        if self._oi_df is None:
+            return pd.DataFrame()
+
+        instrument_list = self.get_instrument_list()
+        oi_trend_dict = {}
+        min_p = max(Lfast // 2, 2)
+        for instr in instrument_list:
+            bare = instr.replace('_PERP', '')
+            if bare not in self._oi_df.columns:
+                continue
+            oi = self._oi_df[bare].dropna()
+            if len(oi) < Lslow * 2:
+                continue
+            log_oi = np.log(oi.clip(lower=1.0))
+            ewma_fast = log_oi.ewm(span=Lfast, min_periods=min_p).mean()
+            ewma_slow = log_oi.ewm(span=Lslow, min_periods=min_p).mean()
+            oi_trend_dict[instr] = ewma_fast - ewma_slow
+
+        if not oi_trend_dict:
+            return pd.DataFrame()
+
+        trend_df = pd.DataFrame(oi_trend_dict)
+        pct_rank = trend_df.rank(axis=1, pct=True)
+        return (pct_rank - 0.5) * 40.0  # directional: high OI trend rank → long (+20)
+
+    def get_xs_oi_trend_forecast(self, instrument_code: str) -> pd.Series:
+        """
+        Per-instrument XS OI-trend forecast (±20 scale).
+
+        Directional: instrument with growing OI trend vs peers → long.
+        Returns all-NaN Series for instruments without OI data.
+        """
+        if self._xs_oi_trend_panel is None:
+            self._xs_oi_trend_panel = self._compute_xs_oi_trend_panel()
+        if (
+            self._xs_oi_trend_panel.empty
+            or instrument_code not in self._xs_oi_trend_panel.columns
+        ):
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_oi_trend_panel[instrument_code]
 
     def get_daily_volume(self, instrument_code: str) -> pd.Series:
         """
