@@ -568,6 +568,33 @@ def _rolling_ols_residuals(
     return residuals
 
 
+def _rolling_ols_fitted(
+    y: pd.Series, X: pd.DataFrame, window: int
+) -> pd.Series:
+    """
+    Rolling OLS: regress y on X (with intercept) and return point-in-time fitted values.
+
+    Parallel to _rolling_ols_residuals — returns the predicted value for the last
+    observation in each rolling window rather than the residual.
+    """
+    n = len(y)
+    fitted = pd.Series(np.nan, index=y.index, dtype=float)
+    X_vals = X.values
+    y_vals = y.values
+    ones = np.ones((window, 1))
+
+    for i in range(window - 1, n):
+        X_win = np.hstack([ones, X_vals[i - window + 1 : i + 1]])
+        y_win = y_vals[i - window + 1 : i + 1]
+        try:
+            coeffs, _, _, _ = np.linalg.lstsq(X_win, y_win, rcond=None)
+            fitted.iloc[i] = X_win[-1] @ coeffs
+        except np.linalg.LinAlgError:
+            pass
+
+    return fitted
+
+
 def residual_momentum(
     price: pd.Series,
     spx_price: pd.Series,
@@ -638,6 +665,76 @@ def residual_momentum(
     # Apply EWMAC with unit vol — residuals are already dimensionless daily fractions
     unit_vol = pd.Series(1.0, index=cum_resid.index)
     return ewmac(cum_resid, unit_vol, Lfast=Lfast, Lslow=Lslow)
+
+
+def macro_momentum(
+    price: pd.Series,
+    spx_price: pd.Series,
+    dxy_price: pd.Series,
+    us10y_yield: pd.Series,
+    Lfast: int = 16,
+    reg_window: int = 60,
+) -> pd.Series:
+    """
+    Macro-driven momentum — exact complement to residual_momentum.
+
+    Runs the same rolling OLS as residual_momentum but extracts the fitted values
+    (the macro-explained component) rather than the residuals. Cumulating and
+    EWMAC-ing the fitted values gives a trend signal driven purely by each
+    instrument's rolling beta exposure to SPX, DXY, and 10Y yield direction.
+
+    Instruments with high positive SPX beta accumulate positive fitted values
+    during risk-on rallies; high DXY-negative-beta instruments benefit when DXY falls.
+    """
+    if len(spx_price) == 0 or len(dxy_price) == 0 or len(us10y_yield) == 0:
+        return pd.Series(np.nan, index=price.index)
+
+    Lslow = Lfast * 4
+
+    spx_ret = spx_price.pct_change()
+    dxy_ret = dxy_price.pct_change()
+    yield_chg = us10y_yield.diff()
+
+    instr_ret = price.pct_change(fill_method=None)
+    idx = instr_ret.dropna().index
+
+    factors = pd.DataFrame(
+        {
+            'spx': spx_ret.reindex(idx),
+            'dxy': dxy_ret.reindex(idx),
+            'yield': yield_chg.reindex(idx),
+        }
+    ).fillna(0.0)
+    y = instr_ret.reindex(idx).fillna(0.0)
+
+    fitted = _rolling_ols_fitted(y, factors, window=reg_window)
+    cum_fitted = fitted.cumsum()
+
+    unit_vol = pd.Series(1.0, index=cum_fitted.index)
+    return ewmac(cum_fitted, unit_vol, Lfast=Lfast, Lslow=Lslow)
+
+
+def dxy_momentum(
+    price: pd.Series,
+    dxy_price: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Portfolio-level macro signal: DXY trending down → long crypto (risk-on).
+
+    EWMAC on DXY cumulative log-returns, inverted. When the dollar is weakening,
+    crypto historically outperforms broadly. Same forecast returned for all instruments.
+    Distinct from residual_momentum and macro_momentum: no per-instrument OLS regression.
+    """
+    if len(dxy_price.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+
+    Lslow = Lfast * 4
+    dxy_ret = np.log(dxy_price / dxy_price.shift(1))
+    cum_dxy = dxy_ret.cumsum()
+    unit_vol = pd.Series(1.0, index=cum_dxy.index)
+    raw = ewmac(cum_dxy, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    return (-raw * 10.0).reindex(price.index)
 
 
 # ============================================================================

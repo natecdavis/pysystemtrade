@@ -1,21 +1,25 @@
 # Current Work Context
 
-## Current Baseline (2026-04-18, flat-63 + eb=2/ex=10)
+## Current Baseline (2026-04-18, flat-64 + eb=2/ex=10)
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K actual equity)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (319 instruments, 2020–2026)
 **Branch:** `develop`
 
-**$10K full_rules (2026-04-18, flat-63, eb=2/ex=10):**
+**$10K full_rules (2026-04-18, flat-64, eb=2/ex=10):**
+- 64 rules at 0.015625 each (adding dxy_momentum_16)
+- Combined flat-64 result: Sharpe=1.4325, Calmar=2.2198, CAGR=14.33%, MaxDD=-6.46% (`out/macro_flat64_combined/`)
+- Ablation individual results vs flat-63 baseline (Sharpe=1.3983, Calmar=1.9356, MaxDD=-7.25%):
+  - macro_momentum_16: Sharpe=1.3794 (-0.0189), Calmar=1.8903 (-0.0453), MaxDD=-7.34% [REJECT]
+  - macro_momentum_32: Sharpe=1.3810 (-0.0173), Calmar=1.9144 (-0.0212), MaxDD=-7.20% [REJECT]
+  - dxy_momentum_16:   Sharpe=1.4325 (+0.0342), Calmar=2.2198 (+0.2842), MaxDD=-6.46% [ADOPT]
+- Individual ablation results from `out/macro_ablation/`
+- Prior flat-63 baseline: Sharpe=1.3983, Calmar=1.9356, CAGR=14.03%, MaxDD=-7.25%
+
+**$10K full_rules (2026-04-18, flat-63, eb=2/ex=10) — superseded:**
 - 63 rules at 0.01587302 each (adding xs_low_vol_20 + xs_low_vol_60)
 - Combined flat-63 result: Sharpe=1.3983, Calmar=1.9356, CAGR=14.03%, MaxDD=-7.25% (`out/vol_regime_flat63_combined/`)
-- Ablation individual results vs flat-61 baseline (Sharpe=1.3871, Calmar=1.8617, MaxDD=-7.78%):
-  - xs_low_vol_20:    Sharpe=1.3904 (+0.0033), Calmar=1.9033 (+0.0416), MaxDD=-7.49% [ADOPT]
-  - xs_low_vol_60:    Sharpe=1.4078 (+0.0207), Calmar=1.9490 (+0.0873), MaxDD=-7.39% [ADOPT]
-  - vol_regime_trend: Sharpe=1.3617 (-0.0254), Calmar=1.7625 (-0.0992), MaxDD=-8.08% [REJECT]
-- Individual ablation results from `out/vol_regime_ablation/`
-- Prior flat-61 baseline: Sharpe=1.3871, Calmar=1.8617, CAGR=14.49%, MaxDD=-7.78%
 
 **$10K full_rules (2026-04-18, flat-61, eb=2/ex=10) — superseded:**
 - 61 rules at 0.016393 each (adding volume_surge_momentum + volume_price_divergence)
@@ -52,8 +56,8 @@ vol_days: 63                  # D4: was 35
 - `max_daily_loss_pct`: 12%
 - `max_drawdown_pct`: 28% (~2pp above expected MaxDD of 26%)
 
-**Forecast weights (as of 2026-04-18, flat-63):**
-- All 63 rules: 0.01587302 each (1/63)
+**Forecast weights (as of 2026-04-18, flat-64):**
+- All 64 rules: 0.015625 each (1/64)
 - Walk-forward benchmark (flat-56, authoritative): Sharpe=1.2693, Calmar=1.5059
 - All prior sweep-optimized weights superseded — see MEMORY.md for details
 
@@ -63,6 +67,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-18 | Macro direction signals (flat-64) | ADOPT dxy_momentum_16 (ΔSharpe+0.0342, ΔCalmar+0.2842, MaxDD -7.25%→-6.46%). REJECT macro_momentum_16/32 (OLS fitted values, both negative). Combined flat-64: Sharpe=1.4325, Calmar=2.2198, MaxDD=-6.46%. Results: `out/macro_ablation/`. |
 | 2026-04-18 | Vol regime signals (flat-63) | ADOPT xs_low_vol_20 (ΔSharpe+0.0033, ΔCalmar+0.0416) + xs_low_vol_60 (ΔSharpe+0.0207, ΔCalmar+0.0873). REJECT vol_regime_trend (both negative). Combined flat-63: Sharpe=1.3983, Calmar=1.9356, MaxDD=-7.25%. Results: `out/vol_regime_ablation/`. |
 | 2026-04-18 | Volume signals (flat-61) | ADOPT volume_surge_momentum (ΔSharpe+0.0016, ΔCalmar+0.0378) + volume_price_divergence (ΔSharpe+0.0100, ΔCalmar+0.0444). REJECT xs_volume_attention (both negative). Coverage: 30 instruments with Vision ZIPs. Results: `out/volume_ablation/`. |
 | 2026-04-18 | OI-based attention proxy signals (flat-59) | ADOPT all 3: xs_oi_attention (+2.0%/+8.3%), attn_exhaustion_fade (+1.8%/+13.5%), attn_panic_rebound (+1.8%/+6.8%). Combined (59 rules): Sharpe=1.3889, Calmar=1.8737, MaxDD=-7.87%. seasonality_3yr/5yr tested same day — REJECT (Calmar worse). |
