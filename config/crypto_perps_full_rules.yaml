@@ -1,1510 +1,918 @@
-# ============================================================================
-# CRYPTO PERPS — COST-FILTERED 22-RULE CONFIG (WITH OI OVERLAY + SECTOR SLEEVE)
-# ============================================================================
-# Created: 2026-02-17  |  Revised: 2026-02-21 (OI overlay adopted)
-#                        Revised: 2026-02-28 (sector momentum additive sleeve ADOPTED)
-# Purpose: Evidence-based rule trimming + trend-gated carry + OI regime overlay
-#          + sector momentum additive sleeve
-# Optimized: carry_weight=1.0, threshold=0.5, min_history=15d, OI overlay enabled
-#            sector_weight=0.10 (additive, no budget taken from trend rules)
-#
-# Pass 1 (predictive accuracy audit): 45 → 26 rules
-#   REMOVED — Carry family (negative IC when untreated)
-#   REMOVED — Bad reversion (streversal_2/3, return_skew, mrinasset, illiquidity)
-#   REMOVED — Slow trend rules (ewmac_64, normmom_64, breakout_320, relmomentum_80)
-#
-# Pass 2 (cost audit — forecast_turnover × SR/trade Carver test): 26 → 19 rules
-#   Thresholds: SR/trade ≤ 0.01, Annual SR ≤ 0.13
-#   Fleet SR/trade (BTC+ETH anchor): 0.0030
-#
-#   REMOVED — btc_lead_lag_1/2:  480 rt/yr, ratio 4.1–4.3×, 100% instruments fail
-#                                 annual SR drag ~1.4 SR each — larger than full Sharpe
-#   REMOVED — streversal_1:      424 rt/yr, ratio 3.75×, 100% fail, drag 1.26 SR
-#   REMOVED — relmomentum_10:    132 rt/yr, 100% fail annual test on all 8 sample insts
-#   REMOVED — breakout_10:       132 rt/yr, 100% fail annual test
-#   REMOVED — ewmac_4:            77 rt/yr, 62% of instruments fail annual test
-#   REMOVED — normmom_4:          68 rt/yr, 37% fail — removed to be conservative
-#
-# Pass 3 (gated carry addition): 19 → 22 rules (ADOPTED)
-#   ADDED — Vol-normalized carry (3 rules, trend-gated)
-#   Initial test: Sharpe 0.84 → 0.87 (w_c=0.2, th=1.0)
-#   Optimized: Sharpe 0.84 → 0.95 (+13.1%, w_c=1.0, th=0.5)
-#   Performance: CAGR 14.6% → 21.2% (+45.2%), Vol 18.3% → 23.0% (+25.7%)
-#
-# Pass 4 (sector momentum additive sleeve): ADOPTED (2026-02-28)
-#   ADDED — Sector momentum (3 rules) as additive sleeve on top of trend+carry.
-#   Budget-cutting approach (10% from trend) tested first → Sharpe -3.0% REJECTED.
-#   IC audit: sector family IC@5d=0.087 (best family), sector_momentum_20 ranks #4/54.
-#   Additive approach (sector_weight=0.10, no trend budget cut) → Sharpe +1.5% ADOPTED.
-#   Implementation: ForecastCombineGated pulls sector forecasts directly from
-#   ForecastScaleCap (±20 scale), averages 3 rules, adds sector_weight × avg.
-#   Trend/carry weights completely untouched. Sector map: data/sector_map.json.
-#   Result: Sharpe 0.99 → 1.006, CAGR 21.3% → 22.4%, Crisis 53.4% → 55.4%
-#
-# Rule Budget (22 rules, 7 families):
-#   EWMAC ×3:           ewmac_8, ewmac_16, ewmac_32          (4.762% each)
-#   Breakout ×4:        breakout_20/40/80/160                 (3.571% each)
-#   Normmom ×3:         normmom_8, normmom_16, normmom_32    (4.762% each)
-#   Accel ×3:           accel_16, accel_32, accel_64          (4.762% each)
-#   Assettrend ×4:      assettrend_8/16/32/64                (3.571% each)
-#   Relmomentum ×2:     relmomentum_20, relmomentum_40        (7.143% each)
-#   ResidualMomentum ×3:resmom_16/32/64                      (4.762% each)
-#   Carry ×3:           vol_norm_carry_10/30/60              (1.000% each, additive)
-#   Sector ×3:          sector_momentum_10/20/40             (additive, w=0.10)
-#
-# Weight budget: 22 trend rules = 100% (sum=1.0) + carry = 3% additive + sector = 10% additive
-# (ForecastCombine normalises trend; carry_weight and sector_weight control additive sleeves)
-# ============================================================================
-
 system:
   capital: 5000.0
   vol_target_ann: 0.25
   idm_cap: 2.5
   min_position_frac: 0.03
   allow_jagged: true
-
 percentage_vol_target: 25.0
 notional_trading_capital: 10000.0
-min_notional_position: 10.0  # HL minimum order size; full closes exempt
-
-# Dynamic universe systems need span=1 here. The pysystemtrade default (125) applies
-# EWMA smoothing to weight transitions, which is appropriate for static Carver universes
-# where instrument weights rarely change. In our top-K dynamic universe, the entry/exit
-# hysteresis already provides stability. With span=125, exited instruments retain
-# non-zero EWMA weights for months, inflating the effective N from ~35 to ~70+ and
-# diluting per-instrument capital by ~40%. This pushes BTC/ETH target positions below
-# their minimum lot sizes, zeroing them out and causing realized vol to be only ~38% of
-# the 25% target. span=1 restores per-instrument weights to 1/K immediately on
-# universe changes.
+min_notional_position: 10.0
 instrument_weight_ewma_span: 1
-
-use_instrument_div_mult_estimates: True
-use_forecast_scale_estimates: True
-use_forecast_div_mult_estimates: True
-
-# risk_overlay omitted intentionally — the portfolio.py get_risk_scalar() path does
-# an exact date lookup that fails on jagged panels (instruments with different start dates).
-# When risk_overlay is absent, get_risk_scalar() raises missingData and the code falls
-# back to notional_position_without_risk_scalar, which is the correct jagged-safe path.
-# Gross leverage is still bounded by the IDM cap (2.5×) and the vol target (25%).
-
+use_instrument_div_mult_estimates: true
+use_forecast_scale_estimates: true
+use_forecast_div_mult_estimates: true
 data_acquisition:
   auto_discover: true
   dataset_path: data/dataset_538registry_6yr_jagged.parquet
-
 pinned_instruments: []
 banned_instruments: []
-
 dynamic_universe:
-  # Stage 2 selection criterion
-  # Options: 'adv' (liquidity-based, default) or 'forecast_magnitude' (signal-strength-based)
-  selection_criterion: 'adv'
-
-  # Stage 1 — Carver SR cost / history / vol gates
+  selection_criterion: adv
   max_sr_cost_per_trade: 0.01
   max_sr_cost_annual: 0.13
   stack_turnover: 15.0
   adv_window: 252
   fee_bps: 4.5
-  vol_window: 63  # D4 sweep 2026-03-27: Calmar-peak at 63d (ΔSharpe +4.1%)
-
-  # Minimum history configuration (OPTIMIZED: 15 days, validated 2026-02-20)
-  # Previous: 365 days (Sharpe 0.95)
-  # Current:  15 days (Sharpe 0.99, +3.88% improvement)
-  # See: out/min_history_test/ANALYSIS_REPORT.md for full justification
-  min_history_days_topk: 15  # TopK ADV calculation threshold
-  min_history_rule_requirement: 'any_rule'  # DynamicUniverseManager mode (15 days)
-
-  min_annual_vol: 0.20   # Rejects stablecoins and semi-pegged tokens
-
-  # IVOL cap — exclude high-idiosyncratic-vol lottery tokens from universe
-  # IVOL = annualised vol of (instrument return - cross-sectional median return)
-  # Filter: exclude instruments above the Nth cross-sectional percentile each day.
-  # Default off until sweep confirms benefit (sweep_ivol_cap.py).
-  # Literature: lottery-preference effect in crypto (CRYPTO_MARKET_FACTORS_LIT_REVIEW.md §5)
+  vol_window: 63
+  min_history_days_topk: 15
+  min_history_rule_requirement: any_rule
+  min_annual_vol: 0.2
   ivol_cap_enabled: false
-  ivol_cap_percentile: 75  # exclude top 25% by IVOL (keep bottom 75%)
-  ivol_window: 35          # rolling window (days), matches vol_window
-
-  # Stage 2 — Top-K selection with hysteresis (criterion specified above)
+  ivol_cap_percentile: 75
+  ivol_window: 35
   top_k: 30
   entry_buffer: 2
   exit_buffer: 10
-
-  # Binance lot-size gate: exclude instruments whose minimum lot (in USD) exceeds
-  # this value. Prevents counting instruments in K that can't be meaningfully sized.
-  # 'auto' (default) = capital / K  (e.g. $10K / 30 = $333 per slot)
-  # null / 0         = disabled
-  # number           = explicit USD threshold
-  max_lot_notional: 'auto'
-
-  # Stage 2 method: 'adv' (default) or 'carver_static'
-  # 'adv': top-K by liquidity (ADV) with hysteresis
-  # 'carver_static': greedy correlation-aware selection (Carver Post 3)
-  stage2_method: 'adv'
-
-  # Carver static selection config (used when stage2_method: 'carver_static')
+  max_lot_notional: auto
+  stage2_method: adv
   carver_static:
-    assumed_gross_sr: 0.5        # Assumed SR before costs for all instruments
-    sr_tolerance: 0.90           # Stop adding when SR drops below 90% of peak
-    correlation_window: 252      # Trailing days for correlation estimation
-    correlation_shrinkage: 0.5   # Shrinkage toward identity (0=none, 1=full)
-    min_instruments: 5           # Minimum instruments to select
-    max_instruments: 40          # Maximum instruments to select
-    rebalance_freq: 'ME'         # Rebalance frequency (ME = month end)
-    hysteresis_buffer: 3         # Max add/remove per rebalance to limit churn
-
-# ============================================================================
-# TRADING RULES — 45 VARIATIONS
-# ============================================================================
-
+    assumed_gross_sr: 0.5
+    sr_tolerance: 0.9
+    correlation_window: 252
+    correlation_shrinkage: 0.5
+    min_instruments: 5
+    max_instruments: 40
+    rebalance_freq: ME
+    hysteresis_buffer: 3
 trading_rules:
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — EWMAC (5 variations)
-  # function: systems.provided.rules.ewmac.ewmac_calc_vol
-  # data: injects price automatically (no data: field needed)
-  # --------------------------------------------------------------------------
   ewmac_4:
     function: systems.provided.rules.ewmac.ewmac_calc_vol
-    other_args: {Lfast: 4, Lslow: 16}
+    other_args:
+      Lfast: 4
+      Lslow: 16
   ewmac_8:
     function: systems.provided.rules.ewmac.ewmac_calc_vol
-    other_args: {Lfast: 8, Lslow: 32}
+    other_args:
+      Lfast: 8
+      Lslow: 32
   ewmac_16:
     function: systems.provided.rules.ewmac.ewmac_calc_vol
-    other_args: {Lfast: 16, Lslow: 64}
+    other_args:
+      Lfast: 16
+      Lslow: 64
   ewmac_32:
     function: systems.provided.rules.ewmac.ewmac_calc_vol
-    other_args: {Lfast: 32, Lslow: 128}
+    other_args:
+      Lfast: 32
+      Lslow: 128
   ewmac_64:
     function: systems.provided.rules.ewmac.ewmac_calc_vol
-    other_args: {Lfast: 64, Lslow: 256}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — Breakout (6 variations, uses rolling close-price range)
-  # --------------------------------------------------------------------------
+    other_args:
+      Lfast: 64
+      Lslow: 256
   breakout_10:
     function: systems.provided.rules.breakout.breakout
-    other_args: {lookback: 10}
+    other_args:
+      lookback: 10
   breakout_20:
     function: systems.provided.rules.breakout.breakout
-    other_args: {lookback: 20}
+    other_args:
+      lookback: 20
   breakout_40:
     function: systems.provided.rules.breakout.breakout
-    other_args: {lookback: 40}
+    other_args:
+      lookback: 40
   breakout_80:
     function: systems.provided.rules.breakout.breakout
-    other_args: {lookback: 80}
+    other_args:
+      lookback: 80
   breakout_160:
     function: systems.provided.rules.breakout.breakout
-    other_args: {lookback: 160}
+    other_args:
+      lookback: 160
   breakout_320:
     function: systems.provided.rules.breakout.breakout
-    other_args: {lookback: 320}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — Normmom (5 variations)
-  # Cumulative vol-normalised return series, then EWMAC
-  # --------------------------------------------------------------------------
+    other_args:
+      lookback: 320
   normmom_4:
     function: systems.crypto_perps.rules.rule_library.normmom
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 4}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 4
   normmom_8:
     function: systems.crypto_perps.rules.rule_library.normmom
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 8}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 8
   normmom_16:
     function: systems.crypto_perps.rules.rule_library.normmom
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 16}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 16
   normmom_32:
     function: systems.crypto_perps.rules.rule_library.normmom
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 32}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 32
   normmom_64:
     function: systems.crypto_perps.rules.rule_library.normmom
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 64}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — Accel (3 variations)
-  # Acceleration of EWMAC signal
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 64
   accel_16:
     function: systems.provided.rules.accel.accel
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 16}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 16
   accel_32:
     function: systems.provided.rules.accel.accel
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 32}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 32
   accel_64:
     function: systems.provided.rules.accel.accel
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {Lfast: 64}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — Assettrend (4 variations)
-  # EWMAC of ADV-weighted crypto index; same signal for all instruments
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      Lfast: 64
   assettrend_8:
     function: systems.crypto_perps.rules.rule_library.assettrend
     data:
-      - "data.get_asset_class_index_price"
-    other_args: {Lfast: 8}
+    - data.get_asset_class_index_price
+    other_args:
+      Lfast: 8
   assettrend_16:
     function: systems.crypto_perps.rules.rule_library.assettrend
     data:
-      - "data.get_asset_class_index_price"
-    other_args: {Lfast: 16}
+    - data.get_asset_class_index_price
+    other_args:
+      Lfast: 16
   assettrend_32:
     function: systems.crypto_perps.rules.rule_library.assettrend
     data:
-      - "data.get_asset_class_index_price"
-    other_args: {Lfast: 32}
+    - data.get_asset_class_index_price
+    other_args:
+      Lfast: 32
   assettrend_64:
     function: systems.crypto_perps.rules.rule_library.assettrend
     data:
-      - "data.get_asset_class_index_price"
-    other_args: {Lfast: 64}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — Relmomentum (4 variations)
-  # Cross-sectional momentum relative to asset-class median
-  # --------------------------------------------------------------------------
+    - data.get_asset_class_index_price
+    other_args:
+      Lfast: 64
   relmomentum_10:
     function: systems.provided.rules.rel_mom.relative_momentum
     data:
-      - "data.get_normalised_price_this_instrument"
-      - "data.get_normalised_price_for_asset_class"
-    other_args: {horizon: 10}
+    - data.get_normalised_price_this_instrument
+    - data.get_normalised_price_for_asset_class
+    other_args:
+      horizon: 10
   relmomentum_20:
     function: systems.provided.rules.rel_mom.relative_momentum
     data:
-      - "data.get_normalised_price_this_instrument"
-      - "data.get_normalised_price_for_asset_class"
-    other_args: {horizon: 20}
+    - data.get_normalised_price_this_instrument
+    - data.get_normalised_price_for_asset_class
+    other_args:
+      horizon: 20
   relmomentum_40:
     function: systems.provided.rules.rel_mom.relative_momentum
     data:
-      - "data.get_normalised_price_this_instrument"
-      - "data.get_normalised_price_for_asset_class"
-    other_args: {horizon: 40}
+    - data.get_normalised_price_this_instrument
+    - data.get_normalised_price_for_asset_class
+    other_args:
+      horizon: 40
   relmomentum_80:
     function: systems.provided.rules.rel_mom.relative_momentum
     data:
-      - "data.get_normalised_price_this_instrument"
-      - "data.get_normalised_price_for_asset_class"
-    other_args: {horizon: 80}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT — Cross-Sectional Mean Reversion (2 horizons)
-  # Fades XS outperformance vs crypto-wide median over rolling horizon.
-  # Carver (2017): negative correlation with trend rules → portfolio insurance.
-  # Uses same data methods as relmomentum (get_normalised_price_*).
-  # ewma_span defaults to horizon/4 (31d for cs_mr_125, 62d for cs_mr_250).
-  # --------------------------------------------------------------------------
+    - data.get_normalised_price_this_instrument
+    - data.get_normalised_price_for_asset_class
+    other_args:
+      horizon: 80
   cs_mr_125:
     function: systems.provided.rules.cs_mr.cross_sectional_mean_reversion
     data:
-      - "data.get_normalised_price_this_instrument"
-      - "data.get_normalised_price_for_asset_class"
-    other_args: {horizon: 125}
-
+    - data.get_normalised_price_this_instrument
+    - data.get_normalised_price_for_asset_class
+    other_args:
+      horizon: 125
   cs_mr_250:
     function: systems.provided.rules.cs_mr.cross_sectional_mean_reversion
     data:
-      - "data.get_normalised_price_this_instrument"
-      - "data.get_normalised_price_for_asset_class"
-    other_args: {horizon: 250}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — BTC Lead-Lag (2 variations)
-  # Lagged BTC returns as predictive signal for alts (weight=0 for BTC)
-  # --------------------------------------------------------------------------
+    - data.get_normalised_price_this_instrument
+    - data.get_normalised_price_for_asset_class
+    other_args:
+      horizon: 250
   btc_lead_lag_1:
     function: systems.crypto_perps.rules.rule_library.btc_lead_lag
     data:
-      - "data.get_btc_price"
-      - "data.daily_prices"
-    other_args: {lag_days: 1}
+    - data.get_btc_price
+    - data.daily_prices
+    other_args:
+      lag_days: 1
   btc_lead_lag_2:
     function: systems.crypto_perps.rules.rule_library.btc_lead_lag
     data:
-      - "data.get_btc_price"
-      - "data.daily_prices"
-    other_args: {lag_days: 2}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT SUB-A — FundingCarry (4 variations)
-  # Smoothed annualised funding rate, negated
-  # --------------------------------------------------------------------------
+    - data.get_btc_price
+    - data.daily_prices
+    other_args:
+      lag_days: 2
   funding_carry_10:
     function: systems.crypto_perps.rules.rule_library.funding_carry
     data:
-      - "data.get_funding_rate"
-    other_args: {smooth_days: 10}
+    - data.get_funding_rate
+    other_args:
+      smooth_days: 10
   funding_carry_30:
     function: systems.crypto_perps.rules.rule_library.funding_carry
     data:
-      - "data.get_funding_rate"
-    other_args: {smooth_days: 30}
+    - data.get_funding_rate
+    other_args:
+      smooth_days: 30
   funding_carry_60:
     function: systems.crypto_perps.rules.rule_library.funding_carry
     data:
-      - "data.get_funding_rate"
-    other_args: {smooth_days: 60}
+    - data.get_funding_rate
+    other_args:
+      smooth_days: 60
   funding_carry_125:
     function: systems.crypto_perps.rules.rule_library.funding_carry
     data:
-      - "data.get_funding_rate"
-    other_args: {smooth_days: 125}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT SUB-A — Relcarry (3 variations)
-  # Funding relative to cross-sectional median (weight=0 for BTC)
-  # --------------------------------------------------------------------------
+    - data.get_funding_rate
+    other_args:
+      smooth_days: 125
   relcarry_30:
     function: systems.crypto_perps.rules.rule_library.relcarry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-    other_args: {smooth_days: 30}
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    other_args:
+      smooth_days: 30
   relcarry_60:
     function: systems.crypto_perps.rules.rule_library.relcarry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-    other_args: {smooth_days: 60}
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    other_args:
+      smooth_days: 60
   relcarry_125:
     function: systems.crypto_perps.rules.rule_library.relcarry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-    other_args: {smooth_days: 125}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT SUB-A — FundingMR + FundingCrowd
-  # Mean-reversion from extreme and persistent funding extremes
-  # --------------------------------------------------------------------------
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    other_args:
+      smooth_days: 125
   funding_mr:
     function: systems.crypto_perps.rules.rule_library.funding_mr
     data:
-      - "data.get_funding_rate"
-
-  # Persistent funding crowding (weight 0.0 pending sweep)
+    - data.get_funding_rate
   funding_crowd_5:
     function: systems.crypto_perps.rules.rule_library.funding_crowd
     data:
-      - "data.get_funding_rate"
-    other_args: {window: 60, threshold: 1.0, persist_days: 5}
-
+    - data.get_funding_rate
+    other_args:
+      window: 60
+      threshold: 1.0
+      persist_days: 5
   funding_crowd_10:
     function: systems.crypto_perps.rules.rule_library.funding_crowd
     data:
-      - "data.get_funding_rate"
-    other_args: {window: 60, threshold: 1.0, persist_days: 10}
-
-  # LSR-based signals (weight 0.0 pending sweep_oi_lsr_weight.py)
+    - data.get_funding_rate
+    other_args:
+      window: 60
+      threshold: 1.0
+      persist_days: 10
   lsr_divergence:
     function: systems.crypto_perps.rules.rule_library.lsr_divergence
     data:
-      - "data.get_toptrader_long_short_ratio"
-      - "data.get_long_short_ratio"
-    other_args: {window: 60}
-
+    - data.get_toptrader_long_short_ratio
+    - data.get_long_short_ratio
+    other_args:
+      window: 60
   lsr_retail_crowding:
     function: systems.crypto_perps.rules.rule_library.lsr_retail_crowding
     data:
-      - "data.get_long_short_ratio"
-    other_args: {window: 60}
-
-  # Crowd-deleveraging trend amplifier: sweep_crowd_deleverage_weight.py to find optimal weight
+    - data.get_long_short_ratio
+    other_args:
+      window: 60
   crowd_deleverage_trend:
     function: systems.crypto_perps.rules.rule_library.crowd_deleverage_trend
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-      - "data.get_xs_vol_zscore"
-      - "data.get_xs_oi_change_zscore"
-    other_args: {fast_span: 16, slow_span: 64, window: 60}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT SUB-B — STreversal (3 variations)
-  # Short-term price reversal
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    - data.get_xs_vol_zscore
+    - data.get_xs_oi_change_zscore
+    other_args:
+      fast_span: 16
+      slow_span: 64
+      window: 60
   streversal_1:
     function: systems.crypto_perps.rules.rule_library.streversal
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {horizon: 1}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      horizon: 1
   streversal_2:
     function: systems.crypto_perps.rules.rule_library.streversal
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {horizon: 2}
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      horizon: 2
   streversal_3:
     function: systems.crypto_perps.rules.rule_library.streversal
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {horizon: 3}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT SUB-B — ReturnSkew (2 variations)
-  # Negative rolling skewness, z-scored
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      horizon: 3
   return_skew_20:
     function: systems.crypto_perps.rules.rule_library.return_skew
     data:
-      - "data.daily_prices"
-    other_args: {window: 20}
+    - data.daily_prices
+    other_args:
+      window: 20
   return_skew_60:
     function: systems.crypto_perps.rules.rule_library.return_skew
     data:
-      - "data.daily_prices"
-    other_args: {window: 60}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT SUB-B — Mrinasset (1 variation)
-  # Asset-class index deviation from 1000d MA — mean-reversion
-  # Weight=0 in default profile; non-zero only for BTC and ETH
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    other_args:
+      window: 60
   mrinasset:
     function: systems.crypto_perps.rules.rule_library.mrinasset
     data:
-      - "data.get_asset_class_index_price"
-    other_args: {ma_window: 1000}
-
-  # --------------------------------------------------------------------------
-  # CONVERGENT SUB-B — Illiquidity (2 variations)
-  # Rising Amihud illiquidity ratio → defensive short signal
-  # --------------------------------------------------------------------------
+    - data.get_asset_class_index_price
+    other_args:
+      ma_window: 1000
   illiquidity_20:
     function: systems.crypto_perps.rules.rule_library.illiquidity
     data:
-      - "data.daily_prices"
-      - "data.get_adv_notional"
-    other_args: {window: 20}
+    - data.daily_prices
+    - data.get_adv_notional
+    other_args:
+      window: 20
   illiquidity_60:
     function: systems.crypto_perps.rules.rule_library.illiquidity
     data:
-      - "data.daily_prices"
-      - "data.get_adv_notional"
-    other_args: {window: 60}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — ResidualMomentum (3 variations)
-  # Macro-residualised momentum: EWMAC applied to cumulative OLS residuals
-  # from 60d rolling regression on SPX, DXY, and 10Y yield changes.
-  # Requires macro_data_path (data/macro_factors.parquet) to be loaded.
-  # Weights set to 0.0 initially — validate IC before assigning budget.
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    - data.get_adv_notional
+    other_args:
+      window: 60
   residual_momentum_16:
     function: systems.crypto_perps.rules.rule_library.residual_momentum
     data:
-      - "data.daily_prices"
-      - "data.get_spx_price"
-      - "data.get_dxy_price"
-      - "data.get_us10y_yield"
-    other_args: {Lfast: 16, reg_window: 60}
+    - data.daily_prices
+    - data.get_spx_price
+    - data.get_dxy_price
+    - data.get_us10y_yield
+    other_args:
+      Lfast: 16
+      reg_window: 60
   residual_momentum_32:
     function: systems.crypto_perps.rules.rule_library.residual_momentum
     data:
-      - "data.daily_prices"
-      - "data.get_spx_price"
-      - "data.get_dxy_price"
-      - "data.get_us10y_yield"
-    other_args: {Lfast: 32, reg_window: 60}
+    - data.daily_prices
+    - data.get_spx_price
+    - data.get_dxy_price
+    - data.get_us10y_yield
+    other_args:
+      Lfast: 32
+      reg_window: 60
   residual_momentum_64:
     function: systems.crypto_perps.rules.rule_library.residual_momentum
     data:
-      - "data.daily_prices"
-      - "data.get_spx_price"
-      - "data.get_dxy_price"
-      - "data.get_us10y_yield"
-    other_args: {Lfast: 64, reg_window: 60}
-
-  # --------------------------------------------------------------------------
-  # DIVERGENT — SectorMomentum (3 variations)
-  # Within-sector relative momentum using sector-specific ADV-weighted index.
-  # Reuses the assettrend function — sector-specific index injected via data method.
-  # Ex-self computation: each instrument's index excludes itself.
-  # Requires data/sector_map.json (run scripts/build_sector_map.py once).
-  # Returns NaN forecast for 'Other' instruments or if sector_map not loaded.
-  # Sectors: L1, L2, DeFi, Meme, AI, Gaming, Infra, Exchange (≥3 members required)
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    - data.get_spx_price
+    - data.get_dxy_price
+    - data.get_us10y_yield
+    other_args:
+      Lfast: 64
+      reg_window: 60
   sector_momentum_10:
     function: systems.crypto_perps.rules.rule_library.assettrend
     data:
-      - "data.get_sector_index_price"
-    other_args: {Lfast: 10}
+    - data.get_sector_index_price
+    other_args:
+      Lfast: 10
   sector_momentum_20:
     function: systems.crypto_perps.rules.rule_library.assettrend
     data:
-      - "data.get_sector_index_price"
-    other_args: {Lfast: 20}
+    - data.get_sector_index_price
+    other_args:
+      Lfast: 20
   sector_momentum_40:
     function: systems.crypto_perps.rules.rule_library.assettrend
     data:
-      - "data.get_sector_index_price"
-    other_args: {Lfast: 40}
-
-  # --------------------------------------------------------------------------
-  # CROSS-SECTIONAL SIGNALS — Pre-computed in data layer, passed through unchanged
-  # These 4 rules were previously additive sleeves in ForecastCombineGated.
-  # Now proper Carver rules: forecast scalar ≈ 1.0 (signals already ±20).
-  # Uncovered instruments return NaN → rule weight renormalized to 0 for that instrument.
-  # --------------------------------------------------------------------------
+    - data.get_sector_index_price
+    other_args:
+      Lfast: 40
   xs_carry:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_xs_carry_forecast"
-
+    - data.get_xs_carry_forecast
   xs_activity:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_xs_activity_forecast"
-
+    - data.get_xs_activity_forecast
   xs_val:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_xs_val_forecast"
-
+    - data.get_xs_val_forecast
   inter_sector:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_inter_sector_forecast"
-
-  # --------------------------------------------------------------------------
-  # TIME-SERIES SKEW — Carver (2020), posts 1–4
-  # Rolling log-return skew, pooled cross-asset z-score normalisation, negated.
-  # Instruments with more negative skew (vs cross-asset average) outperform over
-  # next 3–12 months (SR differential ≈ 0.4 at 6-month horizon).
-  # Signal is a z-score (NOT a ±20 XS rank); forecast scalar handles scaling.
-  # Minimal overlap with β_down overlay (panel Spearman r = -0.09 to -0.14).
-  # Three lookbacks: 90d (noisier), 180d (Carver's strongest), 365d (smoother).
-  # --------------------------------------------------------------------------
+    - data.get_inter_sector_forecast
   skew_abs_90:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_skew_abs_90_forecast"
-
+    - data.get_skew_abs_90_forecast
   skew_abs_180:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_skew_abs_180_forecast"
-
+    - data.get_skew_abs_180_forecast
   skew_abs_365:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_skew_abs_365_forecast"
-
-  # --------------------------------------------------------------------------
-  # TIME-SERIES SKEW RV — Carver (2020), relative-value variant
-  # Daily cross-sectional normalization: subtract today's crypto-wide mean skew.
-  # In Carver's multi-class futures universe _rv had r=0.54 with _abs (kept).
-  # In our single-class crypto universe _rv = _cs; Carver found _cs r=0.95 with
-  # _abs (dropped). Testing empirically to confirm whether it adds diversification.
-  # --------------------------------------------------------------------------
+    - data.get_skew_abs_365_forecast
   skew_rv_90:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_skew_rv_90_forecast"
-
+    - data.get_skew_rv_90_forecast
   skew_rv_180:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_skew_rv_180_forecast"
-
+    - data.get_skew_rv_180_forecast
   skew_rv_365:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_skew_rv_365_forecast"
-
-  # --------------------------------------------------------------------------
-  # BEHAVIORAL — Round-Number signals (2026-04-10)
-  # stop-losses and take-profits cluster at 1-2-5 series price levels.
-  # break: momentum burst after a level is crossed (sparse ~60-80% zeros).
-  # prox:  continuous amplifier when price is within 3% of a round number.
-  # --------------------------------------------------------------------------
+    - data.get_skew_rv_365_forecast
   round_number_break_10:
     function: systems.crypto_perps.rules.rule_library.round_number_break
     data:
-      - "data.daily_prices"
-    other_args: {lookback: 10}
-
+    - data.daily_prices
+    other_args:
+      lookback: 10
   round_number_break_20:
     function: systems.crypto_perps.rules.rule_library.round_number_break
     data:
-      - "data.daily_prices"
-    other_args: {lookback: 20}
-
+    - data.daily_prices
+    other_args:
+      lookback: 20
   round_number_break_40:
     function: systems.crypto_perps.rules.rule_library.round_number_break
     data:
-      - "data.daily_prices"
-    other_args: {lookback: 40}
-
+    - data.daily_prices
+    other_args:
+      lookback: 40
   round_number_prox:
     function: systems.crypto_perps.rules.rule_library.round_number_prox
     data:
-      - "data.daily_prices"
-    other_args: {proximity_pct: 0.03}
-
-  # --------------------------------------------------------------------------
-  # ATTENTION PROXY SIGNALS — OI-based, Phase 1 (2026-04-18)
-  # No external news/sentiment data required. Uses per-instrument OI from
-  # binance_oi_processed.parquet (coverage 2021-12-01 onward, 300 instruments).
-  # --------------------------------------------------------------------------
-
+    - data.daily_prices
+    other_args:
+      proximity_pct: 0.03
   xs_oi_attention:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_xs_oi_attention_forecast"
-
+    - data.get_xs_oi_attention_forecast
   attn_exhaustion_fade:
     function: systems.crypto_perps.rules.rule_library.attn_exhaustion_fade
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-      - "data.get_open_interest"
-    other_args: {oi_window: 60, oi_threshold: 2.0, ret_threshold: 1.5}
-
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    - data.get_open_interest
+    other_args:
+      oi_window: 60
+      oi_threshold: 2.0
+      ret_threshold: 1.5
   attn_panic_rebound:
     function: systems.crypto_perps.rules.rule_library.attn_panic_rebound
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-      - "data.get_open_interest"
-    other_args: {oi_window: 60, panic_oi_threshold: 1.5, panic_ret_threshold: 2.0}
-
-  # --------------------------------------------------------------------------
-  # VOLUME — Three rules testing volume-based predictive signals (2026-04-18)
-  # xs_volume_attention: XS rank of EWM log-volume-change, contrarian
-  # volume_surge_momentum: divergent — high-volume days confirm trend
-  # volume_price_divergence: convergent — price/volume trend disagreement fades move
-  # --------------------------------------------------------------------------
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    - data.get_open_interest
+    other_args:
+      oi_window: 60
+      panic_oi_threshold: 1.5
+      panic_ret_threshold: 2.0
   xs_volume_attention:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_xs_volume_forecast"
-
+    - data.get_xs_volume_forecast
   volume_surge_momentum:
     function: systems.crypto_perps.rules.rule_library.volume_surge_momentum
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-      - "data.get_daily_volume"
-    other_args: {vol_window: 63, vol_threshold: 1.5}
-
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    - data.get_daily_volume
+    other_args:
+      vol_window: 63
+      vol_threshold: 1.5
   volume_price_divergence:
     function: systems.crypto_perps.rules.rule_library.volume_price_divergence
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-      - "data.get_daily_volume"
-    other_args: {fast: 32, slow: 128}
-
-  # --------------------------------------------------------------------------
-  # VOL REGIME — Volatility as a return predictor (2026-04-18)
-  # Two effects absent from flat-61: XS low-vol anomaly + TS vol-regime modulation.
-  # All computed from self._prices_df — no new data files required, 319-instrument coverage.
-  #
-  # xs_low_vol_20: XS contrarian — rank 319 instruments by 20-day realized vol.
-  #   Low vol → +20 (vol-targeting allocators add to low-vol instruments).
-  # xs_low_vol_60: Same, 60-day lookback (more stable ranking, medium-term effect).
-  # vol_regime_trend: TS — EWMAC(32,128) amplified by per-instrument vol contraction.
-  #   rv_20/rv_60 < 1 → vol contracting → modifier > 1 → amplify trend.
-  #   rv_20/rv_60 > 1 → vol expanding → modifier < 1 → attenuate trend.
-  #   Distinct from crowd_deleverage_trend: per-instrument, continuous, no OI.
-
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    - data.get_daily_volume
+    other_args:
+      fast: 32
+      slow: 128
   xs_low_vol_20:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_xs_low_vol_20_forecast"
-
+    - data.get_xs_low_vol_20_forecast
   xs_low_vol_60:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_xs_low_vol_60_forecast"
-
+    - data.get_xs_low_vol_60_forecast
   vol_regime_trend:
     function: systems.crypto_perps.rules.rule_library.vol_regime_trend
     data:
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {trend_fast: 32, trend_slow: 128, rv_short: 20, rv_long: 60}
-
-  # --------------------------------------------------------------------------
-  # MACRO DIRECTION — complement to residual_momentum (2026-04-18)
-  # Trades the macro-explained variance that residual_momentum discards.
-  # macro_momentum: OLS fitted values EWMAC — per-instrument, betas vary by instrument.
-  # dxy_momentum:   Direct DXY EWMAC inverted — portfolio-level risk-on signal.
-
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      trend_fast: 32
+      trend_slow: 128
+      rv_short: 20
+      rv_long: 60
   macro_momentum_16:
     function: systems.crypto_perps.rules.rule_library.macro_momentum
     data:
-      - "data.daily_prices"
-      - "data.get_spx_price"
-      - "data.get_dxy_price"
-      - "data.get_us10y_yield"
-    other_args: {Lfast: 16, reg_window: 60}
-
+    - data.daily_prices
+    - data.get_spx_price
+    - data.get_dxy_price
+    - data.get_us10y_yield
+    other_args:
+      Lfast: 16
+      reg_window: 60
   macro_momentum_32:
     function: systems.crypto_perps.rules.rule_library.macro_momentum
     data:
-      - "data.daily_prices"
-      - "data.get_spx_price"
-      - "data.get_dxy_price"
-      - "data.get_us10y_yield"
-    other_args: {Lfast: 32, reg_window: 60}
-
+    - data.daily_prices
+    - data.get_spx_price
+    - data.get_dxy_price
+    - data.get_us10y_yield
+    other_args:
+      Lfast: 32
+      reg_window: 60
   dxy_momentum_16:
     function: systems.crypto_perps.rules.rule_library.dxy_momentum
     data:
-      - "data.daily_prices"
-      - "data.get_dxy_price"
-    other_args: {Lfast: 16}
-
-  # --------------------------------------------------------------------------
-  # BTC DOMINANCE — intra-crypto risk appetite (2026-04-18)
-  # BTC dominance = btc_mcap / total_mcap (41-instrument proxy, 2020-2026).
-  # Rising dominance: BTC gains share → long BTC, short alts.
-  # Falling dominance: alt season → short BTC, long alts.
-  # Coverage: 41 instruments; 278 uncovered → NaN (weight-zeroed by scalar).
-  # --------------------------------------------------------------------------
-
+    - data.daily_prices
+    - data.get_dxy_price
+    other_args:
+      Lfast: 16
+  spx_momentum_16:
+    function: systems.crypto_perps.rules.rule_library.spx_momentum
+    data:
+    - data.daily_prices
+    - data.get_spx_price
+    other_args:
+      Lfast: 16
+  spx_momentum_32:
+    function: systems.crypto_perps.rules.rule_library.spx_momentum
+    data:
+    - data.daily_prices
+    - data.get_spx_price
+    other_args:
+      Lfast: 32
+  us10y_momentum_16:
+    function: systems.crypto_perps.rules.rule_library.us10y_momentum
+    data:
+    - data.daily_prices
+    - data.get_us10y_yield
+    other_args:
+      Lfast: 16
   btc_dom_rotation_16:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_btc_dom_16_forecast"
-
+    - data.get_btc_dom_16_forecast
   btc_dom_rotation_32:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_btc_dom_32_forecast"
-
+    - data.get_btc_dom_32_forecast
   btc_dom_level_120:
     function: systems.crypto_perps.rules.rule_library.passthrough_forecast
     data:
-      - "data.get_btc_dom_level_forecast"
-
-  # --------------------------------------------------------------------------
-  # CARRY — Trend-Gated (Carver-compliant, 2026-03-06 refactor)
-  # Gate baked into rule: returns 0 when sign(carry) ≠ sign(per-instrument EWMAC).
-  # Goes through standard forecast scalar → weighted avg → FDM pipeline.
-  # ~50% outputs are 0; walk-forward scalar compensates (Carver-correct behaviour).
-  #
-  # Prior architecture (additive sleeve in ForecastCombineGated) contributed to
-  # mean |FC|=14.2 and cap hit=45.6%. Standard rules restore these to target range.
-  #
-  # vol_norm_carry_10/30/60 kept for reference (no longer in forecast_weights).
-  # --------------------------------------------------------------------------
+    - data.get_btc_dom_level_forecast
   gated_carry_10:
     function: systems.crypto_perps.rules.rule_library.gated_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 10, trend_fast: 32, trend_slow: 128}
-
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 10
+      trend_fast: 32
+      trend_slow: 128
   gated_carry_30:
     function: systems.crypto_perps.rules.rule_library.gated_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 30, trend_fast: 32, trend_slow: 128}
-
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 30
+      trend_fast: 32
+      trend_slow: 128
   gated_carry_60:
     function: systems.crypto_perps.rules.rule_library.gated_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 60, trend_fast: 32, trend_slow: 128}
-
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 60
+      trend_fast: 32
+      trend_slow: 128
   gated_carry_90:
     function: systems.crypto_perps.rules.rule_library.gated_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 90, trend_fast: 32, trend_slow: 128}
-
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 90
+      trend_fast: 32
+      trend_slow: 128
   gated_carry_180:
     function: systems.crypto_perps.rules.rule_library.gated_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 180, trend_fast: 32, trend_slow: 128}
-
-  # --------------------------------------------------------------------------
-  # De-meaned carry: idiosyncratic funding rate (instrument minus universe mean)
-  # vol-normalized, optionally trend-gated.
-  # Theoretically distinct from gated_carry (raw vs history) and xs_carry (rank).
-  # Initialized at weight 0.0 — sweep with sweep_demeaned_carry.py before adopting.
-  # --------------------------------------------------------------------------
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 180
+      trend_fast: 32
+      trend_slow: 128
   demeaned_carry_10:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 10, gate: false}
-
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 10
+      gate: false
   demeaned_carry_30:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 30, gate: false}
-
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 30
+      gate: false
   demeaned_carry_60:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 60, gate: false}
-
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 60
+      gate: false
   demeaned_carry_gated_10:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 10, gate: true, trend_fast: 32, trend_slow: 128}
-
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 10
+      gate: true
+      trend_fast: 32
+      trend_slow: 128
   demeaned_carry_gated_30:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 30, gate: true, trend_fast: 32, trend_slow: 128}
-
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 30
+      gate: true
+      trend_fast: 32
+      trend_slow: 128
   demeaned_carry_gated_60:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 60, gate: true, trend_fast: 32, trend_slow: 128}
-
-  # --------------------------------------------------------------------------
-  # De-meaned carry (HL-filtered median): same as demeaned_carry but uses the
-  # universe-mean funding computed only from Hyperliquid-listed instruments.
-  # Only meaningful on 1k/HL-filtered config. Initialized at 0.0.
-  # --------------------------------------------------------------------------
+    - data.get_funding_rate
+    - data.get_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 60
+      gate: true
+      trend_fast: 32
+      trend_slow: 128
   demeaned_carry_hl_10:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_hl_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 10, gate: false}
-
+    - data.get_funding_rate
+    - data.get_hl_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 10
+      gate: false
   demeaned_carry_hl_30:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_hl_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 30, gate: false}
-
+    - data.get_funding_rate
+    - data.get_hl_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 30
+      gate: false
   demeaned_carry_hl_60:
     function: systems.crypto_perps.rules.rule_library.demeaned_carry
     data:
-      - "data.get_funding_rate"
-      - "data.get_hl_cross_sectional_median_funding"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {carry_span: 60, gate: false}
-
+    - data.get_funding_rate
+    - data.get_hl_cross_sectional_median_funding
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      carry_span: 60
+      gate: false
   vol_norm_carry_10:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {smooth_days: 10, vol_floor: 0.01}
-
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      smooth_days: 10
+      vol_floor: 0.01
   vol_norm_carry_30:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {smooth_days: 30, vol_floor: 0.01}
-
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      smooth_days: 30
+      vol_floor: 0.01
   vol_norm_carry_60:
     function: systems.crypto_perps.rules.rule_library.vol_normalized_carry
     data:
-      - "data.get_funding_rate"
-      - "data.daily_prices"
-      - "rawdata.daily_returns_volatility"
-    other_args: {smooth_days: 60, vol_floor: 0.01}
-
-# ============================================================================
-# FORECAST WEIGHTS — DEFAULT PROFILE  (22 trend rules, 7 families)
-# ============================================================================
-# 7 families, equal family budget (1/7 each), equal weight within family.
-# Carry stays fixed at 1% each (3% total, additive via ForecastCombineGated).
-#
-# IC audit results (15 sample instruments, dataset_538registry_6yr_jagged):
-#   resmom    IC@5d=0.0767  t=2.8  ← #1 family (beats all trend families)
-#   trend     IC@5d=0.0554  t=2.1
-#   carry     IC@5d=-0.009         ← excluded (negative IC, per previous audit)
-#   reversion IC@5d=-0.018         ← excluded (negative IC, per previous audit)
-#
-# Sector momentum (tested 2026-02-28): Sharpe 0.96 vs 0.99 baseline (-3.0%) → REJECTED
-# Root cause: top-K dynamic portfolio (~30 instruments) has 0-5 members per sector;
-# most sector indices return NaN, wasting the budget taken from trend rules.
-#
-# Budget allocation:
-#   22 trend rules = 1/7 per family = 100% total
-#   vol_norm_carry_10/30/60: 1.000% each (additive, gated by carry_weight param)
-# ============================================================================
-
+    - data.get_funding_rate
+    - data.daily_prices
+    - rawdata.daily_returns_volatility
+    other_args:
+      smooth_days: 60
+      vol_floor: 0.01
 forecast_weights:
-  # FLAT 1/N WEIGHTS (adopted 2026-04-15): 56 rules × 1.786% = 100%
-  # Walk-forward comparison: flat-56 (Sharpe 1.269, Calmar 1.506) beats flat-42 (Sharpe 0.931)
-  # by +36% Sharpe. Every gate/adaptive scheme underperforms flat-56. Including all 56 candidate
-  # rules at equal weight dominates in-sample curation. All sweep-optimized weights are overfit.
-  #
-  # EWMAC: 3 rules × 4.762% = 14.286%
-  # (ewmac_4 removed: 77 rt/yr, 62% instruments fail annual SR cost test)
-  ewmac_8: 0.015625
-
-  ewmac_16: 0.015625
-
-  ewmac_32: 0.015625
-
-
-  # Breakout: 4 rules × 3.571% = 14.284%
-  # (breakout_10 removed: 132 rt/yr, 100% fail)
-  breakout_20: 0.015625
-
-  breakout_40: 0.015625
-
-  breakout_80: 0.015625
-
-  breakout_160: 0.015625
-
-
-  # Normmom: 3 rules × 4.762% = 14.286%
-  # (normmom_4 removed: 68 rt/yr, 37% fail)
-  normmom_8: 0.015625
-
-  normmom_16: 0.015625
-
-  normmom_32: 0.015625
-
-
-  # Accel: 3 rules × 4.762% = 14.286%
-  accel_16: 0.015625
-
-  accel_32: 0.015625
-
-  accel_64: 0.015625
-
-
-  # Assettrend: 4 rules × 3.571% = 14.284%
-  assettrend_8: 0.015625
-
-  assettrend_16: 0.015625
-
-  assettrend_32: 0.015625
-
-  assettrend_64: 0.015625
-
-
-  # Relmomentum: 2 rules × 7.143% = 14.286%
-  # (relmomentum_10 removed: 132 rt/yr, 100% fail)
-  relmomentum_20: 0.015625
-
-  relmomentum_40: 0.015625
-
-
-  # ResidualMomentum: 3 rules × 4.762% = 14.286%
-  # IC audit 2026-02-18: resmom is #1 family (IC@5d=0.077, t=2.8, IC@21d=0.112)
-  # Ranks: resmom_16=#7, resmom_32=#13, resmom_64=#14 out of 48 rules
-  residual_momentum_16: 0.015625
-
-  residual_momentum_32: 0.015625
-
-  residual_momentum_64: 0.015625
-
-
-  # SectorMomentum — TESTED & REJECTED (2026-02-28): Sharpe 0.96 vs 0.99 baseline (-3.0%)
-  # Rules removed from weights. Code and data/sector_map.json preserved for future research.
-  # sector_momentum_10: 0.0
-  # sector_momentum_20: 0.0
-  # sector_momentum_40: 0.0
-
-  # Gated Carry: 3 rules × 5.0% = 15.0% (Carver-compliant refactor, 2026-03-06)
-  # Gate baked into rule function; goes through standard scalar → FDM pipeline.
-  # vol_norm_carry_10/30/60 removed from weights (rules kept for reference).
-  # Sweep 2026-03-07 (carry_10/30): 1.4× empirical ratio → w=0.07 (Calmar peak, ΔSharpe +4.0%, ΔMaxDD -0.06pp)
-  # Sweep 2026-03-07 (carry_60):    3.17× empirical ratio → w=0.10 (Calmar peak, ΔSharpe +2.6%, ΔMaxDD +1.16pp)
-  # Sweep 2026-04-02 (post-funding_mr): equal weights, w=0.20 peak (ΔSharpe +38.6%, ΔCalmar +0.79, MaxDD -5.34%)
-  #   w=0.15 adopted (conservative; cliff at w=0.30, trend diluted to 48%). ΔSharpe +35.6%, ΔCalmar +0.48, MaxDD -6.42%
-  gated_carry_10: 0.015625
-
-  gated_carry_30: 0.015625
-
-  gated_carry_60: 0.015625
-
-  # gated_carry_90/180: included at 1/N (flat-56 adoption 2026-04-15)
-  gated_carry_90: 0.015625
-
-  gated_carry_180: 0.015625
-
-
-  # Cross-sectional signals (moved from additive sleeves, 2026-03-06 refactor)
-  # Sweep 2026-03-07: w=0.10 (Calmar peak, ΔSharpe +2.9%, ΔCalmar +0.067, ΔMaxDD +1.20pp)
-  # Calmar peaks at 0.10 (0.993 vs 0.926 baseline) — same Calmar-peak criterion as carry sweeps.
-  # Uncovered instruments get NaN → weight renormalized to 0 for that instrument.
-  xs_carry: 0.015625
-
-  xs_activity: 0.015625
-
-  xs_val: 0.015625
-
-  inter_sector: 0.015625
-
-
-  # CS Mean Reversion: REJECTED 2026-03-10
-  # Sweep [0.0, 0.03, 0.05, 0.07, 0.10, 0.15, 0.20]: Calmar-peak at w=0.0 (1.437).
-  # Calmar monotonically declines to 0.91 at w=0.20. No weight passes ΔSharpe >+1%.
-  # Cost audit: gross_SR=-0.526 (cs_mr_125), -0.411 (cs_mr_250) — pre-cost losing rules.
-  # XS mean reversion is anti-signal in trending crypto 2020-2026 (strong XS momentum).
-  # cs_mr_125: 0.0  # REJECTED
-  # cs_mr_250: 0.0  # REJECTED
-
-  # Skew-abs: Carver (2020) time-series skew signal, 3 lookbacks.
-  # Sweep 2026-03-08: Calmar-peak at w_combined=0.05 (0.0167/rule).
-  # ΔSharpe +1.3%, ΔCalmar -0.005 (noise-level), ΔMaxDD -0.07pp vs no-skew baseline.
-  # 365-only at equivalent budget is strictly worse on both Sharpe and Calmar —
-  # 90d/180d provide genuine diversification in the 6-year crypto dataset.
-  skew_abs_90: 0.015625
-
-  skew_abs_180: 0.015625
-
-  skew_abs_365: 0.015625
-
-
-  # Skew-rv: Carver (2020) relative-value skew signal, 3 lookbacks.
-  # Daily cross-sectional normalization (subtract today's crypto-wide mean skew).
-  # Sweep 2026-03-08: Calmar-peak at w_combined=0.05 (0.0167/rule).
-  # ΔSharpe +1.0%, ΔCalmar +0.011 (Calmar peaks ABOVE baseline), ΔMaxDD -0.11pp.
-  # D1 re-sweep 2026-03-28: Calmar-peak at 0.08 (1.9461, +6.2%). Window narrows after 0.08.
-  skew_rv_90: 0.015625  # was 0.03 (D1 2026-03-27); re-sweep confirms 0.08 is Calmar-peak
-  skew_rv_180: 0.015625
-
-  skew_rv_365: 0.015625
-
-
-  # De-meaned carry: ADOPTED 2026-03-27 — ungated variant, w_combined=0.15 (0.05/rule)
-  # Phase 1: ungated ΔSharpe +3.4% vs gated +1.8% → ungated wins (lower overlap with gated_carry)
-  # Phase 2: Calmar peaks at w=0.15 (1.8351 vs 1.6532 baseline). ΔSharpe +3.4%, ΔMaxDD +0.90pp (improved)
-  # Distinct from gated_carry (raw vs history) and xs_carry (rank vs absolute deviation from mean)
-  demeaned_carry_10: 0.015625
-
-  demeaned_carry_30: 0.015625
-
-  demeaned_carry_60: 0.015625
-
-  demeaned_carry_gated_10: 0.015625  # gated variant; included at 1/N per flat-56 adoption
-  demeaned_carry_gated_30: 0.015625
-
-  demeaned_carry_gated_60: 0.015625
-
-  funding_mr: 0.015625  # mean-reversion at extreme funding z-scores; adopted full_rules 2026-04-15
-
-  # Persistent funding crowding: sweep_funding_crowd_weight.py to find optimal weight
-  funding_crowd_5: 0.015625
-
-  funding_crowd_10: 0.015625
-
-
-  # LSR-based signals: sweep_oi_lsr_weight.py to find optimal weight
-  lsr_divergence: 0.015625
-
-  lsr_retail_crowding: 0.015625
-
-
-  # Crowd-deleveraging trend amplifier: sweep_crowd_deleverage_weight.py to find optimal weight
-  crowd_deleverage_trend: 0.015625
-
-
-  # HL-filtered median variants — included at 1/N (flat-56 adoption)
-  demeaned_carry_hl_10: 0.015625
-
-  demeaned_carry_hl_30: 0.015625
-
-  demeaned_carry_hl_60: 0.015625
-
-
-  # Removed entirely (cost audit):
-  #   btc_lead_lag_1/2: 480 rt/yr, annual drag ~1.4 SR each
-  #   streversal_1:     424 rt/yr, annual drag 1.26 SR
-
-  # Round-number breakout: ADOPTED 2026-04-10, w_combined=0.08 (Calmar peak: +12.8%)
-  round_number_break_10: 0.015625
-
-  round_number_break_20: 0.015625
-
-  round_number_break_40: 0.015625
-
-  round_number_prox: 0.015625       # static sweep rejected; included at 1/N per flat-61 adoption
-
-  # Attention proxy signals — ADOPTED 2026-04-18, flat-59 (each = 1/59 = 0.015625)
-  # Ablation results vs baseline (Sharpe=1.3651, Calmar=1.7148, MaxDD=-8.20%):
-  #   xs_oi_attention:     Sharpe=1.3923, Calmar=1.8571, MaxDD=-8.00%
-  #   attn_exhaustion_fade: Sharpe=1.3898, Calmar=1.9460, MaxDD=-7.59%
-  #   attn_panic_rebound:  Sharpe=1.3900, Calmar=1.8322, MaxDD=-8.08%
-  #   All 3 combined:      Sharpe=1.3889, Calmar=1.8737, MaxDD=-7.87%
-  xs_oi_attention: 0.015625
-  attn_exhaustion_fade: 0.015625
-  attn_panic_rebound: 0.015625
-
-  # Volume signals — ADOPTED 2026-04-18, flat-61 (each = 1/61 = 0.015625)
-  # Ablation results vs baseline (Sharpe=1.3889, Calmar=1.8737, MaxDD=-7.87%):
-  #   xs_volume_attention:    Sharpe=1.3784, Calmar=1.8389, MaxDD=-7.93%  [REJECT: both negative]
-  #   volume_surge_momentum:  Sharpe=1.3905, Calmar=1.9115, MaxDD=-7.76%  [ADOPT]
-  #   volume_price_divergence: Sharpe=1.3989, Calmar=1.9181, MaxDD=-7.62%  [ADOPT]
-  volume_surge_momentum: 0.015625
-  volume_price_divergence: 0.015625
-
-  # Vol regime signals — ADOPTED 2026-04-18, flat-63 (each = 1/63 = 0.015625)
-  # Ablation results vs flat-61 baseline (Sharpe=1.3871, Calmar=1.8617, MaxDD=-7.78%):
-  #   xs_low_vol_20:    Sharpe=1.3904, Calmar=1.9033, MaxDD=-7.49%  [ADOPT]
-  #   xs_low_vol_60:    Sharpe=1.4078, Calmar=1.9490, MaxDD=-7.39%  [ADOPT]
-  #   vol_regime_trend: Sharpe=1.3617, Calmar=1.7625, MaxDD=-8.08%  [REJECT: both negative]
-  xs_low_vol_20: 0.015625
-  xs_low_vol_60: 0.015625
-
-  # Macro direction signals — ADOPTED 2026-04-18, flat-64 (each = 1/64 = 0.015625)
-  # Ablation results vs flat-63 baseline (Sharpe=1.3983, Calmar=1.9356, MaxDD=-7.25%):
-  #   macro_momentum_16: Sharpe=1.3794, Calmar=1.8903, MaxDD=-7.34%  [REJECT: both negative]
-  #   macro_momentum_32: Sharpe=1.3810, Calmar=1.9144, MaxDD=-7.20%  [REJECT: both negative]
-  #   dxy_momentum_16:   Sharpe=1.4325, Calmar=2.2198, MaxDD=-6.46%  [ADOPT]
-  dxy_momentum_16: 0.015625
-
+  ewmac_8: 0.01538462
+  ewmac_16: 0.01538462
+  ewmac_32: 0.01538462
+  breakout_20: 0.01538462
+  breakout_40: 0.01538462
+  breakout_80: 0.01538462
+  breakout_160: 0.01538462
+  normmom_8: 0.01538462
+  normmom_16: 0.01538462
+  normmom_32: 0.01538462
+  accel_16: 0.01538462
+  accel_32: 0.01538462
+  accel_64: 0.01538462
+  assettrend_8: 0.01538462
+  assettrend_16: 0.01538462
+  assettrend_32: 0.01538462
+  assettrend_64: 0.01538462
+  relmomentum_20: 0.01538462
+  relmomentum_40: 0.01538462
+  residual_momentum_16: 0.01538462
+  residual_momentum_32: 0.01538462
+  residual_momentum_64: 0.01538462
+  gated_carry_10: 0.01538462
+  gated_carry_30: 0.01538462
+  gated_carry_60: 0.01538462
+  gated_carry_90: 0.01538462
+  gated_carry_180: 0.01538462
+  xs_carry: 0.01538462
+  xs_activity: 0.01538462
+  xs_val: 0.01538462
+  inter_sector: 0.01538462
+  skew_abs_90: 0.01538462
+  skew_abs_180: 0.01538462
+  skew_abs_365: 0.01538462
+  skew_rv_90: 0.01538462
+  skew_rv_180: 0.01538462
+  skew_rv_365: 0.01538462
+  demeaned_carry_10: 0.01538462
+  demeaned_carry_30: 0.01538462
+  demeaned_carry_60: 0.01538462
+  demeaned_carry_gated_10: 0.01538462
+  demeaned_carry_gated_30: 0.01538462
+  demeaned_carry_gated_60: 0.01538462
+  funding_mr: 0.01538462
+  funding_crowd_5: 0.01538462
+  funding_crowd_10: 0.01538462
+  lsr_divergence: 0.01538462
+  lsr_retail_crowding: 0.01538462
+  crowd_deleverage_trend: 0.01538462
+  demeaned_carry_hl_10: 0.01538462
+  demeaned_carry_hl_30: 0.01538462
+  demeaned_carry_hl_60: 0.01538462
+  round_number_break_10: 0.01538462
+  round_number_break_20: 0.01538462
+  round_number_break_40: 0.01538462
+  round_number_prox: 0.01538462
+  xs_oi_attention: 0.01538462
+  attn_exhaustion_fade: 0.01538462
+  attn_panic_rebound: 0.01538462
+  volume_surge_momentum: 0.01538462
+  volume_price_divergence: 0.01538462
+  xs_low_vol_20: 0.01538462
+  xs_low_vol_60: 0.01538462
+  dxy_momentum_16: 0.01538462
+  us10y_momentum_16: 0.01538462
 forecast_cap: 20.0
-
-# ============================================================================
-# XSMOM LONG-ONLY GATE
-# ============================================================================
-# Clips XSMOM rule forecasts to max(0, forecast) before combining.
-# Literature: Han et al. (2024) / Dobrynskaya — cross-sectional momentum alpha is
-# concentrated in the LONG side (winner momentum). The short leg of XS rules tends
-# to mean-revert, not continue falling. TSMOM rules (EWMAC, breakout, accel) still
-# go short freely — they are time-series signals about the instrument's own trend.
-#
-# xsmom_long_only: false = symmetric (default, baseline unchanged)
-#                  true  = clip XSMOM negative forecasts to 0
-# xsmom_rule_list: rules to gate (relmomentum only by default;
-#                  assettrend excluded — bear-market shorts may be genuine trend)
-#
-# Adoption criteria: ΔSharpe ≥ +1%, ΔCrisis > -5pp, ΔMaxDD > -3pp
-# Sweep (gate_relmom vs gate_all_xsmom): scripts/sweep_xsmom_long_only.py
-use_gated_carry: true  # Enable ForecastCombineGated (sector sleeve, XSMOM gate, tilt)
+use_gated_carry: true
 xsmom_long_only: false
 xsmom_rule_list:
-  - relmomentum_20
-  - relmomentum_40
-  # assettrend_8/16/32/64 excluded by default (test via gate_all_xsmom config)
-
-# Additive sector momentum sleeve (no budget taken from trend rules)
-# Added AFTER trend+carry combination: final += sector_weight × mean(sector_forecasts)
-# sector_forecasts are pulled directly from ForecastScaleCap (±20 scale, already capped)
-# IC audit (2026-02-28): sector family IC@5d=0.087, IC@21d=0.155 — ranks #1 family
-# sector_weight: effective fractional contribution relative to avg trend forecast (~5 units)
-#   0.05 → ~5% additive  |  0.10 → ~10% additive  |  0.20 → ~20% additive
+- relmomentum_20
+- relmomentum_40
 sector_rule_list:
-  - sector_momentum_10
-  - sector_momentum_20
-  - sector_momentum_40
-
-sector_weight: 0.0  # REJECTED in full-rules era: ΔSharpe -5.8%, ΔMaxDD -3.5pp (XS signals already capture this)
-
-# ============================================================================
-# FORECAST TILT — LONG/SHORT BIAS OFFSET
-# ============================================================================
-# Shifts the combined forecast by a constant before FDM and ±20 cap.
-# Positive → long bias; negative → short bias.
-#
-# Calibration (2026-03-02): Long/Short Sharpe asymmetry confirmed:
-#   Long Sharpe:  0.803  |  Short Sharpe:  0.597  |  Ratio: 1.345 (> 1.2 → tilt warranted)
-#   Bear market: Short Sharpe = -0.339 (short leg loses money in downtrends!)
-# Suggested offsets to test: [+1.0, +2.0, +3.0, +5.0]
-# Adoption criteria: Sharpe +1%, crisis return drop < 5pp, MaxDD < +3pp
-#
-# 0.0 = symmetric (default, no tilt) — reproduces baseline Sharpe exactly
+- sector_momentum_10
+- sector_momentum_20
+- sector_momentum_40
+sector_weight: 0.0
 forecast_tilt_offset: 0.0
-
-# ============================================================================
-# CROSS-SECTIONAL SIGNALS — LOOKBACK PARAMETERS
-# ============================================================================
-# These 4 signals were refactored from additive sleeves to standard Carver rules
-# (2026-03-06). Lookback values are now read by the data layer at init time to
-# pre-compute the forecast panels. Weights are specified in forecast_weights above.
-#
-# Note: The old *_weight keys (xscarry_weight, inter_sector_weight, xs_activity_weight,
-# xs_val_weight) have been removed — weights now live in forecast_weights section.
-# ============================================================================
-
-# XS Carry: EWM smoothing window for funding rate (days; 30 ≈ monthly cadence)
-# Lit: He et al. (2024) — XS funding rank Sharpe 1.8-3.5 in pure strategy
 xs_carry_lookback: 30
-
-# Inter-Sector: EWMAC fast window for sector-aggregate momentum (days)
-# Lit: Cong et al. (2022) C-5 — sector rotation analogous to country effects
 inter_sector_lookback: 20
-
-# XS Activity: EWM smoothing window for active address count (days)
-# Lit: Cong et al. (2022) C-5 — network activity / utility value factor
-# Data: data/active_addresses.parquet (42 instruments, CoinMetrics AdrActCnt)
 xs_activity_lookback: 30
-
-# ============================================================================
-# CROSS-SECTIONAL ADDRESS GROWTH — DISABLED (dead code, keep for reference)
-# ============================================================================
-# Carver ablation 2026-03-06: true marginal ΔSharpe = -0.3% (near-zero) → DISABLED.
-# Sequential +1.6% gain was in-sample noise (overlap with xs_activity + xs_val).
-# Architecture still present in forecast_combine_gated.py; weight stays at 0.
 xs_addr_growth_weight: 0.0
 xs_addr_growth_lookback: 30
 xs_addr_growth_window: 90
-
-# XS VAL: EWM smoothing window for AdrActCnt/MarketCap ratio (days)
-# Lit: Cong et al. (2022) C-5 VAL factor — crypto book-to-market
-# Data: data/active_addresses.parquet + data/market_cap.parquet (41 instruments)
 xs_val_lookback: 30
-
-# ============================================================================
-# OI REGIME OVERLAY CONFIGURATION (PHASE 1 - ADOPTED 2026-02-21)
-# ============================================================================
-# Defensive position scaling based on funding rate z-score (OI proxy).
-#
-# When use_oi_overlay: true:
-#   - Positions are scaled down when |funding_z_score| > threshold
-#   - High positive/negative funding → crowded positioning → cascade risk
-#   - Multiplier range: [min_scale, 1.0]
-#
-# Phase 1 (Standard Overlay): Uses funding_rate as OI proxy
-# Phase 1.5 (Trend-Aware): Tested and REJECTED (worse than standard)
-# Phase 2 (Future): True OI/Volume ratio (optional enhancement)
-#
-# ADOPTION DECISION (2026-02-21):
-# ✅ Standard overlay ADOPTED based on acute crash analysis
-# ❌ Trend-aware overlay REJECTED (no improvement vs standard)
-#
-# Performance (6-year backtest, 2020-2026):
-#   Sharpe:          0.9879 (baseline) → 0.9933 (standard) = +0.55% ✅
-#   Annual Vol:      22.42% (baseline) → 21.55% (standard) = -3.9% ✅
-#   Max DD:          -23.72% (baseline) → -22.59% (standard) = +1.1% ✅
-#   Turnover:        15.35x (baseline) → 18.28x (standard) = +19.1% ⚠️
-#   Transaction Cost: 45 bps/yr (baseline) → 54 bps/yr (standard) = +21% ⚠️
-#
-# Acute Crash Protection (3 events: May 2021, June 2022, Nov 2022):
-#   Average return delta: +0.59% vs baseline ✅
-#   Crash wins: 2 out of 3 events ✅
-#   Drawdown improvement: ALL 3 events (+0.41% avg) ✅
-#
-# Analysis: out/oi_trend_aware/ACUTE_CRASH_FINDINGS.md
-# ============================================================================
-
-use_oi_overlay: true  # ENABLED: Standard overlay (ADOPTED 2026-02-21)
-
-# OI overlay parameters (only used when use_oi_overlay: true)
+use_oi_overlay: true
 oi_overlay_params:
-  mode: funding          # Phase 1 proxy retained: Phase 2 OI/Volume tested, no improvement
-  lookback: 90           # Rolling window for funding z-score (days)
-  threshold: 2.0         # Z-score threshold where scaling begins (σ units)
-  min_scale: 0.5         # Minimum position multiplier (0.5 = max 50% reduction)
-  trend_aware: false     # DISABLED: Trend-aware mode (rejected after testing)
-
-# ============================================================================
-# FEAR & GREED REGIME OVERLAY CONFIGURATION
-# ============================================================================
-# Contrarian sentiment overlay: scale down positions during extreme greed.
-#
-# Source: alternative.me Fear & Greed Index (0–100, daily, available from 2018)
-#   0–24   = Extreme Fear   (panic — trend signals reliable, no suppression)
-#   25–49  = Fear
-#   50     = Neutral
-#   51–74  = Greed
-#   75–100 = Extreme Greed  (crowded/bubble — scale down positions)
-#
-# Logic:
-#   F&G ≤ greed_threshold → multiplier = 1.0 (no scaling)
-#   F&G > greed_threshold → linear scale-down from 1.0 → min_scale as F&G → 100
-#
-# Applied AFTER OI overlay:
-#   position = base × oi_multiplier × fg_multiplier
-#
-# Data download: python scripts/download_fg_index.py → data/fg_index.parquet
-# Auto-discovered from data/ directory alongside parquet dataset.
-#
-# Status: Testing pending. Set use_fg_overlay: true after sweep confirms benefit.
-# ============================================================================
-
-use_fg_overlay: false  # REJECTED: best ΔSharpe +0.30% (below +1% threshold). Keep false permanently.
-
-# F&G overlay parameters (only used when use_fg_overlay: true)
+  mode: funding
+  lookback: 90
+  threshold: 2.0
+  min_scale: 0.5
+  trend_aware: false
+use_fg_overlay: false
 fg_overlay_params:
-  greed_threshold: 75   # F&G > 75 → start scaling down (Greed / Extreme Greed zone)
-  fear_threshold: 25    # F&G < 25 → no action (fear = trend signals reliable)
-  min_scale: 0.5        # Maximum scale-down (0.5 = 50% of normal position at F&G=100)
-
-# ============================================================================
-# MVRV CYCLE FILTER
-# ============================================================================
-# MVRV = CapMrktCurUSD / CapRealUSD (BTC on-chain valuation ratio).
-# Values above ~2.5–3.5 indicate overheated market conditions; values below 1.0
-# indicate undervaluation.
-#
-# Unlike F&G (fired only 9.5% of days → rejected), MVRV spends extended
-# weeks/months above overbought levels during bull runs. Sustained signal
-# duration is why MVRV is expected to be materially more impactful than F&G.
-#
-# Multiplier logic (contrarian):
-#   MVRV > overbought_threshold → linear taper from 1.0 → min_scale as MVRV → max_mvrv
-#   MVRV ≤ overbought_threshold → 1.0 (no scaling)
-#
-# Applied AFTER OI and F&G overlays:
-#   position = base × oi_multiplier × fg_multiplier × mvrv_multiplier
-#
-# Data download: python scripts/download_mvrv_index.py → data/mvrv_index.parquet
-# Auto-discovered from data/ directory alongside parquet dataset.
-#
-# Source: CRYPTO_MARKET_FACTORS_LIT_REVIEW.md §4.4 — "MVRV/NUPL: Moderate evidence,
-# Alpha (regime) type, Weekly-Monthly horizon, High implementability."
-# ============================================================================
-
-use_mvrv_overlay: false  # REJECTED: best ΔSharpe +0.46% at th=3.5 (below +1% threshold). Keep false permanently.
-
-# MVRV overlay parameters (only used when use_mvrv_overlay: true)
+  greed_threshold: 75
+  fear_threshold: 25
+  min_scale: 0.5
+use_mvrv_overlay: false
 mvrv_overlay_params:
-  overbought_threshold: 3.0  # MVRV > 3.0 → start scaling down
-  oversold_threshold: 1.0    # reserved for future oversold boost (no action currently)
-  min_scale: 0.5             # maximum scale-down (50% of normal position)
-  max_mvrv: 5.0              # MVRV at which min_scale is reached (clips above)
-
-# ============================================================================
-# DOWNSIDE BETA POSITION SCALAR
-# Per-instrument, always-on multiplicative overlay (applied 4th, after MVRV).
-# Reduces positions in instruments that amplify crypto bear-market crashes.
-# β_down = Σ(r_i × r_m | r_m < 0) / Σ(r_m² | r_m < 0) — rolling OLS slope
-# restricted to market down-days (market = cross-sectional median return).
-# Cross-sectional rank per date: highest β_down (rank=1.0) → min_scale,
-# lowest β_down (rank=0.0) → 1.0. Linear interpolation in between.
-# NaN during warmup (< min_periods down-days in window) → scalar=1.0 (neutral).
-# Orthogonal to OI overlay: OI is episodic+portfolio-level; β_down is
-# continuous+per-instrument. Both multiply together when both active.
-# ============================================================================
+  overbought_threshold: 3.0
+  oversold_threshold: 1.0
+  min_scale: 0.5
+  max_mvrv: 5.0
 use_downside_beta_overlay: true
 downside_beta_params:
-  window: 90        # rolling window (days); ~4.5 months — longer window = smoother β_down signal
-  min_periods: 20   # min down-market days before β_down is defined (warmup guard)
-  min_scale: 0.3    # scalar applied to highest-β_down instrument (rank=1.0); W=90/S=0.30 optimal
-  direction_aware: true  # only penalise long positions; preserve shorts at 1.0× (crash hedges)
-
-# ============================================================================
-# CORRELATION SHOCK OVERLAY
-# ============================================================================
-# Scales all positions down when mean cross-asset correlation spikes above
-# threshold — indicating diversification breakdown (crash/systemic-stress regime).
-# Signal: rolling mean pairwise correlation estimated via portfolio-variance
-# decomposition (no pairwise matrix needed). Global: same multiplier all instruments.
-# Carver analogue: "sum_abs_risk" component of his 4-part risk overlay.
-# ============================================================================
-use_correlation_shock_overlay: false  # enable in test config; adopt after sweep
-
+  window: 90
+  min_periods: 20
+  min_scale: 0.3
+  direction_aware: true
+use_correlation_shock_overlay: false
 correlation_shock_params:
-  window: 30        # rolling window for variance estimation (days)
-  threshold: 0.75   # mean_corr above which scaling begins (tune via sweep)
-  min_scale: 0.5    # maximum reduction (0.5 = 50% at mean_corr=1.0)
-  smooth_span: 5    # EWM span for smoothing the mean_corr signal
-
-# ============================================================================
-# SIZING AND CONSTRAINTS
-# ============================================================================
-
+  window: 30
+  threshold: 0.75
+  min_scale: 0.5
+  smooth_span: 5
 sizing:
-  vol_days: 63  # D4 sweep 2026-03-27: Calmar-peak at 63d
-
+  vol_days: 63
 volatility_calculation:
-  days: 63  # D4 sweep 2026-03-27: Calmar-peak at 63d
-
+  days: 63
 constraints:
   correlation_span: 60
   correlation_min_periods: 20
-
 execution:
   buffer_frac: 0.1
-
 costs:
   spread_estimate: 0.0005
   taker_fee_frac: 0.00045
-
 output:
-  equity_curve_file: "equity_curve.csv"
-  positions_file: "positions.csv"
-  pnl_breakdown_file: "pnl_breakdown.csv"
+  equity_curve_file: equity_curve.csv
+  positions_file: positions.csv
+  pnl_breakdown_file: pnl_breakdown.csv
   write_diagnostics: true
-  diagnostics_file: "diagnostics.parquet"
-
+  diagnostics_file: diagnostics.parquet
 diagnostics:
   enabled: true
-
-# ============================================================================
-# WORKFLOW NOTES
-# ============================================================================
-# Run with:
-#   python scripts/run_dynamic_universe_backtest.py \
-#     --config config/crypto_perps_full_rules.yaml \
-#     --data data/dataset_538registry_6yr_jagged.parquet \
-#     --outdir out/full_rules_backtest
-#
-# Smoke test (2 instruments):
-#   python scripts/run_dynamic_universe_backtest.py \
-#     --config config/crypto_perps_full_rules.yaml \
-#     --data data/example_crypto_perps_2x.parquet \
-#     --outdir out/smoke_full_rules
-# ============================================================================

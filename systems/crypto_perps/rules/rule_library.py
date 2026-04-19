@@ -737,6 +737,51 @@ def dxy_momentum(
     return (-raw * 10.0).reindex(price.index)
 
 
+def spx_momentum(
+    price: pd.Series,
+    spx_price: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Portfolio-level macro signal: SPX trending down → short crypto (risk-off).
+
+    EWMAC on SPX cumulative log-returns, inverted. Rising equities = risk-on = long crypto.
+    Orthogonal to dxy_momentum: DXY captures dollar strength; SPX captures equity risk appetite.
+    Same forecast for all instruments.
+    """
+    if len(spx_price.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+
+    Lslow = Lfast * 4
+    spx_ret = np.log(spx_price / spx_price.shift(1))
+    cum_spx = spx_ret.cumsum()
+    unit_vol = pd.Series(1.0, index=cum_spx.index)
+    raw = ewmac(cum_spx, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    return (raw * 10.0).reindex(price.index)
+
+
+def us10y_momentum(
+    price: pd.Series,
+    us10y_yield: pd.Series,
+    Lfast: int = 16,
+) -> pd.Series:
+    """
+    Portfolio-level macro signal: rising 10Y yields → short crypto (liquidity tightening).
+
+    EWMAC on 10Y yield level (not log-returns — yields can go negative), inverted.
+    Rising yields = tighter financial conditions = crypto headwind.
+    Orthogonal to dxy_momentum and spx_momentum.
+    Same forecast for all instruments.
+    """
+    if len(us10y_yield.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+
+    Lslow = Lfast * 4
+    unit_vol = pd.Series(1.0, index=us10y_yield.index)
+    raw = ewmac(us10y_yield, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    return (-raw * 10.0).reindex(price.index)
+
+
 # ============================================================================
 # ATTENTION / NEWS PROXY SIGNALS (OI-based, Phase 1)
 # ============================================================================

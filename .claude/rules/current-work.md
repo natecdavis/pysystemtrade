@@ -1,6 +1,18 @@
 # Current Work Context
 
-## Current Baseline (2026-04-18, flat-64 + eb=2/ex=10)
+## Current Baseline (2026-04-19, flat-65 + eb=2/ex=10)
+
+**$10K full_rules (2026-04-19, flat-65, eb=2/ex=10):**
+- 65 rules at 0.01538462 each (adding us10y_momentum_16)
+- Combined flat-65 result: Sharpe=1.4431, Calmar=2.3929, CAGR=14.27%, MaxDD=-5.97% (`out/macro_ext_flat65_combined/`)
+- Ablation individual results vs flat-64 baseline (Sharpe=1.4325, Calmar=2.2198, MaxDD=-6.46%):
+  - spx_momentum_16:   Sharpe=1.3865 (-0.0460), Calmar=2.1151 (-0.1047) [REJECT]
+  - spx_momentum_32:   Sharpe=1.3905 (-0.0420), Calmar=2.1516 (-0.0682) [REJECT]
+  - us10y_momentum_16: Sharpe=1.4431 (+0.0106), Calmar=2.3929 (+0.1731), MaxDD=-5.97% [ADOPT]
+- Individual ablation results from `out/macro_ext_ablation/`
+- Prior flat-64 baseline: Sharpe=1.4325, Calmar=2.2198, CAGR=14.33%, MaxDD=-6.46%
+
+## Prior Baseline (2026-04-18, flat-64 + eb=2/ex=10) — superseded
 
 **Live config:** `config/crypto_perps_1k.yaml` (Hyperliquid testnet, $1K actual equity)
 **Research config:** `config/crypto_perps_full_rules.yaml` ($10K reference)
@@ -75,6 +87,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-19 | Macro ext signals (flat-65) | ADOPT us10y_momentum_16 (ΔSharpe+0.0106, ΔCalmar+0.1731, MaxDD -6.46%→-5.97%). REJECT spx_momentum_16/32 (both negative — SPX redundant with crypto trend rules). Combined flat-65: Sharpe=1.4431, Calmar=2.3929. Results: `out/macro_ext_ablation/`. |
 | 2026-04-19 | Return skew ablation (flat-64) | REJECT both: return_skew_20 (ΔSharpe-0.0268, ΔCalmar-0.2134), return_skew_60 (ΔSharpe-0.0405, ΔCalmar-0.1043). Pass 1 "bad reversion" verdict confirmed at flat-64. Results: `out/return_skew_ablation/`. |
 | 2026-04-19 | K re-sweep at flat-64 | K=30 confirmed optimal (Sharpe=1.4296, Calmar=2.5659 with proportional buffers). Monotonically worse above and below. Buffer sweep (eb × ex) aborted early — eb=1 results below baseline, no structural reason for optimal (eb=2, ex=10) to shift with new rules. K=30/eb=2/ex=10 retained. |
 | 2026-04-18 | BTC dominance signals | REJECT all 3: btc_dom_rotation_16 (ΔSharpe-0.0323, ΔCalmar-0.0636), btc_dom_rotation_32 (ΔSharpe-0.0190, ΔCalmar-0.0541), btc_dom_level_120 (ΔSharpe-0.0258, ΔCalmar-0.0913). BTC dominance cycle already captured by relmomentum/inter_sector. Results: `out/btc_dom_ablation/`. |
