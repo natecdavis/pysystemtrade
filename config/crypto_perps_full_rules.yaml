@@ -788,6 +788,29 @@ trading_rules:
     other_args: {Lfast: 16}
 
   # --------------------------------------------------------------------------
+  # BTC DOMINANCE — intra-crypto risk appetite (2026-04-18)
+  # BTC dominance = btc_mcap / total_mcap (41-instrument proxy, 2020-2026).
+  # Rising dominance: BTC gains share → long BTC, short alts.
+  # Falling dominance: alt season → short BTC, long alts.
+  # Coverage: 41 instruments; 278 uncovered → NaN (weight-zeroed by scalar).
+  # --------------------------------------------------------------------------
+
+  btc_dom_rotation_16:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_btc_dom_16_forecast"
+
+  btc_dom_rotation_32:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_btc_dom_32_forecast"
+
+  btc_dom_level_120:
+    function: systems.crypto_perps.rules.rule_library.passthrough_forecast
+    data:
+      - "data.get_btc_dom_level_forecast"
+
+  # --------------------------------------------------------------------------
   # CARRY — Trend-Gated (Carver-compliant, 2026-03-06 refactor)
   # Gate baked into rule: returns 0 when sign(carry) ≠ sign(per-instrument EWMAC).
   # Goes through standard forecast scalar → weighted avg → FDM pipeline.

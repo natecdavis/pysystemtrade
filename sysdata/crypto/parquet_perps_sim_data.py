@@ -302,6 +302,10 @@ class parquetCryptoPerpsSimData(simData):
         # xs_low_vol panels (cross-sectional low-vol anomaly, full 319-instrument coverage)
         self._xs_low_vol_20_panel: Optional[pd.DataFrame] = None
         self._xs_low_vol_60_panel: Optional[pd.DataFrame] = None
+        # BTC dominance panels (41-instrument market cap coverage)
+        self._btc_dom_16_panel: Optional[pd.DataFrame] = None
+        self._btc_dom_32_panel: Optional[pd.DataFrame] = None
+        self._btc_dom_level_panel: Optional[pd.DataFrame] = None
 
         self.log.info(
             f"Loaded {len(self._candidate_instruments)} instruments from dataset"
@@ -2218,6 +2222,88 @@ class parquetCryptoPerpsSimData(simData):
         if instrument_code not in self._xs_low_vol_60_panel.columns:
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._xs_low_vol_60_panel[instrument_code]
+
+    # ------------------------------------------------------------------
+    # BTC Dominance — intra-crypto risk appetite (2026-04-18)
+    # BTC dominance = BTCUSDT_PERP mcap / total mcap (41-instrument proxy).
+    # Rising dominance → BTC season (risk-off within crypto).
+    # BTC follows signal; all other covered instruments invert it.
+    # 278 uncovered instruments get NaN → weight-zeroed by forecast scalar.
+    # ------------------------------------------------------------------
+
+    def _get_btc_dominance(self) -> pd.Series:
+        """BTC market cap share of the 41-instrument universe proxy."""
+        if self._market_cap_df is None or 'BTCUSDT_PERP' not in self._market_cap_df.columns:
+            return pd.Series(dtype=float)
+        total = self._market_cap_df.sum(axis=1).clip(lower=1.0)
+        return self._market_cap_df['BTCUSDT_PERP'] / total
+
+    def _build_btc_dom_panel(self, dom_signal: pd.Series) -> pd.DataFrame:
+        """Build dates×instruments panel from scalar dominance signal.
+        BTC follows the signal; all other covered instruments invert it."""
+        if self._market_cap_df is None:
+            return pd.DataFrame()
+        panel = {}
+        for instr in self._market_cap_df.columns:
+            if instr == 'BTCUSDT_PERP':
+                panel[instr] = dom_signal
+            else:
+                panel[instr] = -dom_signal
+        return pd.DataFrame(panel, index=dom_signal.index)
+
+    def _compute_btc_dom_ewmac_panel(self, fast: int = 16) -> pd.DataFrame:
+        dominance = self._get_btc_dominance()
+        if dominance.empty:
+            return pd.DataFrame()
+        slow = fast * 4
+        min_p = max(fast // 2, 2)
+        ewmac = (
+            dominance.ewm(span=fast, min_periods=min_p).mean()
+            - dominance.ewm(span=slow, min_periods=min_p).mean()
+        )
+        roll_std = ewmac.rolling(slow * 2, min_periods=slow).std().clip(lower=1e-8)
+        dom_signal = (ewmac / roll_std).clip(-2.0, 2.0) * 10.0
+        return self._build_btc_dom_panel(dom_signal)
+
+    def _compute_btc_dom_level_panel(self, window: int = 120) -> pd.DataFrame:
+        dominance = self._get_btc_dominance()
+        if dominance.empty:
+            return pd.DataFrame()
+        min_p = max(window // 2, 2)
+        dom_vs_mean = dominance - dominance.rolling(window, min_periods=min_p).mean()
+        roll_std = dom_vs_mean.rolling(window, min_periods=min_p).std().clip(lower=1e-8)
+        dom_signal = (dom_vs_mean / roll_std).clip(-2.0, 2.0) * 10.0
+        return self._build_btc_dom_panel(dom_signal)
+
+    def get_btc_dom_16_forecast(self, instrument_code: str) -> pd.Series:
+        """BTC dominance EWMAC(16,64) forecast. BTC: long on rising dominance; alts: short."""
+        if self._market_cap_df is None:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        if self._btc_dom_16_panel is None:
+            self._btc_dom_16_panel = self._compute_btc_dom_ewmac_panel(fast=16)
+        if instrument_code not in self._btc_dom_16_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._btc_dom_16_panel[instrument_code]
+
+    def get_btc_dom_32_forecast(self, instrument_code: str) -> pd.Series:
+        """BTC dominance EWMAC(32,128) forecast. BTC: long on rising dominance; alts: short."""
+        if self._market_cap_df is None:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        if self._btc_dom_32_panel is None:
+            self._btc_dom_32_panel = self._compute_btc_dom_ewmac_panel(fast=32)
+        if instrument_code not in self._btc_dom_32_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._btc_dom_32_panel[instrument_code]
+
+    def get_btc_dom_level_forecast(self, instrument_code: str) -> pd.Series:
+        """BTC dominance level vs 120-day mean forecast. BTC: long in BTC season; alts: short."""
+        if self._market_cap_df is None:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        if self._btc_dom_level_panel is None:
+            self._btc_dom_level_panel = self._compute_btc_dom_level_panel(window=120)
+        if instrument_code not in self._btc_dom_level_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._btc_dom_level_panel[instrument_code]
 
     def _compute_xs_val_panel(self, lookback: int = 30) -> pd.DataFrame:
         """

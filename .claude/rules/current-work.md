@@ -7,6 +7,14 @@
 **Dataset:** `data/dataset_538registry_6yr_jagged.parquet` (319 instruments, 2020–2026)
 **Branch:** `develop`
 
+**BTC dominance ablation (2026-04-18, vs flat-64 baseline):**
+- btc_dom_rotation_16: Sharpe=1.4002 (-0.0323), Calmar=2.1562 (-0.0636), MaxDD=-6.47% [REJECT]
+- btc_dom_rotation_32: Sharpe=1.4135 (-0.0190), Calmar=2.1657 (-0.0541), MaxDD=-6.48% [REJECT]
+- btc_dom_level_120:   Sharpe=1.4067 (-0.0258), Calmar=2.1285 (-0.0913), MaxDD=-6.60% [REJECT]
+- All three rejected (both ΔSharpe and ΔCalmar negative). Rules added to trading_rules only.
+- Results: `out/btc_dom_ablation/`
+- Baseline unchanged: flat-64, Sharpe=1.4325, Calmar=2.2198, MaxDD=-6.46%
+
 **$10K full_rules (2026-04-18, flat-64, eb=2/ex=10):**
 - 64 rules at 0.015625 each (adding dxy_momentum_16)
 - Combined flat-64 result: Sharpe=1.4325, Calmar=2.2198, CAGR=14.33%, MaxDD=-6.46% (`out/macro_flat64_combined/`)
@@ -67,6 +75,7 @@ vol_days: 63                  # D4: was 35
 
 | Date | Work | Result |
 |------|------|--------|
+| 2026-04-18 | BTC dominance signals | REJECT all 3: btc_dom_rotation_16 (ΔSharpe-0.0323, ΔCalmar-0.0636), btc_dom_rotation_32 (ΔSharpe-0.0190, ΔCalmar-0.0541), btc_dom_level_120 (ΔSharpe-0.0258, ΔCalmar-0.0913). BTC dominance cycle already captured by relmomentum/inter_sector. Results: `out/btc_dom_ablation/`. |
 | 2026-04-18 | Macro direction signals (flat-64) | ADOPT dxy_momentum_16 (ΔSharpe+0.0342, ΔCalmar+0.2842, MaxDD -7.25%→-6.46%). REJECT macro_momentum_16/32 (OLS fitted values, both negative). Combined flat-64: Sharpe=1.4325, Calmar=2.2198, MaxDD=-6.46%. Results: `out/macro_ablation/`. |
 | 2026-04-18 | Vol regime signals (flat-63) | ADOPT xs_low_vol_20 (ΔSharpe+0.0033, ΔCalmar+0.0416) + xs_low_vol_60 (ΔSharpe+0.0207, ΔCalmar+0.0873). REJECT vol_regime_trend (both negative). Combined flat-63: Sharpe=1.3983, Calmar=1.9356, MaxDD=-7.25%. Results: `out/vol_regime_ablation/`. |
 | 2026-04-18 | Volume signals (flat-61) | ADOPT volume_surge_momentum (ΔSharpe+0.0016, ΔCalmar+0.0378) + volume_price_divergence (ΔSharpe+0.0100, ΔCalmar+0.0444). REJECT xs_volume_attention (both negative). Coverage: 30 instruments with Vision ZIPs. Results: `out/volume_ablation/`. |
