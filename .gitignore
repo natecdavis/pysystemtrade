@@ -56,3 +56,6 @@ envs/*/data/
 research/
 reports/
 /live/
+
+# Private keys — never commit
+envs/*/live/hl_private_key.txt
