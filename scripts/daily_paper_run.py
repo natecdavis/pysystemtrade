@@ -571,6 +571,25 @@ def main() -> int:
         log_lines.append("\n[3g/10] Active-rule data status: OK")
 
     # -----------------------------------------------------------------------
+    # Step 3h: Sync live positions from Hyperliquid
+    # -----------------------------------------------------------------------
+    log_lines.append("\n[3h/10] Syncing live positions from Hyperliquid...")
+    hl_account_file = env.env_root / "config" / "hl_account.json"
+    if args.dry_run:
+        log_lines.append("  Skipped (--dry-run).")
+    elif not hl_account_file.exists():
+        log_lines.append("  Skipped (no envs/<env>/config/hl_account.json found).")
+    else:
+        sync_cmd = [sys.executable, "scripts/sync_hl_positions.py"]
+        sync_cmd.extend(env_args)
+        rc, _ = run_subprocess(sync_cmd, log_lines)
+        if rc != 0:
+            log_lines.append(f"  WARNING: HL position sync failed (exit {rc}) — using stale current_positions.csv")
+            warnings.append("HL position sync failed — positions may be stale")
+        else:
+            log_lines.append("  OK.")
+
+    # -----------------------------------------------------------------------
     # Step 4: Doctor preflight
     # -----------------------------------------------------------------------
     log_lines.append("\n[4/10] Running doctor preflight...")
