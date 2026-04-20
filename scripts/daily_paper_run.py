@@ -26,6 +26,7 @@ Usage:
         [--skip-cb-check]        # bypass circuit breaker (testing)
         [--no-notify]            # suppress macOS notification
         [--refresh-sector-map]   # rebuild sector_map.json from CoinGecko (~10 min)
+        [--skip-prestage]        # skip macro/CoinMetrics/OI/volume/HL (already done by prestage_daily.py)
 """
 
 import argparse
@@ -221,6 +222,16 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--skip-prestage",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip steps already completed by prestage_daily.py (macro, CoinMetrics, "
+            "Hyperliquid instruments, OI/LSR, volume). Use after running prestage_daily.py "
+            "earlier in the day to avoid redundant fetches."
+        ),
+    )
+    parser.add_argument(
         "--env",
         default="dev",
         help=(
@@ -326,6 +337,7 @@ def main() -> int:
             sys.executable, "scripts/update_data_daily.py",
             "--config", args.config,
             "--scope", "registry_all",  # dynamic universe has no layer_a_instruments
+            "--output-report", str(env.resolve("out") / "raw_data_status_v1.json"),
         ]
         update_cmd.extend(env_args)
         rc, output = run_subprocess(update_cmd, log_lines)
@@ -354,6 +366,8 @@ def main() -> int:
     log_lines.append("\n[3b/10] Updating macro factor data...")
     if args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
+    elif args.skip_prestage:
+        log_lines.append("  Skipped (--skip-prestage).")
     elif "macro_factors" not in requirements:
         log_lines.append("  Skipped (not required by active rules).")
     else:
@@ -378,6 +392,8 @@ def main() -> int:
     log_lines.append("\n[3c/10] Updating CoinMetrics data (active addresses + market cap)...")
     if args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
+    elif args.skip_prestage:
+        log_lines.append("  Skipped (--skip-prestage).")
     else:
         cm_ok = True
         cm_jobs = []
@@ -410,6 +426,8 @@ def main() -> int:
     log_lines.append("\n[3d/10] Updating Binance OI/LSR data...")
     if args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
+    elif args.skip_prestage:
+        log_lines.append("  Skipped (--skip-prestage).")
     elif "binance_oi_lsr" not in requirements:
         log_lines.append("  Skipped (not required by active rules).")
     else:
@@ -433,6 +451,8 @@ def main() -> int:
                 str(oi_raw_dir),
                 "--symbols-file",
                 str(symbol_file),
+                "--workers",
+                "10",
             ]
             rc, _ = run_subprocess(oi_cmd, log_lines)
             if rc != 0:
@@ -467,6 +487,8 @@ def main() -> int:
     log_lines.append("\n[3e/10] Updating daily volume data (incremental)...")
     if args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
+    elif args.skip_prestage:
+        log_lines.append("  Skipped (--skip-prestage).")
     elif "binance_volume" not in requirements:
         log_lines.append("  Skipped (not required by active rules).")
     else:
@@ -516,6 +538,8 @@ def main() -> int:
     log_lines.append("\n[3f/10] Refreshing Hyperliquid instrument list...")
     if args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
+    elif args.skip_prestage:
+        log_lines.append("  Skipped (--skip-prestage).")
     elif "hyperliquid_instruments" not in requirements:
         log_lines.append("  Skipped (not required by active rules).")
     else:

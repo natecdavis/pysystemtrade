@@ -30,6 +30,8 @@ import argparse
 import logging
 import os
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
@@ -62,7 +64,7 @@ class BinanceOIDownloader:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Track statistics
+        # Track statistics (thread-safe via lock)
         self.stats = {
             'total_files': 0,
             'downloaded': 0,
@@ -70,6 +72,7 @@ class BinanceOIDownloader:
             'failed': 0,
             'total_bytes': 0
         }
+        self._stats_lock = threading.Lock()
 
     def get_monthly_dates(self, start_date: str, end_date: str) -> List[str]:
         """
@@ -166,7 +169,8 @@ class BinanceOIDownloader:
         # Check if file exists
         if skip_existing and output_path.exists():
             logger.debug(f"Skipping {output_path.name} (already exists)")
-            self.stats['skipped'] += 1
+            with self._stats_lock:
+                self.stats['skipped'] += 1
             return False
 
         try:
@@ -176,7 +180,8 @@ class BinanceOIDownloader:
             # Check if file exists on server
             if response.status_code == 404:
                 logger.debug(f"File not found: {url}")
-                self.stats['skipped'] += 1
+                with self._stats_lock:
+                    self.stats['skipped'] += 1
                 return False
 
             # Check for other errors
@@ -186,15 +191,17 @@ class BinanceOIDownloader:
             with open(output_path, 'wb') as f:
                 f.write(response.content)
 
-            self.stats['downloaded'] += 1
-            self.stats['total_bytes'] += len(response.content)
+            with self._stats_lock:
+                self.stats['downloaded'] += 1
+                self.stats['total_bytes'] += len(response.content)
             logger.debug(f"Downloaded {output_path.name} ({len(response.content):,} bytes)")
 
             return True
 
         except requests.exceptions.RequestException as e:
             logger.warning(f"Failed to download {url}: {e}")
-            self.stats['failed'] += 1
+            with self._stats_lock:
+                self.stats['failed'] += 1
             return False
 
     def download_symbol_data(
@@ -241,7 +248,8 @@ class BinanceOIDownloader:
                 url = self.construct_url(symbol, date)
                 output_path = symbol_dir / f"{symbol}-metrics-{date}.zip"
 
-                self.stats['total_files'] += 1
+                with self._stats_lock:
+                    self.stats['total_files'] += 1
 
                 # Download file
                 self.download_file(url, output_path, skip_existing)
@@ -256,31 +264,42 @@ class BinanceOIDownloader:
         start_date: str,
         end_date: str,
         skip_existing: bool = True,
-        rate_limit_delay: float = 0.01
+        rate_limit_delay: float = 0.01,
+        max_workers: int = 10,
     ) -> None:
         """
-        Download OI data for multiple symbols.
+        Download OI data for multiple symbols in parallel.
 
         Args:
             symbols: List of trading pairs
             start_date: Start date (YYYY-MM-DD)
             end_date: End date (YYYY-MM-DD)
             skip_existing: Skip files that already exist
-            rate_limit_delay: Delay between requests in seconds (default: 0.01)
+            rate_limit_delay: Delay between requests within a symbol (default: 0.01)
+            max_workers: Number of parallel symbol downloads (default: 10)
         """
-        logger.info(f"Starting download for {len(symbols)} symbols")
+        logger.info(f"Starting download for {len(symbols)} symbols ({max_workers} workers)")
         logger.info(f"Date range: {start_date} to {end_date}")
         logger.info(f"Output directory: {self.output_dir}")
 
-        # Download each symbol
-        for symbol in tqdm(symbols, desc="Overall Progress"):
+        progress = tqdm(total=len(symbols), desc="Overall Progress")
+
+        def _download_one(symbol: str) -> None:
             try:
                 self.download_symbol_data(symbol, start_date, end_date, skip_existing, rate_limit_delay)
             except Exception as e:
                 logger.error(f"Error downloading {symbol}: {e}")
-                self.stats['failed'] += 1
+                with self._stats_lock:
+                    self.stats['failed'] += 1
+            finally:
+                progress.update(1)
 
-        # Print summary
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_download_one, s): s for s in symbols}
+            for future in as_completed(futures):
+                pass  # errors already logged in _download_one
+
+        progress.close()
         self.print_summary()
 
     def print_summary(self) -> None:
@@ -413,6 +432,13 @@ Examples:
     )
 
     parser.add_argument(
+        '--workers',
+        type=int,
+        default=10,
+        help='Number of parallel symbol downloads (default: 10)'
+    )
+
+    parser.add_argument(
         '--verbose',
         action='store_true',
         help='Enable verbose logging'
@@ -448,7 +474,8 @@ Examples:
         start_date=args.start_date,
         end_date=args.end_date,
         skip_existing=args.skip_existing,
-        rate_limit_delay=args.rate_limit
+        rate_limit_delay=args.rate_limit,
+        max_workers=args.workers,
     )
 
     logger.info("Download complete!")
