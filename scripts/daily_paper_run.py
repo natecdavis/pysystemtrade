@@ -590,6 +590,33 @@ def main() -> int:
             log_lines.append("  OK.")
 
     # -----------------------------------------------------------------------
+    # Step 3i: Patch dataset_as_of_date for base-dataset advisory flow
+    # -----------------------------------------------------------------------
+    # When run_live_advisory.py uses --base-dataset, the actual dataset is built
+    # from the base parquet + API cache delta, not Vision ZIPs. The status file
+    # reports min(all_instruments) which pulls back to Jan 2026 for Vision-only
+    # instruments. Patch it to reflect only "fetched" (API-cache-fresh) instruments.
+    status_path = env.resolve("out") / "raw_data_status_v1.json"
+    if not args.dry_run and status_path.exists():
+        try:
+            import json
+            with open(status_path) as _f:
+                _status = json.load(_f)
+            _fetched_dates = [
+                v["last_available_date"]
+                for v in _status.get("instruments", {}).values()
+                if v.get("staleness_days", 999) == 0 and v.get("last_available_date")
+            ]
+            if _fetched_dates:
+                _effective_date = min(_fetched_dates)
+                _status["dataset_as_of_date"] = _effective_date
+                with open(status_path, "w") as _f:
+                    json.dump(_status, _f, indent=2)
+                log_lines.append(f"\n[3i/10] Patched dataset_as_of_date → {_effective_date} (fetched instruments only).")
+        except Exception as _e:
+            log_lines.append(f"\n[3i/10] WARNING: Could not patch status file: {_e}")
+
+    # -----------------------------------------------------------------------
     # Step 4: Doctor preflight
     # -----------------------------------------------------------------------
     log_lines.append("\n[4/10] Running doctor preflight...")
@@ -640,6 +667,7 @@ def main() -> int:
             "--cadence", "daily",
             "--skip-data-update",  # already updated in steps 3 and 3b
             "--use-dynamic-universe",  # 1k config uses auto_discover registry
+            "--base-dataset", "data/dataset_538registry_6yr_jagged.parquet",
         ]
         advisory_cmd.extend(env_args)
         adv_rc, _ = run_subprocess(advisory_cmd, log_lines)
