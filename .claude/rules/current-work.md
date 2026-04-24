@@ -1,6 +1,69 @@
 # Current Work Context
 
-## Current Baseline (2026-04-19, flat-67 + eb=2/ex=10)
+## Current Baseline (2026-04-23, flat-68 + eb=2/ex=10)
+
+**$10K full_rules (2026-04-23, flat-68, eb=2/ex=10):**
+- 68 rules at 0.01470588 each (removed volume_surge_momentum from flat-69)
+- Combined flat-68 result (SB-corrected data): Sharpe=1.4806, Calmar=2.5736, CAGR=12.9%, MaxDD=-5.03% (`out/vsm_removed_flat68_sb_combined/`)
+- vs flat-69 SB baseline (Sharpe=1.4471, Calmar=2.3667, MaxDD=-5.38%): ΔSharpe=+0.0335, ΔCalmar=+0.2069, MaxDD improved -5.38%→-5.03%
+- Removal exactly confirmed exclusion ablation prediction (predicted ΔSharpe+0.0336/ΔCalmar+0.2068)
+- `volume_surge_momentum` removed: weakest original adoption signal (+0.0016 at adoption, noise-level), SB-inflated by LUNA's pre-crash volume surges
+
+## SB Exclusion Audit (2026-04-23) — leave-one-out on flat-69 SB-corrected
+
+**7 REMOVE_CANDIDATES from 17 tested** — rules that improved BOTH Sharpe and Calmar when removed from the 69-rule stack on the SB-corrected dataset. Baseline: flat-69 SB (Sharpe=1.4471, Calmar=2.3667, MaxDD=-5.38%).
+
+| Rule | Sharpe | ΔSharpe | Calmar | ΔCalmar | MaxDD | Verdict |
+|------|--------|---------|--------|---------|-------|---------|
+| relmomentum_20 | 1.4334 | -0.0136 | 2.5418 | +0.1751 | -4.91% | KEEP |
+| relmomentum_40 | 1.4320 | -0.0150 | 2.4576 | +0.0908 | -5.06% | KEEP |
+| assettrend_8 | 1.4288 | -0.0183 | 2.2534 | -0.1133 | -5.47% | KEEP |
+| assettrend_16 | 1.4417 | -0.0053 | 2.2774 | -0.0893 | -5.61% | KEEP |
+| **assettrend_32** | **1.4768** | **+0.0297** | **2.4934** | **+0.1266** | -5.29% | **REMOVE_CANDIDATE** |
+| **assettrend_64** | **1.4871** | **+0.0400** | **2.5001** | **+0.1333** | -5.31% | **REMOVE_CANDIDATE** |
+| **accel_16** | **1.4494** | **+0.0024** | **2.4626** | **+0.0959** | -5.04% | **REMOVE_CANDIDATE** |
+| **accel_32** | **1.4527** | **+0.0057** | **2.5191** | **+0.1524** | -4.96% | **REMOVE_CANDIDATE** |
+| accel_64 | 1.4412 | -0.0058 | 2.4591 | +0.0924 | -5.13% | KEEP |
+| **breakout_80** | **1.4590** | **+0.0119** | **2.4792** | **+0.1125** | -5.07% | **REMOVE_CANDIDATE** |
+| breakout_160 | 1.4255 | -0.0215 | 2.4067 | +0.0400 | -5.21% | KEEP |
+| **volume_surge_momentum** | **1.4806** | **+0.0336** | **2.5736** | **+0.2068** | -5.03% | **REMOVE_CANDIDATE** |
+| xs_low_vol_20 | 1.4247 | -0.0224 | 2.2376 | -0.1291 | -5.72% | KEEP |
+| volume_price_divergence | 1.4259 | -0.0211 | 2.4740 | +0.1072 | -5.30% | KEEP |
+| **crowd_deleverage_trend** | **1.4623** | **+0.0153** | **2.5302** | **+0.1635** | -4.93% | **REMOVE_CANDIDATE** |
+| attn_exhaustion_fade | 1.4467 | -0.0004 | 2.3473 | -0.0195 | -5.49% | KEEP |
+| attn_panic_rebound | 1.4463 | -0.0008 | 2.3598 | -0.0070 | -5.39% | KEEP |
+
+Key observations:
+- **assettrend_32/64**: slow-horizon market-trend rules dragging on SB-corrected data. assettrend_8/16 are safe (short-horizon exits crashes faster).
+- **accel_16/32**: mid-horizon acceleration rules flagged; accel_64 counterintuitively safe.
+- **breakout_80**: stays long too long; breakout_160 counterintuitively safe.
+- **volume_surge_momentum**: strongest Sharpe candidate (+0.0336) — LUNA's explosive pre-crash volume generated false momentum signal.
+- **crowd_deleverage_trend**: strong Calmar candidate (+0.1635) — may have been riding deleverage noise.
+- Results: `out/sb_exclusion_audit/sb_exclusion_results.json`
+- **PENDING USER DECISION**: Remove all 7, subset, or keep and accept SB inflation as real signal.
+
+## Prior Baseline (2026-04-23, flat-69 + eb=2/ex=10) — superseded
+
+**$10K full_rules (2026-04-23, flat-69, eb=2/ex=10):**
+- 69 rules at 0.01449275 each (adding cs_mr_125 + cs_mr_250)
+- Combined flat-69 result (SB-corrected data): Sharpe=1.4471, Calmar=2.3667, CAGR=12.7%, MaxDD=-5.38% (`out/cs_mr_flat69_sb_combined/`)
+- Combined flat-69 result (original data): Sharpe=1.4357, Calmar=2.3325, CAGR=13.0%, MaxDD=-5.57% (`out/cs_mr_flat69_combined/`)
+- Ablation individual results vs SB-corrected flat-67 baseline (Sharpe=1.4044, Calmar=2.1694, MaxDD=-5.95%):
+  - cs_mr_125: Sharpe=1.4546 (+0.0502), Calmar=2.2977 (+0.1283), MaxDD=-5.63% [ADOPT]
+  - cs_mr_250: Sharpe=1.4078 (+0.0034), Calmar=2.3623 (+0.1929), MaxDD=-5.39% [ADOPT]
+  - vol_trend_16:   ΔSharpe+0.0007, ΔCalmar-0.0166 [REJECT]
+  - return_skew_20: ΔSharpe-0.0194, ΔCalmar-0.0512 [REJECT]
+  - return_skew_60: ΔSharpe+0.0004, ΔCalmar-0.0689 [REJECT]
+  - illiquidity_20: ΔSharpe-0.0679, ΔCalmar-0.2986 [REJECT]
+  - illiquidity_60: ΔSharpe-0.0115, ΔCalmar-0.0644 [REJECT]
+- Individual ablation results from `out/sb_corrected_ablations/`
+- Survivorship bias haircut (flat-67): ΔSharpe=-0.046, ΔCalmar=-0.361, ΔMaxDD=-0.55pp vs original
+- SB-corrected flat-67 baseline: Sharpe=1.4044, Calmar=2.1694, MaxDD=-5.95% (`out/sb_corrected_baseline/`)
+- **NOTE**: cs_mr was REJECTED on original data (gross_SR=-0.53/-0.41) but ADOPTED on SB-corrected data.
+  On original data, flat-69 shows ΔSharpe=-0.014, ΔCalmar=-0.198 vs flat-67. Use SB-corrected as the authoritative baseline.
+- Prior flat-67 baseline: Sharpe=1.45, Calmar=2.53, CAGR=13.8%, MaxDD=-5.4%
+
+## Prior Baseline (2026-04-19, flat-67 + eb=2/ex=10) — superseded
 
 **$10K full_rules (2026-04-19, flat-67, eb=2/ex=10):**
 - 67 rules at 0.01492537 each (adding oil_momentum_16)
