@@ -55,9 +55,18 @@ def fetch_funding(wallet: str, api_url: str, start_ms: int = 0) -> list[dict]:
 
 
 def fetch_account_value(wallet: str, api_url: str) -> tuple[float, float]:
-    """Return (perps_account_value, spot_usdc_balance)."""
+    """Return (portfolio_value, spot_usdc_balance).
+
+    In unified account mode the spot USDC balance IS the effective equity —
+    it automatically backs perps positions. The clearinghouseState
+    accountValue is the dedicated perps margin component and should NOT be
+    added to spot_usdc (it's already included in the unified total).
+    """
     perps = _post(api_url, {"type": "clearinghouseState", "user": wallet})
-    perps_value = float(perps.get("marginSummary", {}).get("accountValue", 0))
+    unrealized_pnl = sum(
+        float(p["position"].get("unrealizedPnl", 0))
+        for p in perps.get("assetPositions", [])
+    )
 
     spot = _post(api_url, {"type": "spotClearinghouseState", "user": wallet})
     spot_usdc = 0.0
@@ -66,7 +75,9 @@ def fetch_account_value(wallet: str, api_url: str) -> tuple[float, float]:
             spot_usdc = float(b.get("total", 0))
             break
 
-    return perps_value, spot_usdc
+    # Portfolio value = spot USDC + unrealized P&L on open perps positions
+    portfolio_value = spot_usdc + unrealized_pnl
+    return portfolio_value, spot_usdc
 
 
 def load_equity_history(env: LiveOpsEnvironment) -> pd.DataFrame:
@@ -378,9 +389,11 @@ def main():
 
     print(f"Fetching data from HL {network} for {wallet[:10]}...")
 
-    perps_value, spot_usdc = fetch_account_value(wallet, api_url)
-    account_value = spot_usdc + perps_value
-    print(f"Perps account: ${perps_value:,.2f} | Spot USDC: ${spot_usdc:,.2f} | Total: ${account_value:,.2f}")
+    portfolio_value, spot_usdc = fetch_account_value(wallet, api_url)
+    account_value = portfolio_value
+    unrealized = portfolio_value - spot_usdc
+    print(f"Portfolio value: ${portfolio_value:,.2f}  "
+          f"(spot USDC: ${spot_usdc:,.2f}, unrealized P&L: ${unrealized:+,.2f})")
 
     print("Fetching fill history...")
     raw_fills = fetch_fills(wallet, api_url)
