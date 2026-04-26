@@ -1,11 +1,11 @@
 system:
-  capital: 5000.0
+  capital: 2437.50
   vol_target_ann: 0.25
   idm_cap: 2.5
   min_position_frac: 0.03
   allow_jagged: true
 percentage_vol_target: 25.0
-notional_trading_capital: 3100.0
+notional_trading_capital: 2437.50
 min_notional_position: 10.0
 instrument_weight_ewma_span: 1
 use_instrument_div_mult_estimates: true
