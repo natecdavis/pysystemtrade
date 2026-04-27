@@ -12,7 +12,7 @@ rules:
 """
 
 from systems.forecast_combine import ForecastCombine
-from systems.system_cache import output
+from systems.system_cache import dont_cache, output
 import pandas as pd
 import numpy as np
 
@@ -170,3 +170,67 @@ class ForecastCombineGated(ForecastCombine):
         if panel.empty or instrument_code not in panel.columns:
             return pd.Series(dtype=float)
         return panel[instrument_code]
+
+    # ------------------------------------------------------------------
+    # Walk-forward weight override
+    # ------------------------------------------------------------------
+
+    @dont_cache
+    def get_raw_monthly_forecast_weights(self, instrument_code: str) -> pd.DataFrame:
+        """
+        Override: load pre-computed walk-forward weight schedule if config has
+        `walk_forward_weights_path`, otherwise fall back to parent (static YAML weights).
+
+        The walk-forward schedule is instrument-agnostic — the same quarterly weights
+        are used for all instruments. Per-instrument adjustment (zeroing weights where
+        a rule has no forecast for that instrument) is handled automatically by the
+        parent's `_fix_weights_to_forecasts()` called in `get_unsmoothed_forecast_weights()`.
+
+        The schedule contains quarterly rows. The parent's downstream machinery
+        forward-fills these to daily frequency via `fix_weights_vs_position_or_forecast()`.
+
+        A warm-up row at the earliest price date is prepended so that the pre-walkforward
+        period (before the first lookback window is complete) uses flat weights rather than
+        zeros, which would silence the combined forecast entirely.
+        """
+        wf_path = self.config.get_element_or_default("walk_forward_weights_path", None)
+        if wf_path is None:
+            return super().get_raw_monthly_forecast_weights(instrument_code)
+
+        # Cache the schedule on the instance to avoid repeated disk reads
+        # (get_raw_monthly_forecast_weights is @dont_cache, called once per instrument)
+        if not hasattr(self, "_wf_weight_schedule"):
+            self._wf_weight_schedule = pd.read_parquet(wf_path)
+
+        schedule = self._wf_weight_schedule.copy()
+
+        # Ensure every rule in forecast_weights config is present as a column
+        all_rules = list(self.config.forecast_weights.keys())
+        for r in all_rules:
+            if r not in schedule.columns:
+                schedule[r] = 0.0
+        schedule = schedule[all_rules]
+
+        # Prepend a flat-weight warm-up row at the first date of available price data
+        # so that ffill covers the pre-walkforward period instead of producing NaN/zero.
+        try:
+            first_price_date = self.parent.data.daily_prices(instrument_code).index.min()
+        except Exception:
+            first_price_date = schedule.index.min() - pd.Timedelta(days=1000)
+
+        if pd.isna(first_price_date) or first_price_date >= schedule.index.min():
+            pass  # Schedule already starts before or at first data — no prepend needed
+        else:
+            # Count rules that appear in the schedule with nonzero weight
+            has_weight = (schedule > 0).any(axis=0)
+            n_active = int(has_weight.sum())
+            if n_active == 0:
+                n_active = len(all_rules)
+            flat_vals = {r: (1.0 / n_active if has_weight.get(r, False) else 0.0)
+                         for r in all_rules}
+            warmup_row = pd.DataFrame(flat_vals, index=[first_price_date])
+            schedule = pd.concat([warmup_row, schedule])
+            schedule = schedule[~schedule.index.duplicated(keep="last")]
+
+        # Apply cost filter consistent with parent pipeline
+        return self._remove_expensive_rules_from_weights(instrument_code, schedule)

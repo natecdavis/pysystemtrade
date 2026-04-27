@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Standard Binance perpetual futures parameters
 DEFAULT_SPREAD_FRAC = 0.00025  # 0.025% spread (typical)
-DEFAULT_TAKER_FEE_FRAC = 0.0005  # 0.05% taker fee (Binance standard, no BNB discount)
+DEFAULT_TAKER_FEE_FRAC = 0.00045  # 0.045% taker fee — Hyperliquid standard (corrected 2026-04-11; was 0.0005 Binance rate)
 
 def generate_market_info(registry_path: Path, output_path: Path):
     """

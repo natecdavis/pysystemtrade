@@ -50,6 +50,40 @@ def fetch_positions(wallet_address: str, api_url: str) -> list[dict]:
     return data.get("assetPositions", []), data.get("marginSummary", {})
 
 
+def fetch_unified_equity(wallet_address: str, api_url: str) -> float:
+    """Return total portfolio equity: spot USDC balance + unrealized PnL on open perps.
+
+    In a Hyperliquid unified account the spot USDC wallet IS the margin pool.
+    clearinghouseState.marginSummary.accountValue is the *perps-only* sub-margin
+    (typically a tiny fraction of total equity), not the full account value.
+    """
+    perps_resp = requests.post(
+        api_url,
+        json={"type": "clearinghouseState", "user": wallet_address},
+        timeout=15,
+    )
+    perps_resp.raise_for_status()
+    perps_data = perps_resp.json()
+    unrealized_pnl = sum(
+        float(p["position"].get("unrealizedPnl", 0))
+        for p in perps_data.get("assetPositions", [])
+    )
+
+    spot_resp = requests.post(
+        api_url,
+        json={"type": "spotClearinghouseState", "user": wallet_address},
+        timeout=15,
+    )
+    spot_resp.raise_for_status()
+    spot_usdc = 0.0
+    for b in spot_resp.json().get("balances", []):
+        if b.get("coin") == "USDC":
+            spot_usdc = float(b.get("total", 0))
+            break
+
+    return round(spot_usdc + unrealized_pnl, 2)
+
+
 def build_positions_df(asset_positions: list[dict]) -> pd.DataFrame:
     rows = []
     now = datetime.now(timezone.utc).isoformat()
@@ -87,10 +121,11 @@ def load_hl_account(env_root: Path) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Sync Hyperliquid positions to current_positions.csv")
+    parser = argparse.ArgumentParser(description="Sync Hyperliquid positions and equity to live/")
     parser.add_argument("--env", default="dev")
     parser.add_argument("--env-root", type=Path)
-    parser.add_argument("--dry-run", action="store_true", help="Print positions without writing")
+    parser.add_argument("--dry-run", action="store_true", help="Print without writing")
+    parser.add_argument("--no-equity", action="store_true", help="Skip writing current_equity.txt")
     args = parser.parse_args()
 
     env = LiveOpsEnvironment(env=args.env, env_root=args.env_root, project_root=REPO_ROOT)
@@ -102,11 +137,10 @@ def main() -> int:
 
     print(f"Fetching positions from HL {network} for {wallet[:10]}...")
     asset_positions, margin = fetch_positions(wallet, api_url)
-
     df = build_positions_df(asset_positions)
 
-    account_value = margin.get("accountValue", "?")
-    print(f"Account value: ${account_value}")
+    equity = fetch_unified_equity(wallet, api_url)
+    print(f"Total equity: ${equity:,.2f}")
     print(f"Found {len(df)} open position(s):")
     print(df[["instrument", "contracts", "mark_price_usd", "notional_usd"]].to_string(index=False))
 
@@ -114,10 +148,18 @@ def main() -> int:
         print("\n--dry-run: not writing.")
         return 0
 
-    out_path = env.resolve("live") / "current_positions.csv"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    live_dir = env.resolve("live")
+    live_dir.mkdir(parents=True, exist_ok=True)
+
+    out_path = live_dir / "current_positions.csv"
     df.to_csv(out_path, index=False)
     print(f"\nWritten to {out_path}")
+
+    if not args.no_equity:
+        equity_path = live_dir / "current_equity.txt"
+        equity_path.write_text(f"{equity}\n")
+        print(f"Written to {equity_path}")
+
     return 0
 
 

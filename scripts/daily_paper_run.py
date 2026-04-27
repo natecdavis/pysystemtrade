@@ -287,6 +287,25 @@ def main() -> int:
     # -----------------------------------------------------------------------
     # Step 1: Read equity
     # -----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # Step 0: Sync live positions + equity from Hyperliquid (if configured)
+    # -----------------------------------------------------------------------
+    hl_account_file = env.env_root / "config" / "hl_account.json"
+    if args.dry_run:
+        log_lines.append("\n[0/10] HL pre-sync: skipped (--dry-run).")
+    elif not hl_account_file.exists():
+        log_lines.append("\n[0/10] HL pre-sync: skipped (no hl_account.json).")
+    else:
+        log_lines.append("\n[0/10] Syncing equity + positions from Hyperliquid...")
+        pre_sync_cmd = [sys.executable, "scripts/sync_hl_positions.py"]
+        pre_sync_cmd.extend(env_args)
+        rc, _ = run_subprocess(pre_sync_cmd, log_lines)
+        if rc != 0:
+            log_lines.append("  WARNING: HL pre-sync failed — using stale equity and positions.")
+            warnings.append("HL pre-sync failed — equity and positions may be stale")
+        else:
+            log_lines.append("  OK.")
+
     log_lines.append("\n[1/10] Reading current equity...")
     try:
         equity = read_equity(equity_file)
@@ -301,6 +320,31 @@ def main() -> int:
                 f"Cannot read equity: {equity_file.name}",
             )
         return 1
+
+    # Auto-update notional_trading_capital if leverage_multiple is set in config.
+    import re as _re
+    import yaml
+    with open(args.config) as _f:
+        _cfg_text = _f.read()
+    _cfg = yaml.safe_load(_cfg_text)
+    _lev = _cfg.get("leverage_multiple")
+    if _lev:
+        _notional = round(equity * _lev, 2)
+        _cfg_text = _re.sub(
+            r"^(notional_trading_capital:\s*)[\d.]+",
+            f"notional_trading_capital: {_notional}",
+            _cfg_text, flags=_re.MULTILINE,
+        )
+        _cfg_text = _re.sub(
+            r"^(\s+capital:\s*)[\d.]+",
+            lambda m: f"{m.group(1)}{_notional}",
+            _cfg_text, flags=_re.MULTILINE,
+        )
+        with open(args.config, "w") as _f:
+            _f.write(_cfg_text)
+        log_lines.append(
+            f"  leverage_multiple={_lev} → notional_trading_capital=${_notional:,.2f}"
+        )
 
     # -----------------------------------------------------------------------
     # Step 2: Circuit breaker pre-check
@@ -571,23 +615,9 @@ def main() -> int:
         log_lines.append("\n[3g/10] Active-rule data status: OK")
 
     # -----------------------------------------------------------------------
-    # Step 3h: Sync live positions from Hyperliquid
+    # Step 3h: HL position sync — already done in step 0.
     # -----------------------------------------------------------------------
-    log_lines.append("\n[3h/10] Syncing live positions from Hyperliquid...")
-    hl_account_file = env.env_root / "config" / "hl_account.json"
-    if args.dry_run:
-        log_lines.append("  Skipped (--dry-run).")
-    elif not hl_account_file.exists():
-        log_lines.append("  Skipped (no envs/<env>/config/hl_account.json found).")
-    else:
-        sync_cmd = [sys.executable, "scripts/sync_hl_positions.py"]
-        sync_cmd.extend(env_args)
-        rc, _ = run_subprocess(sync_cmd, log_lines)
-        if rc != 0:
-            log_lines.append(f"  WARNING: HL position sync failed (exit {rc}) — using stale current_positions.csv")
-            warnings.append("HL position sync failed — positions may be stale")
-        else:
-            log_lines.append("  OK.")
+    log_lines.append("\n[3h/10] HL position sync: already completed in step 0.")
 
     # -----------------------------------------------------------------------
     # Step 3i: Patch dataset_as_of_date for base-dataset advisory flow

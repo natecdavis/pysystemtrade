@@ -1,122 +1,122 @@
 {
   "BTCUSDT": {
     "spread_frac": 0.00025,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "ETHUSDT": {
     "spread_frac": 0.00025,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "BNBUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "SOLUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "XRPUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "LTCUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "EOSUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "DOTUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "LINKUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "ADAUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "DOGEUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "MATICUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "AVAXUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "UNIUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "BCHUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "ATOMUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "TRXUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "ETCUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "XLMUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "FILUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "AAVEUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "SANDUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "MANAUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "AXSUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "ICPUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "VETUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "THETAUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "FTMUSDT": {
-    "spread_frac": 0.00030,
-    "taker_fee_frac": 0.0004
+    "spread_frac": 0.0003,
+    "taker_fee_frac": 0.00045
   },
   "ALGOUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   },
   "NEOUSDT": {
     "spread_frac": 0.00035,
-    "taker_fee_frac": 0.0004
+    "taker_fee_frac": 0.00045
   }
 }

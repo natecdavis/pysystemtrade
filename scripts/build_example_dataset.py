@@ -716,6 +716,12 @@ def report_regime_coverage(prices_df: pd.DataFrame) -> dict:
     vol_values = vol_df.values.flatten()
     vol_values = vol_values[~np.isnan(vol_values)]
 
+    if len(vol_values) == 0:
+        logger.info("Regime Coverage Report: insufficient data for vol statistics (short delta window)")
+        return {'vol_min': np.nan, 'vol_p10': np.nan, 'vol_p50': np.nan,
+                'vol_p90': np.nan, 'vol_max': np.nan, 'percentile_spread': np.nan,
+                'has_covid_crash_window': False}
+
     stats = {
         'vol_min': vol_values.min(),
         'vol_p10': np.percentile(vol_values, 10),

@@ -42,7 +42,10 @@ def instrument_id_to_hl_symbol(instrument_id: str) -> str:
     return base
 
 
-def load_hl_symbols(data_dir: Optional[Path] = None) -> Set[str]:
+def load_hl_symbols(
+    data_dir: Optional[Path] = None,
+    path: Optional[Path] = None,
+) -> Set[str]:
     """
     Load available Hyperliquid symbols from data/hyperliquid_instruments.json.
 
@@ -51,15 +54,19 @@ def load_hl_symbols(data_dir: Optional[Path] = None) -> Set[str]:
     Args:
         data_dir: Directory containing hyperliquid_instruments.json.
                   Defaults to <repo_root>/data/.
+        path: Explicit hyperliquid_instruments.json path. Takes precedence.
 
     Returns:
         Set of Hyperliquid symbol strings (e.g., {'BTC', 'ETH', 'SOL', ...})
     """
-    if data_dir is None:
+    if path is not None:
+        hl_path = Path(path)
+    elif data_dir is None:
         # Resolve relative to this file: sysdata/crypto/ → repo root → data/
         data_dir = Path(__file__).parent.parent.parent / 'data'
-
-    hl_path = Path(data_dir) / 'hyperliquid_instruments.json'
+        hl_path = Path(data_dir) / 'hyperliquid_instruments.json'
+    else:
+        hl_path = Path(data_dir) / 'hyperliquid_instruments.json'
     if not hl_path.exists():
         return set()
 

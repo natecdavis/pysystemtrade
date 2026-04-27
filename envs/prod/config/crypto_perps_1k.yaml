@@ -5,6 +5,7 @@ system:
   min_position_frac: 0.03
   allow_jagged: true
 percentage_vol_target: 25.0
+leverage_multiple: 2.5
 notional_trading_capital: 10000.0
 min_notional_position: 10.0
 instrument_weight_ewma_span: 1

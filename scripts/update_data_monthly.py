@@ -31,16 +31,15 @@ from sysdata.crypto.data_status import (
     validate_data_completeness,
     get_expected_last_month,
     get_last_available_month,
-    get_missing_months
+    get_missing_months,
 )
 from scripts.download_binance_data import (
     download_symbol_month,
-    normalize_and_validate_symbol
+    normalize_and_validate_symbol,
 )
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -62,8 +61,7 @@ def check_binance_api_connectivity(timeout: int = 5) -> tuple:
 
     try:
         response = requests.get(
-            'https://fapi.binance.com/fapi/v1/ping',
-            timeout=timeout
+            "https://fapi.binance.com/fapi/v1/ping", timeout=timeout
         )
 
         if response.status_code == 200:
@@ -102,12 +100,14 @@ def extract_universe_symbols(config: dict, env_root: Optional[Path] = None) -> l
     """
     from sysdata.crypto.config_helpers import (
         extract_candidate_instruments_with_registry,
-        instrument_id_to_symbol
+        instrument_id_to_symbol,
     )
 
     # Get candidate instruments (with registry support)
     try:
-        candidate_ids, source = extract_candidate_instruments_with_registry(config, env_root)
+        candidate_ids, source = extract_candidate_instruments_with_registry(
+            config, env_root
+        )
     except ValueError as e:
         logger.error(str(e))
         raise
@@ -129,7 +129,7 @@ def update_raw_data(
     lag_months: int = 2,
     output_report: Path = None,
     expected_as_of_date: date = None,
-    env_root: Optional[Path] = None
+    env_root: Optional[Path] = None,
 ) -> dict:
     """
     Update raw Binance data through last complete month.
@@ -166,9 +166,9 @@ def update_raw_data(
         is_reachable, error = check_binance_api_connectivity()
 
         if not is_reachable:
-            logger.error("="*70)
+            logger.error("=" * 70)
             logger.error("FAIL FAST: Binance REST API unreachable")
-            logger.error("="*70)
+            logger.error("=" * 70)
             logger.error(f"Error: {error}")
             logger.error("")
             logger.error("VPN required for data updates in geo-blocked regions.")
@@ -176,9 +176,11 @@ def update_raw_data(
             logger.error("")
             logger.error("Resolution steps:")
             logger.error("  1. Ensure VPN is connected and active")
-            logger.error("  2. Test manually: curl https://fapi.binance.com/fapi/v1/ping")
+            logger.error(
+                "  2. Test manually: curl https://fapi.binance.com/fapi/v1/ping"
+            )
             logger.error("  3. Re-run this script after VPN is working")
-            logger.error("="*70)
+            logger.error("=" * 70)
             sys.exit(1)
 
         logger.info("✓ Binance REST API reachable (VPN working)")
@@ -210,16 +212,15 @@ def update_raw_data(
     # Generate initial data status report
     logger.info("Analyzing current data status...")
     initial_report = generate_data_status_report(
-        data_dir,
-        normalized_symbols,
-        as_of_date,
-        lag_months
+        data_dir, normalized_symbols, as_of_date, lag_months
     )
 
     # Validate data completeness (fail fast on critical issues)
     # Allow missing data for initial setup - we'll download it
     try:
-        validate_data_completeness(initial_report, fail_on_missing, allow_missing_data=True)
+        validate_data_completeness(
+            initial_report, fail_on_missing, allow_missing_data=True
+        )
     except ValueError as e:
         logger.error(f"Data validation failed: {e}")
         raise
@@ -227,18 +228,21 @@ def update_raw_data(
     # Identify missing months to download
     downloads_needed = []
     for symbol in normalized_symbols:
-        inst_status = initial_report['instruments'][symbol]
-        missing_months = inst_status.get('missing_months', [])
+        inst_status = initial_report["instruments"][symbol]
+        missing_months = inst_status.get("missing_months", [])
 
         if missing_months:
             logger.info(f"{symbol}: {len(missing_months)} missing months")
             for month_str in missing_months:
-                year, month = month_str.split('-')
+                year, month = month_str.split("-")
                 downloads_needed.append((symbol, int(year), int(month)))
         else:
             logger.info(f"{symbol}: up to date")
 
-    # Check for data gaps (missing months in sequence)
+    # Report data gaps before downloading, but do not fail here. Missing months
+    # are queued above and should be attempted first; this is especially important
+    # for newly registered symbols whose Vision history may start later than the
+    # rest of the universe.
     for symbol in normalized_symbols:
         last_month = get_last_available_month(data_dir, symbol, "klines")
         if last_month is not None:
@@ -251,9 +255,10 @@ def update_raw_data(
                 # Gap = missing month that's older than expected_last_month
                 older_gaps = [m for m in missing_months if m < expected_last_month]
                 if older_gaps:
-                    raise ValueError(
+                    logger.warning(
                         f"Data gap detected for {symbol}: missing {older_gaps} "
-                        f"(have data through {last_month}, expected {expected_last_month})"
+                        f"(have data through {last_month}, expected {expected_last_month}); "
+                        "will attempt download before treating as unrecoverable"
                     )
 
     if dry_run:
@@ -268,27 +273,34 @@ def update_raw_data(
         logger.info("All data up to date - no downloads needed")
         # Save V0 report
         if output_report is None:
-            output_report = data_dir.parent / 'raw_data_status.json'
+            output_report = data_dir.parent / "raw_data_status.json"
         save_data_status_report(initial_report, output_report)
 
         # Also generate V1 day-level report for live ops
         logger.info("Generating V1 day-level data status report...")
         # V1 report should cover all candidate instruments (not just tradable universe)
-        from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
-        instrument_ids, _ = extract_candidate_instruments_with_registry(config, env_root)
+        from sysdata.crypto.config_helpers import (
+            extract_candidate_instruments_with_registry,
+        )
+
+        instrument_ids, _ = extract_candidate_instruments_with_registry(
+            config, env_root
+        )
 
         v1_report = generate_data_status_report_v1(
             data_dir,
             instrument_ids,
             expected_as_of_date=as_of_date.date(),
-            include_staleness=True
+            include_staleness=True,
         )
 
         # Save V1 report
-        if output_report.name == 'raw_data_status.json':
-            v1_output_report = output_report.parent / 'raw_data_status_v1.json'
+        if output_report.name == "raw_data_status.json":
+            v1_output_report = output_report.parent / "raw_data_status_v1.json"
         else:
-            v1_output_report = output_report.parent / output_report.name.replace('.json', '_v1.json')
+            v1_output_report = output_report.parent / output_report.name.replace(
+                ".json", "_v1.json"
+            )
 
         save_data_status_report(v1_report, v1_output_report)
         logger.info(f"V0 report saved: {output_report}")
@@ -303,7 +315,9 @@ def update_raw_data(
     total_failed = []
 
     for i, (symbol, year, month) in enumerate(downloads_needed, 1):
-        logger.info(f"\n[{i}/{len(downloads_needed)}] Downloading {symbol} {year}-{month:02d}...")
+        logger.info(
+            f"\n[{i}/{len(downloads_needed)}] Downloading {symbol} {year}-{month:02d}..."
+        )
 
         results = download_symbol_month(
             symbol,
@@ -313,62 +327,64 @@ def update_raw_data(
             skip_existing=True,  # Default: skip existing
             verify_checksums=False,  # Don't verify checksums for speed
             strict=False,  # Don't fail on 404 (expected lag)
-            verbose=False
+            verbose=False,
         )
 
         # Track results
-        total_downloaded.extend(results['downloaded'])
-        total_failed.extend(results['failed'])
+        total_downloaded.extend(results["downloaded"])
+        total_failed.extend(results["failed"])
 
         # Log status
-        if results['failed']:
+        if results["failed"]:
             logger.error(f"  Failed: {len(results['failed'])} file(s)")
-            for path, error in results['failed']:
+            for path, error in results["failed"]:
                 logger.error(f"    - {path.name}: {error}")
 
     # Generate updated data status report
     logger.info("\nGenerating updated data status report...")
     final_report = generate_data_status_report(
-        data_dir,
-        normalized_symbols,
-        as_of_date,
-        lag_months
+        data_dir, normalized_symbols, as_of_date, lag_months
     )
 
     # Add download summary to report
-    final_report['download_summary'] = {
-        'total_months_attempted': len(downloads_needed),
-        'successful': len(total_downloaded),
-        'failed': len(total_failed),
-        'dry_run': dry_run
+    final_report["download_summary"] = {
+        "total_months_attempted": len(downloads_needed),
+        "successful": len(total_downloaded),
+        "failed": len(total_failed),
+        "dry_run": dry_run,
     }
 
     # Save report
     if output_report is None:
-        output_report = data_dir.parent / 'raw_data_status.json'
+        output_report = data_dir.parent / "raw_data_status.json"
     save_data_status_report(final_report, output_report)
 
     # Also generate V1 day-level report for live ops
     logger.info("Generating V1 day-level data status report...")
 
     # V1 report should cover all candidate instruments (not just tradable universe)
-    from sysdata.crypto.config_helpers import extract_candidate_instruments_with_registry
+    from sysdata.crypto.config_helpers import (
+        extract_candidate_instruments_with_registry,
+    )
+
     instrument_ids, _ = extract_candidate_instruments_with_registry(config, env_root)
 
     v1_report = generate_data_status_report_v1(
         data_dir,
         instrument_ids,  # Pass instrument IDs directly (e.g., BTCUSDT_PERP)
         expected_as_of_date=as_of_date.date(),  # Convert datetime to date
-        include_staleness=True
+        include_staleness=True,
     )
 
     # Save V1 report using canonical env-aware path
     # Default: {data_dir}/../raw_data_status_v1.json (same parent as V0)
-    if output_report.name == 'raw_data_status.json':
-        v1_output_report = output_report.parent / 'raw_data_status_v1.json'
+    if output_report.name == "raw_data_status.json":
+        v1_output_report = output_report.parent / "raw_data_status_v1.json"
     else:
         # Derive V1 path from explicit V0 path
-        v1_output_report = output_report.parent / output_report.name.replace('.json', '_v1.json')
+        v1_output_report = output_report.parent / output_report.name.replace(
+            ".json", "_v1.json"
+        )
 
     save_data_status_report(v1_report, v1_output_report)
     logger.info(f"V1 report saved: {v1_output_report}")
@@ -391,7 +407,7 @@ def update_raw_data(
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Update Binance raw data for live advisory system (monthly cadence)',
+        description="Update Binance raw data for live advisory system (monthly cadence)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -412,71 +428,74 @@ Notes:
   - Binance Vision publication lag: ~2-4 weeks after month end
   - 404 errors are expected (not failures) for recent months
   - Monthly cadence only - not for daily updates
-        """
+        """,
     )
 
     parser.add_argument(
-        '--config',
+        "--config",
         type=Path,
         required=True,
-        help='Path to system config (to extract universe)'
+        help="Path to system config (to extract universe)",
     )
     parser.add_argument(
-        '--data-dir',
+        "--data-dir",
         type=Path,
-        default=Path('data/raw/binance'),
-        help='Root data directory. Default: data/raw/binance'
+        default=Path("data/raw/binance"),
+        help="Root data directory. Default: data/raw/binance",
     )
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Preview what would be downloaded without executing'
+        "--dry-run",
+        action="store_true",
+        help="Preview what would be downloaded without executing",
     )
     parser.add_argument(
-        '--fail-on-missing',
-        action='store_true',
-        help='Exit with error if expected month is missing (default: log warning only)'
+        "--fail-on-missing",
+        action="store_true",
+        help="Exit with error if expected month is missing (default: log warning only)",
     )
     parser.add_argument(
-        '--lag-months',
+        "--lag-months",
         type=int,
         default=2,
-        help='Conservative lag policy in months (default: 2 for M-2). Use 1 for M-1 (less conservative).'
+        help="Conservative lag policy in months (default: 2 for M-2). Use 1 for M-1 (less conservative).",
     )
     parser.add_argument(
-        '--output-report',
+        "--output-report",
         type=Path,
-        help='Path to save data status report (default: {data-dir}/../raw_data_status.json)'
+        help="Path to save data status report (default: {data-dir}/../raw_data_status.json)",
     )
     parser.add_argument(
-        '--expected-date',
+        "--expected-date",
         type=str,
-        help='Override expected as_of_date (YYYY-MM-DD). For historical-live testing. Default: uses current date.'
+        help="Override expected as_of_date (YYYY-MM-DD). For historical-live testing. Default: uses current date.",
     )
 
     # Environment isolation
-    env_group = parser.add_argument_group('Environment settings')
+    env_group = parser.add_argument_group("Environment settings")
     env_group.add_argument(
-        '--env',
-        help='Environment name (uses envs/<env>/ structure). Examples: prod, dev, paper, exp1. Default: current directory'
+        "--env",
+        help="Environment name (uses envs/<env>/ structure). Examples: prod, dev, paper, exp1. Default: current directory",
     )
     env_group.add_argument(
-        '--env-root',
+        "--env-root",
         type=Path,
-        help='Custom environment root (overrides --env). Can also use LIVE_OPS_ENV_ROOT env var'
+        help="Custom environment root (overrides --env). Can also use LIVE_OPS_ENV_ROOT env var",
     )
 
     args = parser.parse_args()
 
     # Initialize environment resolver
     from sysdata.crypto.env_paths import LiveOpsEnvironment
+
     env = LiveOpsEnvironment(
-        env=args.env if hasattr(args, 'env') else None,
-        env_root=args.env_root if hasattr(args, 'env_root') else None
+        env=args.env if hasattr(args, "env") else None,
+        env_root=args.env_root if hasattr(args, "env_root") else None,
     )
 
     # Resolve environment-aware paths (explicit args override environment)
-    data_dir = env.resolve_binance_raw_dir(override=args.data_dir if args.data_dir != Path('data/raw/binance') else None)
+    data_dir = env.resolve_binance_raw_dir(
+        override=args.data_dir if args.data_dir != Path("data/raw/binance") else None
+    )
 
     logger.info(f"Environment: {env}")
     logger.info(f"Data directory: {data_dir}")
@@ -490,9 +509,13 @@ Notes:
     expected_as_of_date = None
     if args.expected_date:
         try:
-            expected_as_of_date = datetime.strptime(args.expected_date, '%Y-%m-%d').date()
+            expected_as_of_date = datetime.strptime(
+                args.expected_date, "%Y-%m-%d"
+            ).date()
         except ValueError:
-            logger.error(f"Invalid --expected-date format: {args.expected_date}. Use YYYY-MM-DD.")
+            logger.error(
+                f"Invalid --expected-date format: {args.expected_date}. Use YYYY-MM-DD."
+            )
             sys.exit(1)
 
     # Run update
@@ -505,7 +528,7 @@ Notes:
             args.lag_months,
             args.output_report,
             expected_as_of_date,
-            env.env_root  # Pass env_root for registry lookup
+            env.env_root,  # Pass env_root for registry lookup
         )
 
         # Exit with success
@@ -517,5 +540,5 @@ Notes:
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

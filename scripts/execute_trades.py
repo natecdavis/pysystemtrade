@@ -125,21 +125,24 @@ def execute_trade(exchange, row: pd.Series, sz_decimals: dict, live_prices: dict
         print(f"  {sym}: not available on this network — skipping")
         return {"status": "skipped", "reason": "not_on_network"}
 
+    if mark == 0:
+        print(f"  {sym}: no mark price available — skipping")
+        return {"status": "skipped", "reason": "no_price"}
+
+    decimals = sz_decimals.get(sym, 2)
+    sz = round_sz(abs(delta) / mark, decimals)
+    if sz == 0:
+        print(f"  {sym}: sz rounds to 0 — skipping")
+        return {"status": "skipped", "reason": "sz=0"}
+
     if reason == "flatten_to_zero":
-        print(f"  {sym}: market_close (flatten to zero)", end=" ", flush=True)
+        direction = "buy" if is_buy else "sell"
+        print(f"  {sym}: market {direction} {sz} contracts (flatten to zero)", end=" ", flush=True)
         if not dry_run:
-            result = exchange.market_close(sym, slippage=SLIPPAGE)
+            result = exchange.market_open(sym, is_buy, sz, slippage=SLIPPAGE)
         else:
             result = {"status": "dry_run"}
     else:
-        if mark == 0:
-            print(f"  {sym}: no mark price available — skipping")
-            return {"status": "skipped", "reason": "no_price"}
-        decimals = sz_decimals.get(sym, 2)
-        sz = round_sz(abs(delta) / mark, decimals)
-        if sz == 0:
-            print(f"  {sym}: sz rounds to 0 — skipping")
-            return {"status": "skipped", "reason": "sz=0"}
         direction = "buy" if is_buy else "sell"
         print(f"  {sym}: market {direction} {sz} contracts", end=" ", flush=True)
         if not dry_run:

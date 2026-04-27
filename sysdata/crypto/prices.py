@@ -100,14 +100,15 @@ def load_crypto_perps_panel(
     # funding_rate[t] should apply to position held from close(t-1) to close(t)
     # This is validated by checking that funding_rate[t] exists for each date with close[t]
     for instrument in prices_df.columns:
-        price_dates = set(prices_df.index)
+        # Use non-NaN price dates: for jagged panels, NaN prices indicate pre-launch dates
+        # and are not expected to have funding rates
+        inst_price_dates = set(prices_df[instrument].dropna().index)
         funding_dates = set(meta_df.loc[(slice(None), instrument), 'funding_rate'].index.get_level_values(0))
-        if price_dates != funding_dates:
-            missing = price_dates - funding_dates
-            extra = funding_dates - price_dates
+        missing = inst_price_dates - funding_dates
+        if missing:
             raise ValueError(
                 f"Funding rate dates mismatch for {instrument}. "
-                f"Missing: {missing}, Extra: {extra}"
+                f"Missing: {missing}, Extra: set()"
             )
 
     return prices_df, meta_df, lifecycle_df
