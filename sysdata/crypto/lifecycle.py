@@ -20,7 +20,7 @@ def load_instrument_lifecycle(
     Args:
         path: Explicit path to lifecycle JSON (takes precedence)
         data_root: Root data directory (will look for metadata/binance_symbol_lifecycle.json)
-                   If neither provided, uses environment variable DATA_ROOT or 'data/raw/binance'
+                   If neither provided, uses environment variable DATA_ROOT or 'data/raw'
 
     Returns:
         DataFrame with columns: instrument, launch_date, status, delist_date
@@ -30,7 +30,7 @@ def load_instrument_lifecycle(
 
     if path is None:
         if data_root is None:
-            data_root = os.environ.get('DATA_ROOT', 'data/raw/binance')
+            data_root = os.environ.get('DATA_ROOT', 'data/raw')
         path = f"{data_root}/metadata/binance_symbol_lifecycle.json"
 
     with open(path) as f:

@@ -475,15 +475,16 @@ class TestValidatePositionsFile:
         warnings = [w for w in result.warnings if w.check == 'stale_timestamp']
         assert len(warnings) == 1
 
-    def test_gross_leverage_error(self):
-        """Excessive gross leverage should error."""
+    def test_gross_leverage_recorded_in_metadata(self):
+        """Gross leverage is no longer a hard error in the positions validator —
+        it is recorded in metadata for downstream sizing/reporting decisions instead."""
         now = datetime.now(timezone.utc).isoformat()
         positions_df = pd.DataFrame([
             {
                 'instrument': 'BTCUSDT_PERP',
-                'contracts': 0.25,
+                'contracts': 0.4,
                 'mark_price_usd': 45000.0,
-                'notional_usd': 11250.0,  # 2.25x leverage on 5000 equity
+                'notional_usd': 18000.0,  # 3.6x leverage on 5000 equity
                 'timestamp': now,
                 'notes': ''
             }
@@ -493,10 +494,8 @@ class TestValidatePositionsFile:
             positions_df, universe=['BTCUSDT_PERP'], equity=5000.0
         )
 
-        assert not result.passed
-        errors = [e for e in result.errors if e.check == 'gross_leverage']
-        assert len(errors) == 1
-        assert '2.25x' in errors[0].message
+        assert result.metadata['gross_leverage'] == pytest.approx(3.6)
+        assert not any(e.check == 'gross_leverage' for e in result.errors)
 
     def test_metadata_populated(self):
         """Result metadata should be populated."""

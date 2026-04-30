@@ -231,8 +231,8 @@ class TestV0ModeBehaviorUnchanged:
             "Orchestrator should have conditional branching for cadence"
         )
 
-        # Verify default is monthly
-        assert "default='monthly'" in content, (
+        # Verify default is monthly (accept either quote style)
+        assert "default='monthly'" in content or 'default="monthly"' in content, (
             "Default cadence must be monthly for backward compatibility"
         )
 

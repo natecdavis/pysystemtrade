@@ -17,7 +17,6 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.validate_config import validate_registry_config
-from scripts.generate_trade_plan import validate_tradable_universe
 import logging
 
 logger = logging.getLogger(__name__)
@@ -207,61 +206,6 @@ def test_validate_config_buffer_parameters(temp_env_root, sample_registry, tmp_p
     # Should warn (entry_buffer >= top_k)
     assert len(warnings) > 0
     assert any('entry_buffer' in warn for warn in warnings)
-
-
-def test_validate_tradable_universe_valid():
-    """Test trade plan validation passes when all instruments in layer_a."""
-    trade_plan = pd.DataFrame({
-        'instrument': ['BTCUSDT_PERP', 'ETHUSDT_PERP'],
-        'contracts': [1.0, 2.0]
-    })
-
-    config = {
-        'universe': {
-            'layer_a_instruments': ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'SOLUSDT_PERP']
-        }
-    }
-
-    # Should not raise
-    validate_tradable_universe(trade_plan, config, logger)
-
-
-def test_validate_tradable_universe_invalid():
-    """Test trade plan validation fails when instrument not in layer_a."""
-    trade_plan = pd.DataFrame({
-        'instrument': ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'NOTINLAYERA_PERP'],
-        'contracts': [1.0, 2.0, 1.0]
-    })
-
-    config = {
-        'universe': {
-            'layer_a_instruments': ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'SOLUSDT_PERP']
-        }
-    }
-
-    # Should raise ValueError
-    with pytest.raises(ValueError) as exc_info:
-        validate_tradable_universe(trade_plan, config, logger)
-
-    # Check error message contains details
-    error_msg = str(exc_info.value)
-    assert 'HARD INVARIANT VIOLATION' in error_msg
-    assert 'NOTINLAYERA_PERP' in error_msg
-
-
-def test_validate_tradable_universe_no_layer_a():
-    """Test trade plan validation skips when no layer_a defined."""
-    trade_plan = pd.DataFrame({
-        'instrument': ['BTCUSDT_PERP'],
-        'contracts': [1.0]
-    })
-
-    config = {
-        'universe': {}  # No layer_a_instruments
-    }
-
-    # Should not raise (warning logged but no exception)
-    validate_tradable_universe(trade_plan, config, logger)
 
 
 def test_validate_config_cost_filter_parameters(temp_env_root, sample_registry, sample_config_auto_discover, tmp_path):

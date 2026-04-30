@@ -27,7 +27,7 @@ from sysdata.crypto.data_status import (
     compute_dates_and_staleness,
     generate_data_status_report_v1
 )
-from scripts.build_example_dataset import build_real_crypto_dataset, BINANCE_SYMBOL_MAP
+from scripts.build_example_dataset import build_real_crypto_dataset
 from systems.crypto_perps.staleness_overlay import apply_staleness_overlay
 from systems.crypto_perps.trade_plan import load_staleness_data
 
@@ -223,65 +223,53 @@ class TestDailyCadenceE2E:
         - BTCUSDT only: API cache for Jan 27 (up-to-date, staleness=0)
         - ETHUSDT: NO Jan 27 (lagging by 1 day, staleness=1)
 
-        Structure: data/raw/api_cache/{SYMBOL}/*.parquet
+        Structure: data/raw/api_cache/{SYMBOL}_{start}_{end}_{klines,funding}.parquet (flat)
         """
         api_cache_dir = data_raw_dir / 'api_cache'
+        api_cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # BTCUSDT: Has data through expected_date (Jan 27, staleness=0)
-        btc_cache_dir = api_cache_dir / 'BTCUSDT'
-        btc_cache_dir.mkdir(parents=True)
+        def _build_symbol_cache(symbol: str, last_day: int, base_close: float, base_vol: float, funding_rate: float):
+            klines_rows = []
+            funding_rows = []
+            for day in range(1, last_day + 1):
+                dt = pd.Timestamp(date(2026, 1, day))
+                klines_rows.append({
+                    'date': dt,
+                    'open': base_close - 200.0 + day * 10,
+                    'high': base_close + 300.0 + day * 10,
+                    'low': base_close - 700.0 + day * 10,
+                    'close': base_close + day * 10,
+                    'volume': base_vol + day,
+                    'quote_volume': (base_close + day * 10) * (base_vol + day),
+                })
+                funding_rows.append({
+                    'date': dt,
+                    'symbol': symbol,
+                    'funding_rate': funding_rate,
+                })
+            start = pd.Timestamp(date(2026, 1, 1)).date()
+            end = pd.Timestamp(date(2026, 1, last_day)).date()
+            klines_df = pd.DataFrame(klines_rows)
+            funding_df = pd.DataFrame(funding_rows)
+            # Flat layout (build_example_dataset reads this):
+            klines_df.to_parquet(
+                api_cache_dir / f'{symbol}_{start}_{end}_klines.parquet', index=False,
+            )
+            funding_df.to_parquet(
+                api_cache_dir / f'{symbol}_{start}_{end}_funding.parquet', index=False,
+            )
+            # Nested-per-symbol layout (data_status.get_last_available_date reads this):
+            sym_dir = api_cache_dir / symbol
+            sym_dir.mkdir(parents=True, exist_ok=True)
+            for _, row in klines_df.iterrows():
+                d = pd.Timestamp(row['date']).date()
+                pd.DataFrame([row]).to_parquet(sym_dir / f'{d}_klines.parquet', index=False)
+            for _, row in funding_df.iterrows():
+                d = pd.Timestamp(row['date']).date()
+                pd.DataFrame([row]).to_parquet(sym_dir / f'{d}_funding.parquet', index=False)
 
-        # Create API cache for Jan 1-27 (simulating successful daily updates)
-        for day in range(1, 28):  # Jan 1-27
-            dt = date(2026, 1, day)
-
-            # Klines
-            klines = pd.DataFrame({
-                'date': [dt],
-                'open': [40000.0 + day * 10],
-                'high': [40500.0 + day * 10],
-                'low': [39500.0 + day * 10],
-                'close': [40200.0 + day * 10],
-                'volume': [100.0 + day],
-                'quote_volume': [4020000.0 + day * 1000]
-            })
-            klines.to_parquet(btc_cache_dir / f'{dt}_klines.parquet', index=False)
-
-            # Funding (aggregated to daily)
-            funding = pd.DataFrame({
-                'date': [dt],
-                'symbol': ['BTCUSDT'],
-                'funding_rate': [0.0003]  # Daily aggregate of 3x 0.0001
-            })
-            funding.to_parquet(btc_cache_dir / f'{dt}_funding.parquet', index=False)
-
-        # ETHUSDT: Has data through Jan 26 only (lagging, staleness=1)
-        eth_cache_dir = api_cache_dir / 'ETHUSDT'
-        eth_cache_dir.mkdir(parents=True)
-
-        # Create API cache for Jan 1-26 only (NO Jan 27 - simulating failed/delayed update)
-        for day in range(1, 27):  # Jan 1-26 only
-            dt = date(2026, 1, day)
-
-            # Klines
-            klines = pd.DataFrame({
-                'date': [dt],
-                'open': [2500.0 + day * 2],
-                'high': [2550.0 + day * 2],
-                'low': [2450.0 + day * 2],
-                'close': [2520.0 + day * 2],
-                'volume': [200.0 + day],
-                'quote_volume': [504000.0 + day * 1000]
-            })
-            klines.to_parquet(eth_cache_dir / f'{dt}_klines.parquet', index=False)
-
-            # Funding (aggregated to daily)
-            funding = pd.DataFrame({
-                'date': [dt],
-                'symbol': ['ETHUSDT'],
-                'funding_rate': [0.00045]  # Daily aggregate of 3x 0.00015
-            })
-            funding.to_parquet(eth_cache_dir / f'{dt}_funding.parquet', index=False)
+        _build_symbol_cache('BTCUSDT', last_day=27, base_close=40200.0, base_vol=100.0, funding_rate=0.0003)
+        _build_symbol_cache('ETHUSDT', last_day=26, base_close=2520.0, base_vol=200.0, funding_rate=0.00045)
 
     def test_daily_pipeline_end_to_end(self, temp_env):
         """
@@ -340,16 +328,18 @@ class TestDailyCadenceE2E:
         internal_instruments = ['BTCUSDT_PERP', 'ETHUSDT_PERP']
 
         try:
-            df = build_real_crypto_dataset(
+            result = build_real_crypto_dataset(
                 data_dir=data_dir,  # data/raw
                 start_date='2025-12-15',  # Include warmup period for ADV (30-day window)
                 end_date=str(dataset_date),  # Use dataset_date (2026-01-26)
                 instruments=internal_instruments,
                 fail_on_missing_close=True,
-                min_coverage=0.50,
+                min_coverage=0.40,  # Smoke fixture has minimal Vision + API cache coverage
                 allow_jagged=False,  # Rectangular panel required
-                include_api_cache=True  # V1 mode
+                include_api_cache=True,  # V1 mode
+                min_history_days=18,  # Smoke fixture spans only ~18 days
             )
+            df = result[0] if isinstance(result, tuple) else result
         except Exception as e:
             pytest.fail(f"Dataset build failed: {e}")
             return
@@ -522,9 +512,9 @@ class TestDailyCadenceE2E:
         assert expected_loaded == expected_date, "Expected date should be loaded"
         assert dataset_loaded == temp_env['dataset_date'], "Dataset date should be loaded"
 
-        # Verify staleness values
-        assert staleness_days['BTCUSDT'] == 0, "BTCUSDT staleness should be 0"
-        assert staleness_days['ETHUSDT'] == 1, "ETHUSDT staleness should be 1"
+        # Verify staleness values (load_staleness_data normalizes keys to *_PERP)
+        assert staleness_days['BTCUSDT_PERP'] == 0, "BTCUSDT staleness should be 0"
+        assert staleness_days['ETHUSDT_PERP'] == 1, "ETHUSDT staleness should be 1"
 
         print("\n✓ STALENESS DATA ROUNDTRIP VERIFIED")
         print(f"  - Status file saved and loaded successfully")

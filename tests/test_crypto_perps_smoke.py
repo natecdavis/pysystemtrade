@@ -32,7 +32,7 @@ class TestDataAdapter:
         from sysdata.crypto.prices import load_crypto_perps_panel
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Assert date index is monotonic
         assert prices.index.is_monotonic_increasing, "Date index must be monotonic increasing"
@@ -66,7 +66,7 @@ class TestDataAdapter:
         """
         from sysdata.crypto.prices import load_crypto_perps_panel
 
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # For each instrument, verify funding rate dates match price dates
         for instrument in prices.columns:
@@ -84,7 +84,7 @@ class TestDataAdapter:
         """
         from sysdata.crypto.prices import load_crypto_perps_panel
 
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Should have at least 365 days of data
         assert len(prices) >= 365, f"Expected at least 365 days, got {len(prices)}"
@@ -99,17 +99,14 @@ class TestDataAdapter:
         """
         Test internal ID -> Binance symbol mapping
         """
-        from scripts.build_example_dataset import BINANCE_SYMBOL_MAP
+        from sysdata.crypto.config_helpers import instrument_id_to_symbol
 
-        # Verify all expected instruments are mapped
-        assert BINANCE_SYMBOL_MAP['BTCUSDT_PERP'] == 'BTCUSDT'
-        assert BINANCE_SYMBOL_MAP['ETHUSDT_PERP'] == 'ETHUSDT'
-        assert BINANCE_SYMBOL_MAP['BNBUSDT_PERP'] == 'BNBUSDT'
-        assert BINANCE_SYMBOL_MAP['SOLUSDT_PERP'] == 'SOLUSDT'
-        assert BINANCE_SYMBOL_MAP['XRPUSDT_PERP'] == 'XRPUSDT'
-
-        # Verify all 15 instruments mapped (5 baseline + 10 Phase 2)
-        assert len(BINANCE_SYMBOL_MAP) == 15
+        # Verify all expected instruments map correctly via the canonical function
+        assert instrument_id_to_symbol('BTCUSDT_PERP') == 'BTCUSDT'
+        assert instrument_id_to_symbol('ETHUSDT_PERP') == 'ETHUSDT'
+        assert instrument_id_to_symbol('BNBUSDT_PERP') == 'BNBUSDT'
+        assert instrument_id_to_symbol('SOLUSDT_PERP') == 'SOLUSDT'
+        assert instrument_id_to_symbol('XRPUSDT_PERP') == 'XRPUSDT'
 
     def test_funding_rate_consolidation_alignment(self):
         """
@@ -185,7 +182,7 @@ class TestEWMACRule:
         from systems.crypto_perps.rules.ewmac import ewmac_forecasts
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Calculate EWMAC forecasts for standard pairs
         ewmac_pairs = [(8, 32), (16, 64)]
@@ -227,7 +224,7 @@ class TestEWMACRule:
         from systems.crypto_perps.rules.ewmac import ewmac_forecast_single_instrument
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Get a single instrument
         instrument = 'BTCUSDT_PERP'
@@ -254,7 +251,7 @@ class TestFundingCarryRule:
         from systems.crypto_perps.rules.carry_funding import funding_carry_forecasts
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Calculate carry forecasts
         fast_halflife = 3
@@ -298,7 +295,7 @@ class TestFundingCarryRule:
         from systems.crypto_perps.rules.carry_funding import funding_carry_forecast
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Get funding rates for one instrument
         instrument = 'BTCUSDT_PERP'
@@ -432,7 +429,7 @@ class TestForecastScaling:
         from systems.crypto_perps.forecasts import process_all_forecasts
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate raw forecasts
         ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
@@ -486,7 +483,7 @@ class TestUniverse:
         from systems.crypto_perps.universe import check_layer_b_eligibility
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Pick a date and instrument that should be eligible
         test_date = prices.index[100]  # Some date in the middle
@@ -527,7 +524,7 @@ class TestUniverse:
         from systems.crypto_perps.universe import get_eligible_instruments
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Get eligibility for a date
         test_date = prices.index[100]
@@ -558,7 +555,7 @@ class TestUniverse:
         from systems.crypto_perps.universe import build_eligibility_history
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Build eligibility history
         eligibility_df = build_eligibility_history(
@@ -626,7 +623,7 @@ class TestPositionSizing:
         from systems.crypto_perps.sizing import calculate_target_weights
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate forecasts
         ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
@@ -704,7 +701,7 @@ class TestPositionSizing:
         from sysdata.crypto.prices import load_crypto_perps_panel
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Calculate volatility
         btc_vol = calculate_daily_volatility(prices['BTCUSDT_PERP'])
@@ -842,7 +839,7 @@ class TestConstraints:
         from systems.crypto_perps.constraints import calculate_ewma_correlation
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Calculate returns
         returns = prices.pct_change().dropna()
@@ -1227,7 +1224,7 @@ class TestComprehensiveValidation:
         from systems.crypto_perps.forecasts import process_all_forecasts
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate forecasts
         ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
@@ -1267,7 +1264,7 @@ class TestComprehensiveValidation:
         from systems.crypto_perps.constraints import apply_portfolio_constraints
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate forecasts
         ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
@@ -1317,7 +1314,7 @@ class TestComprehensiveValidation:
         from systems.crypto_perps.constraints import apply_portfolio_constraints
 
         # Load data
-        prices, meta = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices, meta, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate forecasts
         ewmac = ewmac_forecasts(prices, [(8, 32), (16, 64)])
@@ -1421,13 +1418,14 @@ class TestRealDataIntegration:
             pytest.skip("BTC Jan 2023 data files not downloaded")
 
         # Build BTC-only dataset for Jan 2023 (strict mode)
-        df = build_real_crypto_dataset(
+        df, _, _ = build_real_crypto_dataset(
             data_dir=Path('data/raw'),
             start_date='2023-01-01',
             end_date='2023-01-31',
             instruments=['BTCUSDT_PERP'],
             fail_on_missing_close=True,  # Strict: fail if any NaN close rows
-            verify_checksums=False
+            verify_checksums=False,
+            min_history_days=28,  # Test uses 31 days, not full year
         )
 
         # Validate single instrument
@@ -1481,14 +1479,15 @@ class TestRealDataIntegration:
             pytest.skip("BTC and ETH Jan 2023 data files not downloaded")
 
         # Build BTC + ETH dataset for Jan 2023 (permissive: allow drops)
-        df = build_real_crypto_dataset(
+        df, _, _ = build_real_crypto_dataset(
             data_dir=Path('data/raw'),
             start_date='2023-01-01',
             end_date='2023-01-31',
             instruments=['BTCUSDT_PERP', 'ETHUSDT_PERP'],
             fail_on_missing_close=False,  # Allow NaN drops if needed
             min_coverage=0.90,  # Align with >=28 days assertion (90% of 31 days)
-            verify_checksums=False
+            verify_checksums=False,
+            min_history_days=28,  # Test uses 31 days, not full year
         )
 
         # Validate both instruments present
@@ -1522,7 +1521,7 @@ class TestRealDataIntegration:
         # Write to temp parquet and load via adapter
         temp_parquet = tmp_path / 'test_btc_eth.parquet'
         df.to_parquet(temp_parquet, index=False)
-        prices, meta = load_crypto_perps_panel(str(temp_parquet))
+        prices, meta, _ = load_crypto_perps_panel(str(temp_parquet))
 
         # If we get here, pivot succeeded (no ValueError from adapter)
         assert prices.shape == (common_date_count, 2)  # N dates × 2 instruments
@@ -1587,7 +1586,7 @@ class TestMonthlyReview:
         clear_review_cache()
 
         # Load test data
-        prices_df, meta_df = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices_df, meta_df, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate review schedule for data period
         start_date = prices_df.index[0]
@@ -1659,7 +1658,7 @@ class TestMonthlyReview:
         clear_review_cache()
 
         # Load test data
-        prices_df, meta_df = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices_df, meta_df, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate review schedule
         start_date = prices_df.index[0]
@@ -1727,7 +1726,7 @@ class TestMonthlyReview:
         clear_review_cache()
 
         # Load test data
-        prices_df, meta_df = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices_df, meta_df, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         # Generate review schedule starting AFTER data starts (simulates mid-month start)
         start_date = prices_df.index[0] + pd.Timedelta(days=15)
@@ -1770,7 +1769,7 @@ class TestMonthlyReview:
         from sysdata.crypto.prices import load_crypto_perps_panel
 
         # Load test data
-        prices_df, meta_df = load_crypto_perps_panel(str(TEST_DATA_PATH))
+        prices_df, meta_df, _ = load_crypto_perps_panel(str(TEST_DATA_PATH))
 
         instruments = list(prices_df.columns[:2])  # Test with 2 instruments
 
@@ -3130,7 +3129,7 @@ class TestExtendedDatasets:
             pytest.skip("5-year dataset not built yet")
 
         # Load dataset
-        prices, meta = load_crypto_perps_panel(str(data_path))
+        prices, meta, _ = load_crypto_perps_panel(str(data_path))
 
         # Compute volatility for all instruments
         daily_vols = {}
@@ -3197,7 +3196,7 @@ class TestExtendedDatasets:
             pytest.skip("15-instrument dataset not built yet (Phase 2)")
 
         # Load dataset
-        prices, meta = load_crypto_perps_panel(str(data_path))
+        prices, meta, _ = load_crypto_perps_panel(str(data_path))
 
         # Compute correlation matrix
         returns = prices.pct_change()

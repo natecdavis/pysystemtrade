@@ -189,8 +189,8 @@ class TestComputeDatesAndStaleness:
             assert staleness['ETHUSDT']['staleness_days'] == 0
             assert staleness['SOLUSDT']['staleness_days'] == 1  # Lagging vs expected
 
-    def test_missing_instrument_raises(self):
-        """Should raise ValueError if any instrument has no data."""
+    def test_missing_instrument_reports_no_data(self):
+        """Instruments with no data should be marked status='no_data', not raise."""
         with tempfile.TemporaryDirectory() as tmpdir:
             data_dir = Path(tmpdir)
 
@@ -202,8 +202,14 @@ class TestComputeDatesAndStaleness:
             instruments = ['BTCUSDT', 'ETHUSDT']
             expected_date = date(2026, 1, 27)
 
-            with pytest.raises(ValueError, match="No data found for ETHUSDT"):
-                compute_dates_and_staleness(data_dir, instruments, expected_date)
+            _, _, staleness = compute_dates_and_staleness(
+                data_dir, instruments, expected_date
+            )
+
+            # ETHUSDT has no data — should be flagged with status='no_data', not raise
+            assert staleness['ETHUSDT']['status'] == 'no_data'
+            assert staleness['ETHUSDT']['last_available_date'] is None
+            assert staleness['ETHUSDT']['staleness_days'] is None
 
 
 class TestValidateAsOfDate:

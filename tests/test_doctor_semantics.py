@@ -13,8 +13,14 @@ import pytest
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime, timezone
 import tempfile
 import sys
+
+
+def _fresh_ts() -> str:
+    """ISO-8601 UTC timestamp 'now' — keeps tests immune from validator staleness checks."""
+    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -118,12 +124,13 @@ def test_rectangular_mode_no_nans_pass():
 
 def test_missing_layer_a_instruments_warning():
     """Missing layer_a instruments => WARNING (not ERROR)."""
+    ts = _fresh_ts()
     positions_df = pd.DataFrame({
         'instrument': ['BTCUSDT_PERP', 'ETHUSDT_PERP'],
         'contracts': [0.0, 0.0],
         'mark_price_usd': [0.0, 0.0],
         'notional_usd': [0.0, 0.0],
-        'timestamp': ['2026-02-14T00:00:00Z', '2026-02-14T00:00:00Z'],
+        'timestamp': [ts, ts],
         'notes': ['', '']
     })
 
@@ -145,12 +152,13 @@ def test_missing_layer_a_instruments_warning():
 
 def test_extra_position_instrument_warning():
     """Positions with extra instruments are allowed but ETHUSDT is still missing => WARNING."""
+    ts = _fresh_ts()
     positions_df = pd.DataFrame({
         'instrument': ['BTCUSDT_PERP', 'FAKEUSDT_PERP'],  # FAKE is extra (not validated), ETHUSDT missing
         'contracts': [0.0, 0.1],
         'mark_price_usd': [50000.0, 100.0],
         'notional_usd': [0.0, 10.0],
-        'timestamp': ['2026-02-14T00:00:00Z', '2026-02-14T00:00:00Z'],
+        'timestamp': [ts, ts],
         'notes': ['', '']
     })
 
@@ -173,12 +181,13 @@ def test_extra_position_instrument_warning():
 
 def test_positions_all_present_low_leverage():
     """All layer_a instruments present with reasonable leverage => PASS."""
+    ts = _fresh_ts()
     positions_df = pd.DataFrame({
         'instrument': ['BTCUSDT_PERP', 'ETHUSDT_PERP', 'SOLUSDT_PERP'],
         'contracts': [0.01, 0.1, 1.0],  # Low contracts to avoid leverage error
         'mark_price_usd': [50000.0, 3000.0, 100.0],
         'notional_usd': [500.0, 300.0, 100.0],  # Total ~900 USD on 5000 equity = ~0.18x leverage
-        'timestamp': ['2026-02-14T00:00:00Z', '2026-02-14T00:00:00Z', '2026-02-14T00:00:00Z'],
+        'timestamp': [ts, ts, ts],
         'notes': ['', '', '']
     })
 

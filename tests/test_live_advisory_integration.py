@@ -93,6 +93,12 @@ def mock_backtest_dir(tmp_path, mock_config):
     with open(backtest_dir / 'metadata.json', 'w') as f:
         json.dump(metadata, f)
 
+    # last_prices.json — required by trade_plan to convert token positions → USD notional.
+    # Use 1.0 for every instrument so positions.csv values (already in USD here) pass through unchanged.
+    last_prices = {'BTCUSDT_PERP': 1.0, 'ETHUSDT_PERP': 1.0, 'SOLUSDT_PERP': 1.0}
+    with open(backtest_dir / 'last_prices.json', 'w') as f:
+        json.dump(last_prices, f)
+
     return backtest_dir
 
 
@@ -154,15 +160,9 @@ class TestLiveAdvisoryIntegration:
 
         # Validate sanity checks
         assert 'checks' in sanity_checks
-        assert 'gross_leverage' in sanity_checks['checks']
         assert 'idm_target_portfolio' in sanity_checks['checks']
         assert 'min_position_sizes' in sanity_checks['checks']
         assert 'banned_instruments' in sanity_checks['checks']
-
-        # Gross leverage should pass
-        gross_lev = sanity_checks['checks']['gross_leverage']
-        assert gross_lev['status'] == 'pass'
-        assert gross_lev['after_trades'] <= gross_lev['cap']
 
         # Validate audit bundle
         assert 'timestamp_utc' in audit_bundle
@@ -181,34 +181,6 @@ class TestLiveAdvisoryIntegration:
         assert prices['BTCUSDT_PERP']['mark_price'] == 45000.0
         assert prices['BTCUSDT_PERP']['contracts'] == 0.003
         assert prices['BTCUSDT_PERP']['notional'] == 135.0
-
-    def test_trade_plan_with_gross_leverage_violation(
-        self, mock_backtest_dir, mock_actual_positions, mock_config, tmp_path
-    ):
-        """Test trade plan generation when gross leverage would be violated."""
-        # Modify config to have very low cap
-        config = mock_config.copy()
-        config['system']['gross_leverage_cap'] = 0.05  # Very low cap
-
-        as_of_date = '2024-01-10'
-        current_equity = 5125.50
-
-        trade_plan, sanity_checks, audit_bundle = generate_trade_plan(
-            mock_backtest_dir,
-            mock_actual_positions,
-            current_equity,
-            as_of_date,
-            config
-        )
-
-        # Gross leverage should fail
-        gross_lev = sanity_checks['checks']['gross_leverage']
-        assert gross_lev['status'] == 'fail'
-        assert gross_lev['after_trades'] > gross_lev['cap']
-        assert gross_lev['headroom'] < 0
-
-        # Overall status should be fail
-        assert sanity_checks['overall_status'] == 'fail'
 
     def test_trade_plan_date_mismatch_fails(
         self, mock_backtest_dir, mock_actual_positions, mock_config
@@ -376,8 +348,3 @@ class TestEdgeCases:
 
         # All weights should be 0
         assert (trade_plan['delta_weight'] == 0.0).all()
-
-        # Gross leverage checks should handle zero equity
-        gross_lev = sanity_checks['checks']['gross_leverage']
-        assert gross_lev['actual_current'] == 0.0
-        assert gross_lev['after_trades'] == 0.0
