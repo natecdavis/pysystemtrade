@@ -1,5 +1,36 @@
 # Current Work Context
 
+## K-sweep on flat-68 SB-corrected, 1k config (2026-04-30)
+
+**K=30 confirmed at flat-68; not overfit. Higher K underperforms because the $9745.58 capital base is too small to support more concurrent positions — min-notional clipping de-leverages the system.**
+
+Sweep: `out/k_sweep_flat68_sb_1k/`. Config: `crypto_perps_1k.yaml` (HL filter, capital=$9745.58 = equity $3898.23 × 2.5). Buffers proportional to current: eb=K/15, ex=K/3.
+
+| K | eb | ex | Sharpe | Calmar | CAGR | MaxDD | RealVol | AvgPos | Turn |
+|---|----|----|--------|--------|------|-------|---------|--------|------|
+| **30** | **2** | **10** | **1.4039** | 1.6540 | **11.99%** | -7.25% | **8.31%** | 25.1 | 14.4 |
+| 60 | 4 | 20 | 1.2701 | 1.5268 | 8.95% | -5.86% | 6.94% | 37.3 | 10.8 |
+| 100 | 7 | 33 | 1.3043 | 1.6265 | 8.32% | -5.12% | 6.28% | 44.3 | 7.8 |
+| 150 | 10 | 50 | 1.2985 | 1.5512 | 7.97% | -5.14% | 6.04% | 46.7 | 6.8 |
+| 200 | 13 | 67 | 1.3236 | 1.5404 | 8.41% | -5.46% | 6.25% | 47.0 | 6.9 |
+| 229 | 15 | 76 | 1.3152 | 1.5851 | 8.38% | -5.29% | 6.27% | 47.1 | 7.0 |
+
+**Mechanism (six-diagnostic decomposition, `out/k_sweep_flat68_sb_1k/DIAGNOSIS.md`):**
+1. **Capital clipping fraction grows from 19% (K=30) to 36% (K≥150).** A third of in-universe forecasts at high K can't take a position because the vol-scaled target is below the $10 min-notional floor.
+2. **Universe saturates around 47 actual positions.** AvgPos: 25→37→44→47→47→47 across K=30..229. Beyond K=100 we add eligible instruments without actually filling more slots.
+3. **Effective bets plateau at ~24** (1/HHI weights). eff_bets/K drops from 44% (K=30) to 10% (K=229) — pure dilution; nominal K is meaningless beyond K=60.
+4. **PnL is heavily concentrated in top-30 ADV at every K.** Top-30 contribute 52.6% of PnL at K=30, still 42-43% at K=100+. Rank 151+ adds 9-10% at high K but it's not enough to compensate for the gross-return loss.
+5. **Realized vol is well below 25% target at all K**, but high K is worse: 8.3% (K=30) → 6.0% (K=150). Min-notional floor effectively de-leverages the strategy. **At $9745 capital we're already running at 33% of vol target at K=30.**
+6. **Costs IMPROVE with K** (turnover drops from 14.4 → 7.0; tx cost halves; funding flips from -5bp to -27bp — net cost goes negative). Costs are NOT the reason high K underperforms.
+7. **Total dollar PnL drops monotonically:** $7,512 (K=30) → $5,344 (K=229). The "diversification" from K>30 is a phantom — most positions are zero-clipped.
+
+**Upper-K structural cap:** ~100. Beyond K=100 nothing changes meaningfully (AvgPos plateaus, eff_bets plateaus, frac_below_$10 plateaus at ~36%). At K=229, lot-size filter additionally excludes BTC, BSV, ILV, TAO, TRB (1 lot > $43 = capital/K).
+
+**Implications for live trading:**
+- K=30 stays. Empirically dominant on this data.
+- At current $3898 equity, the system runs at 33% of 25% vol target — **the live realized return ceiling is bound by capital, not strategy parameters.** Bigger equity (or bigger leverage_multiple) is the lever, not bigger universe.
+- "Diversification is the only free lunch" only when each position is large enough to express signal. With a $10 floor on $9745 notional, the floor binds at avg position fraction <0.1% — i.e., the moment you want >100 positions.
+
 ## Current Baseline (2026-04-23, flat-68 + eb=2/ex=10)
 
 **$10K full_rules (2026-04-23, flat-68, eb=2/ex=10):**
