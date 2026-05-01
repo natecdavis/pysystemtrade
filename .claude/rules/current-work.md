@@ -1,5 +1,23 @@
 # Current Work Context
 
+## Coverage-aware FDM dampening REJECTED (2026-05-01)
+
+**Tested `FDM_eff = FDM_base × (n_active_rules / n_total_rules)^α` for α ∈ {0, 0.5, 1.0}** on flat-68 SB-corrected, 1k config. Hypothesis was that the existing FDM treats sparsely-populated rule panels as fully populated, so explicit coverage-proportional dampening should help young-instrument forecasts. Result: dampening hurts on every metric except a marginal MaxDD improvement.
+
+| α | Sharpe | Calmar | CAGR | MaxDD | RealVol | total $ PnL |
+|---|--------|--------|------|-------|---------|-------------|
+| 0.00 | **1.4018** | **1.6308** | **11.98%** | -7.34% | 8.32% | **$7,552** |
+| 0.50 | 1.3693 | 1.5730 | 11.18% | -7.11% | 7.97% | $7,062 |
+| 1.00 | 1.3378 | 1.4876 | 10.41% | -7.00% | 7.62% | $6,601 |
+
+**Mechanism (`out/fdm_cov_sweep/DIAGNOSIS.md`):**
+- The dampening *did* mechanically move FDM (mean 1.626 → 1.146 → 0.996; frac at cap 18.7% → 0.57%; vol scales down accordingly).
+- But **PnL is concentrated where coverage is high**: 96–99% of total PnL comes from instruments with coverage ≥ 75%. The [0,0.25) bucket contributes 0% across all α — these instruments don't take positions anyway because of the top-K / ADV-rank / min-notional filters that run before forecast combination.
+- So FDM dampening penalizes cells that don't trade (no benefit) while shaving FDM on the high-coverage cells that drive 99% of PnL (linear cost). Net: -7% total PnL at α=1.
+- The existing correlation-based FDM already accounts for coverage *implicitly* via the rule-correlation matrix (sparser panels → more degenerate correlations → lower FDM). Explicit additional dampening is over-correction.
+
+**Decision: REJECT. Keep `use_coverage_aware_fdm: false` (default).** Logged in MEMORY.md Permanent Flags.
+
 ## K-sweep on flat-68 SB-corrected, 1k config (2026-04-30)
 
 **K=30 confirmed at flat-68; not overfit. Higher K underperforms because the $9745.58 capital base is too small to support more concurrent positions — min-notional clipping de-leverages the system.**

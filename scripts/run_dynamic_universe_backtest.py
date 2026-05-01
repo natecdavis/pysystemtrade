@@ -705,7 +705,15 @@ def run_backtest(
 
     # Choose forecast combiner based on config
     use_gated_carry = config.get_element_or_default('use_gated_carry', False)
-    if use_gated_carry:
+    use_coverage_aware_fdm = config.get_element_or_default('use_coverage_aware_fdm', False)
+    if use_coverage_aware_fdm:
+        from systems.crypto_perps.forecast_combine_coverage_aware import (
+            ForecastCombineCoverageAware,
+        )
+        combiner = ForecastCombineCoverageAware()
+        alpha = config.get_element_or_default('fdm_coverage_alpha', 0.0)
+        logger.info(f"  Using coverage-aware FDM combination (alpha={alpha})")
+    elif use_gated_carry:
         combiner = ForecastCombineGated()
         logger.info("  Using trend-gated carry combination")
     else:
