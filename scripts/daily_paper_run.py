@@ -232,6 +232,17 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--non-binance-only",
+        action="store_true",
+        default=False,
+        help=(
+            "Run only the non-Binance data updates (macro, CoinMetrics, "
+            "Hyperliquid instruments). Skips all Binance steps, equity/CB steps, "
+            "doctor preflight, advisory, trade-plan generation. Intended for the "
+            "scheduled cron that pre-stages data before the manual VPN-gated run."
+        ),
+    )
+    parser.add_argument(
         "--env",
         default="dev",
         help=(
@@ -274,6 +285,7 @@ def main() -> int:
         f"=== daily_paper_run.py === {datetime.now(timezone.utc).isoformat()}",
         f"Config: {args.config}",
         f"Dry run: {args.dry_run}",
+        f"Non-binance only: {args.non_binance_only}",
         f"Refresh sector map: {args.refresh_sector_map}",
         f"Environment: {env}",
         f"Live dir: {live_dir}",
@@ -291,7 +303,9 @@ def main() -> int:
     # Step 0: Sync live positions + equity from Hyperliquid (if configured)
     # -----------------------------------------------------------------------
     hl_account_file = env.env_root / "config" / "hl_account.json"
-    if args.dry_run:
+    if args.non_binance_only:
+        log_lines.append("\n[0/10] HL pre-sync: skipped (--non-binance-only).")
+    elif args.dry_run:
         log_lines.append("\n[0/10] HL pre-sync: skipped (--dry-run).")
     elif not hl_account_file.exists():
         log_lines.append("\n[0/10] HL pre-sync: skipped (no hl_account.json).")
@@ -307,74 +321,84 @@ def main() -> int:
             log_lines.append("  OK.")
 
     log_lines.append("\n[1/10] Reading current equity...")
-    try:
-        equity = read_equity(equity_file)
-        log_lines.append(f"  Equity: ${equity:,.2f}")
-    except Exception as e:
-        msg = str(e)
-        log_lines.append(f"  ERROR: {msg}")
-        log_path.write_text("\n".join(log_lines))
-        if args.notify:
-            send_notification(
-                "⚠️ Paper Run Failed",
-                f"Cannot read equity: {equity_file.name}",
-            )
-        return 1
+    equity = None
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    else:
+        try:
+            equity = read_equity(equity_file)
+            log_lines.append(f"  Equity: ${equity:,.2f}")
+        except Exception as e:
+            msg = str(e)
+            log_lines.append(f"  ERROR: {msg}")
+            log_path.write_text("\n".join(log_lines))
+            if args.notify:
+                send_notification(
+                    "⚠️ Paper Run Failed",
+                    f"Cannot read equity: {equity_file.name}",
+                )
+            return 1
 
-    # Auto-update notional_trading_capital if leverage_multiple is set in config.
-    import re as _re
-    import yaml
-    with open(args.config) as _f:
-        _cfg_text = _f.read()
-    _cfg = yaml.safe_load(_cfg_text)
-    _lev = _cfg.get("leverage_multiple")
-    if _lev:
-        _notional = round(equity * _lev, 2)
-        _cfg_text = _re.sub(
-            r"^(notional_trading_capital:\s*)[\d.]+",
-            f"notional_trading_capital: {_notional}",
-            _cfg_text, flags=_re.MULTILINE,
-        )
-        _cfg_text = _re.sub(
-            r"^(\s+capital:\s*)[\d.]+",
-            lambda m: f"{m.group(1)}{_notional}",
-            _cfg_text, flags=_re.MULTILINE,
-        )
-        with open(args.config, "w") as _f:
-            _f.write(_cfg_text)
-        log_lines.append(
-            f"  leverage_multiple={_lev} → notional_trading_capital=${_notional:,.2f}"
-        )
+        # Auto-update notional_trading_capital if leverage_multiple is set in config.
+        import re as _re
+        import yaml
+        with open(args.config) as _f:
+            _cfg_text = _f.read()
+        _cfg = yaml.safe_load(_cfg_text)
+        _lev = _cfg.get("leverage_multiple")
+        if _lev:
+            _notional = round(equity * _lev, 2)
+            _cfg_text = _re.sub(
+                r"^(notional_trading_capital:\s*)[\d.]+",
+                f"notional_trading_capital: {_notional}",
+                _cfg_text, flags=_re.MULTILINE,
+            )
+            _cfg_text = _re.sub(
+                r"^(\s+capital:\s*)[\d.]+",
+                lambda m: f"{m.group(1)}{_notional}",
+                _cfg_text, flags=_re.MULTILINE,
+            )
+            with open(args.config, "w") as _f:
+                _f.write(_cfg_text)
+            log_lines.append(
+                f"  leverage_multiple={_lev} → notional_trading_capital=${_notional:,.2f}"
+            )
 
     # -----------------------------------------------------------------------
     # Step 2: Circuit breaker pre-check
     # -----------------------------------------------------------------------
     log_lines.append("\n[2/10] Circuit breaker pre-check...")
-    cb = CircuitBreaker(
-        equity_history_path=equity_history,
-        state_path=cb_state,
-    )
-
-    if not args.skip_cb_check:
-        cb_triggered, cb_reason = cb.check()
-        if cb_triggered:
-            log_lines.append(f"  TRIGGERED: {cb_reason}")
-            log_path.write_text("\n".join(log_lines))
-            if args.notify:
-                send_notification(
-                    "⚠️ CIRCUIT BREAKER TRIGGERED",
-                    f"{cb_reason} — Review {equity_history.name} and reset manually.",
-                )
-            return 1
-        log_lines.append("  Clear.")
+    cb = None
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
     else:
-        log_lines.append("  Skipped (--skip-cb-check).")
+        cb = CircuitBreaker(
+            equity_history_path=equity_history,
+            state_path=cb_state,
+        )
+
+        if not args.skip_cb_check:
+            cb_triggered, cb_reason = cb.check()
+            if cb_triggered:
+                log_lines.append(f"  TRIGGERED: {cb_reason}")
+                log_path.write_text("\n".join(log_lines))
+                if args.notify:
+                    send_notification(
+                        "⚠️ CIRCUIT BREAKER TRIGGERED",
+                        f"{cb_reason} — Review {equity_history.name} and reset manually.",
+                    )
+                return 1
+            log_lines.append("  Clear.")
+        else:
+            log_lines.append("  Skipped (--skip-cb-check).")
 
     # -----------------------------------------------------------------------
     # Step 3: Binance data update
     # -----------------------------------------------------------------------
     log_lines.append("\n[3/10] Updating Binance data (klines + funding)...")
-    if args.dry_run:
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    elif args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
     else:
         update_cmd = [
@@ -468,7 +492,9 @@ def main() -> int:
     # Step 3d: Binance OI/LSR data update
     # -----------------------------------------------------------------------
     log_lines.append("\n[3d/10] Updating Binance OI/LSR data...")
-    if args.dry_run:
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    elif args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
     elif args.skip_prestage:
         log_lines.append("  Skipped (--skip-prestage).")
@@ -529,7 +555,9 @@ def main() -> int:
     # Step 3e_vol: Daily volume update (incremental tail fetch)
     # -----------------------------------------------------------------------
     log_lines.append("\n[3e/10] Updating daily volume data (incremental)...")
-    if args.dry_run:
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    elif args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
     elif args.skip_prestage:
         log_lines.append("  Skipped (--skip-prestage).")
@@ -650,7 +678,10 @@ def main() -> int:
     # Step 4: Doctor preflight
     # -----------------------------------------------------------------------
     log_lines.append("\n[4/10] Running doctor preflight...")
-    if args.dry_run:
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+        doctor_rc = 0
+    elif args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
         doctor_rc = 0
     else:
@@ -685,7 +716,9 @@ def main() -> int:
     # Step 5: Run advisory (backtest + trade plan)
     # -----------------------------------------------------------------------
     log_lines.append("\n[5/10] Running advisory (backtest + trade plan)...")
-    if args.dry_run:
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    elif args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
     else:
         advisory_cmd = [
@@ -717,14 +750,19 @@ def main() -> int:
     # Step 6: Append equity to history
     # -----------------------------------------------------------------------
     log_lines.append("\n[6/10] Appending equity to history...")
-    cb.append_equity(today_iso, equity)
-    log_lines.append(f"  Appended {today_iso}: ${equity:,.2f}")
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    else:
+        cb.append_equity(today_iso, equity)
+        log_lines.append(f"  Appended {today_iso}: ${equity:,.2f}")
 
     # -----------------------------------------------------------------------
     # Step 7: Re-evaluate circuit breaker
     # -----------------------------------------------------------------------
     log_lines.append("\n[7/10] Re-evaluating circuit breaker...")
-    if not args.skip_cb_check:
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    elif not args.skip_cb_check:
         cb_triggered, cb_reason = cb.check()
         if cb_triggered:
             log_lines.append(f"  TRIGGERED: {cb_reason}")
@@ -738,27 +776,43 @@ def main() -> int:
     # Step 8: Parse trade plan
     # -----------------------------------------------------------------------
     log_lines.append("\n[8/10] Parsing trade plan...")
-    num_trades, total_cost = parse_trade_plan(output_dir)
-    log_lines.append(f"  {num_trades} trades • Est cost ${total_cost:.2f}")
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+        num_trades, total_cost = 0, 0.0
+    else:
+        num_trades, total_cost = parse_trade_plan(output_dir)
+        log_lines.append(f"  {num_trades} trades • Est cost ${total_cost:.2f}")
 
     # -----------------------------------------------------------------------
     # Step 9: Notification
     # -----------------------------------------------------------------------
     log_lines.append("\n[9/10] Sending notification...")
-    maxdd = get_current_maxdd(cb)
 
-    if args.dry_run:
-        title = "📋 Paper Trade Plan (DRY RUN)"
-    elif warnings and any("CIRCUIT BREAKER" in w for w in warnings):
-        title = "⚠️ CIRCUIT BREAKER TRIGGERED"
+    if args.non_binance_only:
+        if warnings:
+            title = "⚠️ Non-Binance Data Update — Warnings"
+        else:
+            title = "📊 Non-Binance Data Update OK"
+        body_parts = ["Updated: macro, CoinMetrics, HL"]
+        if warnings:
+            body_parts.append(f"{len(warnings)} warning(s) — check live/paper_run_latest.log")
+        body = " | ".join(body_parts)
     else:
-        title = "📋 Paper Trade Plan Ready"
+        maxdd = get_current_maxdd(cb)
 
-    body_parts = [f"{num_trades} trades • Est cost ${total_cost:.2f} • MaxDD {maxdd}"]
-    if warnings:
-        body_parts.append(f"{len(warnings)} warning(s) — check live/paper_run_latest.log")
+        if args.dry_run:
+            title = "📋 Paper Trade Plan (DRY RUN)"
+        elif warnings and any("CIRCUIT BREAKER" in w for w in warnings):
+            title = "⚠️ CIRCUIT BREAKER TRIGGERED"
+        else:
+            title = "📋 Paper Trade Plan Ready"
 
-    body = " | ".join(body_parts)
+        body_parts = [f"{num_trades} trades • Est cost ${total_cost:.2f} • MaxDD {maxdd}"]
+        if warnings:
+            body_parts.append(f"{len(warnings)} warning(s) — check live/paper_run_latest.log")
+
+        body = " | ".join(body_parts)
+
     log_lines.append(f"  Title: {title}")
     log_lines.append(f"  Body:  {body}")
 
