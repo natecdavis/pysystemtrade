@@ -860,7 +860,10 @@ class WalkForwardHarness:
 
 def _make_default_adoption_rule(candidate_name: str) -> AdoptionRule:
     """Default rules per candidate name. Most candidates can override via API."""
-    if candidate_name == "flat68_replay":
+    if candidate_name == "flat68_replay" or candidate_name.endswith("_self_replication"):
+        # Plumbing-validity check (any candidate ending in _self_replication
+        # should be a uniform/no-op variant whose backtest must reproduce the
+        # baseline within the standard ±0.02 Sharpe band).
         return AdoptionRule(
             name="self_replication",
             min_delta_sharpe=-0.02,
