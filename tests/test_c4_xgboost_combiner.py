@@ -106,6 +106,24 @@ class TestMultiplierSquash:
         assert (flat >= MULT_FLOOR - 1e-12).all()
         assert (flat <= MULT_CEILING + 1e-12).all()
 
+    def test_uninformative_fit_emits_identity_multiplier(self):
+        # Even with a large nonzero y_hat, an `is_uninformative=True` fit must
+        # produce multiplier = 1.0 — preserves the anchored-to-baseline
+        # invariant when XGBoost early-stops at iter=0.
+        idx = pd.MultiIndex.from_product(
+            [pd.date_range("2020-01-01", periods=3), ["BTC"]],
+            names=["__date__", "__instrument__"],
+        )
+        preds = pd.Series([5.0, -5.0, 100.0], index=idx, name="y_hat")
+        artifact = FitArtifact(
+            refit_date=pd.Timestamp("2020-01-01"),
+            n_train_rows=0, n_val_rows=0, best_iteration=0,
+            best_val_rmse=float("nan"), feature_importance={},
+            train_pred_iqr=0.5, is_uninformative=True,
+        )
+        panel = predictions_to_multiplier_panel(preds, [artifact])
+        assert (panel.values == 1.0).all()
+
     def test_per_fit_sigma_assignment(self):
         # Two fits with very different sigmas; predictions on different dates
         # should use the appropriate sigma.

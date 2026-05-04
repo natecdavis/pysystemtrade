@@ -62,7 +62,11 @@ VALIDATION_SLICE_FRAC: float = 0.20
 
 MULT_FLOOR: float = 0.5
 MULT_CEILING: float = 1.5
-TANH_SIGMA_MIN: float = 1e-3  # numerical floor
+# Sigma floor matches the natural noise scale of vol-normalized 5-20d returns
+# (std≈1.0 by construction). A floor below ~0.1 lets random outlier predictions
+# saturate the squash; we set 0.5 so a |y_hat|=0.5 prediction maps to mult≈1.38
+# (well-defined modulation) and |y_hat|>=2 saturates only when signal is large.
+TANH_SIGMA_MIN: float = 0.5
 
 # Macro/state lookbacks — chosen to match C3 conventions where possible
 PORTFOLIO_VOL_LOOKBACK_DAYS: int = 30
@@ -455,6 +459,7 @@ class FitArtifact:
     best_val_rmse: float
     feature_importance: dict[str, float]  # gain-weighted, normalized to sum=1
     train_pred_iqr: float  # IQR of training-time predictions, used as tanh sigma
+    is_uninformative: bool = False  # True iff best_iter==0 (model is bias-only)
 
 
 def _label_end_date(feature_date: pd.Timestamp, horizon_days: int) -> pd.Timestamp:
@@ -490,6 +495,9 @@ def _train_one_fit(
         verbose=False,
     )
 
+    best_iter = int(getattr(model, "best_iteration", model.n_estimators - 1))
+    is_uninformative = best_iter == 0  # bias-only — see TANH_SIGMA_MIN comment
+
     train_preds = model.predict(X_tr)
     iqr = float(np.subtract(*np.percentile(train_preds, [75, 25])))
     sigma = max(iqr / 2.0, TANH_SIGMA_MIN)
@@ -502,10 +510,11 @@ def _train_one_fit(
         refit_date=refit_date,
         n_train_rows=n_train,
         n_val_rows=n_val,
-        best_iteration=int(getattr(model, "best_iteration", model.n_estimators - 1)),
+        best_iteration=best_iter,
         best_val_rmse=float(model.best_score) if hasattr(model, "best_score") else float("nan"),
         feature_importance=fi,
         train_pred_iqr=sigma,
+        is_uninformative=is_uninformative,
     )
     return model, artifact
 
@@ -593,23 +602,30 @@ def predictions_to_multiplier_panel(
     if not artifacts:
         raise ValueError("No fit artifacts — cannot squash predictions.")
 
-    # Build a per-fit sigma table keyed by refit_date (sorted ascending)
+    # Build per-fit sigma + uninformative-flag tables keyed by refit_date.
     sigmas = pd.Series(
         {a.refit_date: a.train_pred_iqr for a in artifacts}
     ).sort_index()
+    uninformative = pd.Series(
+        {a.refit_date: a.is_uninformative for a in artifacts}
+    ).sort_index().reindex(sigmas.index).fillna(False).astype(bool)
     refit_dates = sigmas.index
 
     df = oos_preds.to_frame("y_hat").copy()
     dates = df.index.get_level_values(0)
     # For each row, find the most recent refit date <= row date (the model
-    # that generated it)
+    # that generated it).
     fit_idx = np.searchsorted(refit_dates.values, dates.values, side="right") - 1
-    # Out-of-bounds (predictions before the first refit, shouldn't happen)
-    # are clamped to the first sigma; defensive only.
     fit_idx = np.clip(fit_idx, 0, len(refit_dates) - 1)
     sigmas_per_row = sigmas.values[fit_idx]
+    uninformative_per_row = uninformative.values[fit_idx]
 
     multiplier = 1.0 + 0.5 * np.tanh(df["y_hat"].values / sigmas_per_row)
+    # Hard identity for uninformative fits — preserves the anchored-to-baseline
+    # invariant when the model has no signal beyond the bias term. Without
+    # this, bias-only predictions cluster around a non-zero mean and tanh
+    # saturates the entire window to a single cap value.
+    multiplier = np.where(uninformative_per_row, 1.0, multiplier)
     multiplier = np.clip(multiplier, MULT_FLOOR, MULT_CEILING)
     df["multiplier"] = multiplier
 
