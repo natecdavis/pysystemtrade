@@ -208,7 +208,26 @@ def main() -> int:
         default=5_000,
         help="Skip a refit unless at least this many training rows are available.",
     )
+    parser.add_argument(
+        "--random-state",
+        type=int,
+        default=None,
+        help="Override XGB random_state (default: XGB_PARAMS['random_state']=42). "
+        "Used by the seed-sensitivity sweep — does NOT mutate module-level constants.",
+    )
+    parser.add_argument(
+        "--freeze-training-after",
+        type=str,
+        default=None,
+        help="YYYY-MM-DD. Truncate the monthly retrain schedule at this date — all "
+        "predictions thereafter use the frozen final model. Used by the no-continued-"
+        "adaptation stress test.",
+    )
     args = parser.parse_args()
+    freeze_after = (
+        pd.Timestamp(args.freeze_training_after)
+        if args.freeze_training_after else None
+    )
 
     panels_dir = REPO_ROOT / args.panels_dir
     baseline_dir = REPO_ROOT / args.baseline_dir
@@ -302,10 +321,16 @@ def main() -> int:
         )]
     else:
         print(f"\nWalk-forward fit/predict (monthly retrain) ...")
+        if args.random_state is not None:
+            print(f"  random_state override: {args.random_state}")
+        if freeze_after is not None:
+            print(f"  freeze_training_after: {freeze_after.date()}")
         oos_preds, artifacts = fit_predict_walk_forward(
             bundle,
             horizon_days=args.horizon,
             min_train_rows=args.min_train_rows,
+            random_state=args.random_state,
+            freeze_training_after=freeze_after,
         )
         print(f"  Refits: {len(artifacts)}; OOS predictions: {len(oos_preds):,}")
 

@@ -254,6 +254,79 @@ class TestWalkForwardLeakageGate:
             )
 
 
+class TestParamPlumbing:
+    """Sanity checks that the random_state and freeze_training_after parameters
+    threaded into fit_predict_walk_forward actually take effect.
+    """
+
+    def _synth_bundle(self, n_dates: int = 200, n_instruments: int = 4):
+        from systems.crypto_perps.c4_xgboost_combiner import FeatureBundle
+
+        rng = np.random.default_rng(0)
+        dates = pd.date_range("2024-01-01", periods=n_dates, freq="D")
+        instruments = [f"INST_{i}" for i in range(n_instruments)]
+        rows = []
+        for instr in instruments:
+            for d in dates:
+                rows.append({
+                    "__date__": d,
+                    "__instrument__": instr,
+                    "f1": rng.normal(),
+                    "f2": rng.normal(),
+                    "f3": rng.normal(),
+                    "__label__": rng.normal(scale=0.5),
+                })
+        df = pd.DataFrame(rows).set_index(["__date__", "__instrument__"]).sort_index()
+        return FeatureBundle(
+            df=df,
+            rule_feature_cols=["f1", "f2"],
+            aggregate_feature_cols=["f3"],
+            instrument_feature_cols=[],
+            portfolio_feature_cols=[],
+            label_col="__label__",
+        )
+
+    def test_random_state_propagates(self):
+        from systems.crypto_perps.c4_xgboost_combiner import fit_predict_walk_forward
+
+        bundle = self._synth_bundle(n_dates=200, n_instruments=4)
+        preds_42, _ = fit_predict_walk_forward(
+            bundle, horizon_days=5, retrain_freq="MS", min_train_rows=50,
+            random_state=42,
+        )
+        preds_43, _ = fit_predict_walk_forward(
+            bundle, horizon_days=5, retrain_freq="MS", min_train_rows=50,
+            random_state=43,
+        )
+        # XGBoost with subsample=0.8, colsample_bytree=0.8 + tree_method="hist"
+        # is seed-sensitive; different random_state must produce non-identical
+        # predictions on at least one row of the OOS window.
+        common = preds_42.index.intersection(preds_43.index)
+        assert len(common) > 0
+        assert not np.allclose(preds_42.loc[common].values, preds_43.loc[common].values), (
+            "random_state override is not propagating — seed=42 and seed=43 "
+            "produced identical predictions across the entire OOS window."
+        )
+
+    def test_freeze_training_after_truncates_refit_dates(self):
+        from systems.crypto_perps.c4_xgboost_combiner import fit_predict_walk_forward
+
+        bundle = self._synth_bundle(n_dates=200, n_instruments=4)
+        cutoff = pd.Timestamp("2024-04-01")
+        _, artifacts_full = fit_predict_walk_forward(
+            bundle, horizon_days=5, retrain_freq="MS", min_train_rows=50,
+        )
+        _, artifacts_frozen = fit_predict_walk_forward(
+            bundle, horizon_days=5, retrain_freq="MS", min_train_rows=50,
+            freeze_training_after=cutoff,
+        )
+        # Frozen run must have fewer or equal refits, and no refit_date past cutoff.
+        assert len(artifacts_frozen) <= len(artifacts_full)
+        assert all(a.refit_date <= cutoff for a in artifacts_frozen)
+        # And it must have at least one refit (otherwise the test data was too sparse).
+        assert len(artifacts_frozen) >= 1
+
+
 class TestStatisticsHelpers:
     def test_multiplier_distribution_stats_basic(self):
         df = pd.DataFrame(

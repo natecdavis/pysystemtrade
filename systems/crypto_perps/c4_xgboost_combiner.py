@@ -471,8 +471,13 @@ def _train_one_fit(
     X: pd.DataFrame,
     y: pd.Series,
     refit_date: pd.Timestamp,
+    random_state: Optional[int] = None,
 ) -> tuple["xgb.XGBRegressor", FitArtifact]:
-    """Time-ordered train/val split, fit, return model + audit artifact."""
+    """Time-ordered train/val split, fit, return model + audit artifact.
+
+    `random_state` overrides XGB_PARAMS["random_state"] for this fit only —
+    used by the seed-sensitivity sweep. Module-level XGB_PARAMS is unchanged.
+    """
     xgb = _import_xgb()
 
     # Time-ordered split: last VALIDATION_SLICE_FRAC of train rows as val
@@ -483,10 +488,15 @@ def _train_one_fit(
     X_tr, X_val = X.iloc[:n_train], X.iloc[n_train:]
     y_tr, y_val = y.iloc[:n_train], y.iloc[n_train:]
 
+    xgb_params = (
+        {**XGB_PARAMS, "random_state": int(random_state)}
+        if random_state is not None
+        else XGB_PARAMS
+    )
     model = xgb.XGBRegressor(
         early_stopping_rounds=EARLY_STOPPING_ROUNDS,
         eval_metric="rmse",
-        **XGB_PARAMS,
+        **xgb_params,
     )
     model.fit(
         X_tr,
@@ -524,6 +534,8 @@ def fit_predict_walk_forward(
     horizon_days: int,
     retrain_freq: str = "MS",
     min_train_rows: int = 5_000,
+    random_state: Optional[int] = None,
+    freeze_training_after: Optional[pd.Timestamp] = None,
 ) -> tuple[pd.Series, list[FitArtifact]]:
     """Run monthly-retrain walk-forward training over the full feature panel.
 
@@ -536,6 +548,11 @@ def fit_predict_walk_forward(
     Discipline: at refit date t, only training rows whose label window ends
     on or before t-1 are eligible. Predictions for dates [t, next_refit_date)
     use the model fit at t.
+
+    `random_state` overrides the per-fit XGB seed (default: XGB_PARAMS["random_state"]).
+    `freeze_training_after` truncates the refit_dates list to dates <= cutoff;
+    predictions for all dates after the last eligible refit use that frozen
+    model. This is the "no continued retraining" stress test.
     """
     df = bundle.df.dropna(subset=[bundle.label_col]).copy()
     feature_cols = bundle.feature_cols
@@ -546,6 +563,8 @@ def fit_predict_walk_forward(
     start, end = all_dates[0], all_dates[-1]
 
     refit_dates = pd.date_range(start, end, freq=retrain_freq)
+    if freeze_training_after is not None:
+        refit_dates = refit_dates[refit_dates <= pd.Timestamp(freeze_training_after)]
     # Drop refit dates before we have enough history
     if len(refit_dates) == 0:
         raise ValueError("No refit dates produced — check date range vs retrain_freq.")
@@ -564,10 +583,12 @@ def fit_predict_walk_forward(
         X_train = df.loc[train_mask, feature_cols]
         y_train = df.loc[train_mask, bundle.label_col]
 
-        model, artifact = _train_one_fit(X_train, y_train, t)
+        model, artifact = _train_one_fit(X_train, y_train, t, random_state=random_state)
         artifacts.append(artifact)
 
-        # Inference window: [t, next_refit)
+        # Inference window: [t, next_refit). The last refit's window extends
+        # to end+1day, so when freeze_training_after truncates the schedule,
+        # the frozen model's predictions naturally cover all post-cutoff dates.
         next_t = refit_dates[i + 1] if i + 1 < len(refit_dates) else end + pd.Timedelta(days=1)
         infer_mask = (feature_dates >= t) & (feature_dates < next_t)
         if infer_mask.sum() == 0:
