@@ -15,6 +15,22 @@ from typing import Any
 import pandas as pd
 import yaml
 
+# Repo-root data/ is the canonical location for static/backfill files (sector_map,
+# binance_volume_daily). env_root/data/ takes precedence when it exists there, but
+# we fall back to repo data/ so the pipeline works without manual copying.
+_REPO_DATA_DIR = Path(__file__).parent.parent.parent / "data"
+
+
+def _resolve_path(env_data_dir: Path, filename: str) -> Path:
+    """Return env_data_dir/filename if present, else fall back to repo data/filename."""
+    env_path = env_data_dir / filename
+    if env_path.exists():
+        return env_path
+    repo_path = _REPO_DATA_DIR / filename
+    if repo_path.exists():
+        return repo_path
+    return env_path  # canonical for error reporting
+
 
 BASE_DATA_METHODS = {
     "data.daily_prices",
@@ -145,7 +161,7 @@ def required_auxiliary_files(
 
     if methods & SECTOR_METHODS:
         requirements["sector_map"] = {
-            "path": data_dir / "sector_map.json",
+            "path": _resolve_path(data_dir, "sector_map.json"),
             "required_by": sorted(methods & SECTOR_METHODS),
             "max_lag_days": None,
             "kind": "json_static",
@@ -169,7 +185,7 @@ def required_auxiliary_files(
 
     if methods & VOLUME_METHODS:
         requirements["binance_volume"] = {
-            "path": data_dir / "binance_volume_daily.parquet",
+            "path": _resolve_path(data_dir, "binance_volume_daily.parquet"),
             "required_by": sorted(methods & VOLUME_METHODS),
             "max_lag_days": 2,
             "kind": "parquet_date_column",

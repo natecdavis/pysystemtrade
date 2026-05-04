@@ -749,6 +749,29 @@ Notes:
         logger.error("This file must be manually maintained after trade execution.")
         sys.exit(1)
 
+    # Verify upstream backtest output hash matches the manifest_chain entry written
+    # by run_dynamic_universe_backtest.py. The chain lives in the parent of
+    # backtest_dir (alongside dataset_latest.parquet). Skip silently when missing —
+    # this script also runs ad-hoc against pre-existing backtest dirs without a chain.
+    try:
+        from sysdata.crypto.manifest_chain import (
+            CHAIN_FILENAME,
+            ManifestChainError,
+            verify_input_against_upstream,
+        )
+        chain_path_check = args.backtest_dir.parent / CHAIN_FILENAME
+        if chain_path_check.exists():
+            verify_input_against_upstream(
+                chain_path_check,
+                upstream_stage="backtest",
+                output_name="positions",
+                current_path=args.backtest_dir / "positions.csv",
+            )
+            logger.info(f"manifest_chain: backtest positions hash verified against {chain_path_check}")
+    except ManifestChainError as exc:
+        logger.error(f"manifest_chain verification failed: {exc}")
+        sys.exit(2)
+
     # Create output directory
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -967,6 +990,28 @@ Notes:
         logger.info(f"Writing audit bundle to {audit_bundle_path}")
         with open(audit_bundle_path, "w") as f:
             json.dump(audit_bundle, f, indent=2)
+
+        # Append the trade-plan stage to the manifest chain (if upstream chain exists).
+        try:
+            from sysdata.crypto.manifest_chain import CHAIN_FILENAME, append_stage
+            chain_path_post = args.backtest_dir.parent / CHAIN_FILENAME
+            if chain_path_post.exists():
+                append_stage(
+                    chain_path_post,
+                    stage="trade_plan",
+                    inputs={
+                        "positions": args.backtest_dir / "positions.csv",
+                        "actual_positions": args.actual_positions,
+                    },
+                    outputs={
+                        "trade_plan": trade_plan_path,
+                        "sanity_checks": sanity_checks_path,
+                        "audit_bundle": audit_bundle_path,
+                    },
+                    extra={"as_of_date": args.as_of_date, "config": str(config_path)},
+                )
+        except Exception as exc:
+            logger.warning(f"manifest_chain: post-trade-plan record failed: {exc}")
 
         # Print summary
         logger.info("\n" + "=" * 60)

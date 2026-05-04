@@ -8,11 +8,15 @@ def pytest_addoption(parser):
     parser.addoption(
         "--runintegration", action="store_true", default=False, help="run integration tests"
     )
+    parser.addoption(
+        "--runlive", action="store_true", default=False, help="run live sniff tests against backtest outputs"
+    )
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow to run")
     config.addinivalue_line("markers", "integration: mark test as integration test")
+    config.addinivalue_line("markers", "live: mark test as requiring live backtest output (--runlive)")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -29,3 +33,10 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "integration" in item.keywords:
                 item.add_marker(skip_integration)
+
+    # Skip live sniff tests unless --runlive given
+    if not config.getoption("--runlive"):
+        skip_live = pytest.mark.skip(reason="need --runlive option to run")
+        for item in items:
+            if "live" in item.keywords:
+                item.add_marker(skip_live)

@@ -1,17 +1,19 @@
 system:
-  capital: 4890.40
+  capital: 9984.33
   vol_target_ann: 0.25
   idm_cap: 2.5
   min_position_frac: 0.03
   allow_jagged: true
 percentage_vol_target: 25.0
 leverage_multiple: 2.5
-notional_trading_capital: 4890.40
+notional_trading_capital: 9984.33
 min_notional_position: 10.0
 instrument_weight_ewma_span: 1
 use_instrument_div_mult_estimates: true
 use_forecast_scale_estimates: true
 use_forecast_div_mult_estimates: true
+forecast_correlation_estimate:
+  shrinkage_parameter: 0.3
 data_acquisition:
   auto_discover: true
   dataset_path: data/dataset_sb_corrected_6yr_jagged.parquet
@@ -830,75 +832,174 @@ trading_rules:
     other_args:
       smooth_days: 60
       vol_floor: 0.01
+  assettrend_2:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+    - data.get_asset_class_index_price
+    other_args:
+      Lfast: 2
+  assettrend_4:
+    function: systems.crypto_perps.rules.rule_library.assettrend
+    data:
+    - data.get_asset_class_index_price
+    other_args:
+      Lfast: 4
+  cs_mr_1000:
+    function: systems.provided.rules.cs_mr.cross_sectional_mean_reversion
+    data:
+    - data.get_normalised_price_this_instrument
+    - data.get_normalised_price_for_asset_class
+    other_args:
+      horizon: 1000
+  mr_wings_4:
+    function: systems.provided.rules.mr_wings.mr_wings_calc_vol
+    other_args:
+      Lfast: 4
+  basis_mr_5:
+    function: systems.crypto_perps.rules.rule_library.basis_mr
+    data:
+    - data.daily_prices
+    - data.get_premium_index
+    other_args:
+      lookback: 5
+      threshold_bp: 50.0
+  btc_etf_flow_trend_20:
+    function: systems.crypto_perps.rules.rule_library.btc_etf_flow_trend
+    data:
+    - data.daily_prices
+    - data.get_btc_etf_signed_volume
+    other_args:
+      Lfast: 20
+  stablecoin_supply_trend_32:
+    function: systems.crypto_perps.rules.rule_library.stablecoin_supply_trend
+    data:
+    - data.daily_prices
+    - data.get_stablecoin_supply
+    other_args:
+      Lfast: 32
 forecast_weights:
-  ewmac_8: 0.01470588
-  ewmac_16: 0.01470588
-  ewmac_32: 0.01470588
-  breakout_20: 0.01470588
-  breakout_40: 0.01470588
-  breakout_80: 0.01470588
-  breakout_160: 0.01470588
-  normmom_8: 0.01470588
-  normmom_16: 0.01470588
-  normmom_32: 0.01470588
-  accel_16: 0.01470588
-  accel_32: 0.01470588
-  accel_64: 0.01470588
-  assettrend_8: 0.01470588
-  assettrend_16: 0.01470588
-  assettrend_32: 0.01470588
-  assettrend_64: 0.01470588
-  relmomentum_20: 0.01470588
-  relmomentum_40: 0.01470588
-  residual_momentum_16: 0.01470588
-  residual_momentum_32: 0.01470588
-  residual_momentum_64: 0.01470588
-  gated_carry_10: 0.01470588
-  gated_carry_30: 0.01470588
-  gated_carry_60: 0.01470588
-  gated_carry_90: 0.01470588
-  gated_carry_180: 0.01470588
-  xs_carry: 0.01470588
-  xs_activity: 0.01470588
-  xs_val: 0.01470588
-  inter_sector: 0.01470588
-  skew_abs_90: 0.01470588
-  skew_abs_180: 0.01470588
-  skew_abs_365: 0.01470588
-  skew_rv_90: 0.01470588
-  skew_rv_180: 0.01470588
-  skew_rv_365: 0.01470588
-  demeaned_carry_10: 0.01470588
-  demeaned_carry_30: 0.01470588
-  demeaned_carry_60: 0.01470588
-  demeaned_carry_gated_10: 0.01470588
-  demeaned_carry_gated_30: 0.01470588
-  demeaned_carry_gated_60: 0.01470588
-  funding_mr: 0.01470588
-  funding_crowd_5: 0.01470588
-  funding_crowd_10: 0.01470588
-  lsr_divergence: 0.01470588
-  lsr_retail_crowding: 0.01470588
-  crowd_deleverage_trend: 0.01470588
-  demeaned_carry_hl_10: 0.01470588
-  demeaned_carry_hl_30: 0.01470588
-  demeaned_carry_hl_60: 0.01470588
-  round_number_break_10: 0.01470588
-  round_number_break_20: 0.01470588
-  round_number_break_40: 0.01470588
-  round_number_prox: 0.01470588
-  xs_oi_attention: 0.01470588
-  attn_exhaustion_fade: 0.01470588
-  attn_panic_rebound: 0.01470588
-  volume_price_divergence: 0.01470588
-  xs_low_vol_20: 0.01470588
-  xs_low_vol_60: 0.01470588
-  dxy_momentum_16: 0.01470588
-  us10y_momentum_16: 0.01470588
-  vol_zscore_ts: 0.01470588
-  oil_momentum_16: 0.01470588
-  cs_mr_125: 0.01470588
-  cs_mr_250: 0.01470588
+  ewmac_4: 0.00819672131147541
+  ewmac_8: 0.00819672131147541
+  ewmac_16: 0.00819672131147541
+  ewmac_32: 0.00819672131147541
+  ewmac_64: 0.00819672131147541
+  breakout_10: 0.00819672131147541
+  breakout_20: 0.00819672131147541
+  breakout_40: 0.00819672131147541
+  breakout_80: 0.00819672131147541
+  breakout_160: 0.00819672131147541
+  breakout_320: 0.00819672131147541
+  normmom_4: 0.00819672131147541
+  normmom_8: 0.00819672131147541
+  normmom_16: 0.00819672131147541
+  normmom_32: 0.00819672131147541
+  normmom_64: 0.00819672131147541
+  accel_16: 0.00819672131147541
+  accel_32: 0.00819672131147541
+  accel_64: 0.00819672131147541
+  assettrend_8: 0.00819672131147541
+  assettrend_16: 0.00819672131147541
+  assettrend_32: 0.00819672131147541
+  assettrend_64: 0.00819672131147541
+  relmomentum_10: 0.00819672131147541
+  relmomentum_20: 0.00819672131147541
+  relmomentum_40: 0.00819672131147541
+  relmomentum_80: 0.00819672131147541
+  cs_mr_125: 0.00819672131147541
+  cs_mr_250: 0.00819672131147541
+  btc_lead_lag_1: 0.00819672131147541
+  btc_lead_lag_2: 0.00819672131147541
+  funding_carry_10: 0.00819672131147541
+  funding_carry_30: 0.00819672131147541
+  funding_carry_60: 0.00819672131147541
+  funding_carry_125: 0.00819672131147541
+  relcarry_30: 0.00819672131147541
+  relcarry_60: 0.00819672131147541
+  relcarry_125: 0.00819672131147541
+  funding_mr: 0.00819672131147541
+  funding_crowd_5: 0.00819672131147541
+  funding_crowd_10: 0.00819672131147541
+  lsr_divergence: 0.00819672131147541
+  lsr_retail_crowding: 0.00819672131147541
+  crowd_deleverage_trend: 0.00819672131147541
+  streversal_1: 0.00819672131147541
+  streversal_2: 0.00819672131147541
+  streversal_3: 0.00819672131147541
+  return_skew_20: 0.00819672131147541
+  return_skew_60: 0.00819672131147541
+  mrinasset: 0.00819672131147541
+  illiquidity_20: 0.00819672131147541
+  illiquidity_60: 0.00819672131147541
+  residual_momentum_16: 0.00819672131147541
+  residual_momentum_32: 0.00819672131147541
+  residual_momentum_64: 0.00819672131147541
+  sector_momentum_10: 0.00819672131147541
+  sector_momentum_20: 0.00819672131147541
+  sector_momentum_40: 0.00819672131147541
+  xs_carry: 0.00819672131147541
+  xs_activity: 0.00819672131147541
+  xs_val: 0.00819672131147541
+  inter_sector: 0.00819672131147541
+  skew_abs_90: 0.00819672131147541
+  skew_abs_180: 0.00819672131147541
+  skew_abs_365: 0.00819672131147541
+  skew_rv_90: 0.00819672131147541
+  skew_rv_180: 0.00819672131147541
+  skew_rv_365: 0.00819672131147541
+  round_number_break_10: 0.00819672131147541
+  round_number_break_20: 0.00819672131147541
+  round_number_break_40: 0.00819672131147541
+  round_number_prox: 0.00819672131147541
+  xs_oi_attention: 0.00819672131147541
+  attn_exhaustion_fade: 0.00819672131147541
+  attn_panic_rebound: 0.00819672131147541
+  xs_volume_attention: 0.00819672131147541
+  volume_surge_momentum: 0.00819672131147541
+  volume_price_divergence: 0.00819672131147541
+  xs_low_vol_20: 0.00819672131147541
+  xs_low_vol_60: 0.00819672131147541
+  vol_regime_trend: 0.00819672131147541
+  macro_momentum_16: 0.00819672131147541
+  macro_momentum_32: 0.00819672131147541
+  dxy_momentum_16: 0.00819672131147541
+  spx_momentum_16: 0.00819672131147541
+  spx_momentum_32: 0.00819672131147541
+  us10y_momentum_16: 0.00819672131147541
+  funding_momentum_16: 0.00819672131147541
+  funding_momentum_32: 0.00819672131147541
+  xs_oi_trend: 0.00819672131147541
+  vol_trend_16: 0.00819672131147541
+  vol_zscore_ts: 0.00819672131147541
+  gold_momentum_16: 0.00819672131147541
+  vix_momentum_16: 0.00819672131147541
+  oil_momentum_16: 0.00819672131147541
+  btc_dom_rotation_16: 0.00819672131147541
+  btc_dom_rotation_32: 0.00819672131147541
+  btc_dom_level_120: 0.00819672131147541
+  gated_carry_10: 0.00819672131147541
+  gated_carry_30: 0.00819672131147541
+  gated_carry_60: 0.00819672131147541
+  gated_carry_90: 0.00819672131147541
+  gated_carry_180: 0.00819672131147541
+  demeaned_carry_10: 0.00819672131147541
+  demeaned_carry_30: 0.00819672131147541
+  demeaned_carry_60: 0.00819672131147541
+  demeaned_carry_gated_10: 0.00819672131147541
+  demeaned_carry_gated_30: 0.00819672131147541
+  demeaned_carry_gated_60: 0.00819672131147541
+  demeaned_carry_hl_10: 0.00819672131147541
+  demeaned_carry_hl_30: 0.00819672131147541
+  demeaned_carry_hl_60: 0.00819672131147541
+  vol_norm_carry_10: 0.00819672131147541
+  vol_norm_carry_30: 0.00819672131147541
+  vol_norm_carry_60: 0.00819672131147541
+  assettrend_2: 0.00819672131147541
+  assettrend_4: 0.00819672131147541
+  cs_mr_1000: 0.00819672131147541
+  mr_wings_4: 0.00819672131147541
+  basis_mr_5: 0.00819672131147541
+  btc_etf_flow_trend_20: 0.00819672131147541
+  stablecoin_supply_trend_32: 0.00819672131147541
 forecast_cap: 20.0
 use_gated_carry: true
 xsmom_long_only: false
@@ -972,3 +1073,4 @@ output:
 diagnostics:
   enabled: true
 lot_size_notional_override: 1.0
+forecast_post_ceiling_cost_SR: 0.13

@@ -475,6 +475,7 @@ def run_backtest(
     volume_data_path: str = None,
     capital_override: float = None,
     spread_multiplier: float = 1.0,
+    use_vol_attenuation: bool = False,
 ):
     """
     Run pysystemtrade backtest with parquet-backed data adapter.
@@ -507,6 +508,24 @@ def run_backtest(
     if capital_override is not None:
         config_dict['notional_trading_capital'] = capital_override
         logger.info(f"Capital override: notional_trading_capital set to ${capital_override:,.2f}")
+
+    # Vol attenuation: inject use_attenuation list if not already in config.
+    # Attenuate momentum/trend rules only — NOT carry, mean-reversion, or macro signals.
+    if use_vol_attenuation and 'use_attenuation' not in config_dict:
+        _ATTEN_RULES = [
+            'ewmac_8', 'ewmac_16', 'ewmac_32',
+            'breakout_20', 'breakout_40', 'breakout_80', 'breakout_160',
+            'normmom_8', 'normmom_16', 'normmom_32',
+            'accel_16', 'accel_32', 'accel_64',
+            'assettrend_8', 'assettrend_16', 'assettrend_32', 'assettrend_64',
+            'relmomentum_20', 'relmomentum_40',
+            'residual_momentum_16', 'residual_momentum_32', 'residual_momentum_64',
+            'round_number_break_10', 'round_number_break_20', 'round_number_break_40',
+        ]
+        # Only attenuate rules that are actually in the config's forecast_weights
+        active_rules = set(config_dict.get('forecast_weights', {}).keys())
+        config_dict['use_attenuation'] = [r for r in _ATTEN_RULES if r in active_rules]
+        logger.info(f"  Vol attenuation enabled for {len(config_dict['use_attenuation'])} rules")
 
     config = Config(config_dict)
 
@@ -642,6 +661,43 @@ def run_backtest(
         else _arg_not_supplied
     )
 
+    # Auto-discover stablecoin supply (DefiLlama, used by C2b stablecoin_supply_trend rule).
+    # Lives in repo data/ rather than next to the dataset since it's a single global series.
+    repo_root = Path(__file__).resolve().parent.parent
+    stablecoin_candidate = Path(data_path).parent / 'stablecoin_supply.parquet'
+    if not stablecoin_candidate.exists():
+        stablecoin_candidate = repo_root / 'data' / 'stablecoin_supply.parquet'
+    stablecoin_kwarg = (
+        str(stablecoin_candidate) if stablecoin_candidate.exists() else _arg_not_supplied
+    )
+    if stablecoin_kwarg is not _arg_not_supplied:
+        logger.info(f"Auto-discovered stablecoin supply: {stablecoin_candidate}")
+    else:
+        logger.info("stablecoin_supply.parquet not found — stablecoin_supply_trend rule will produce empty forecasts")
+
+    # Auto-discover ETF flows (used by C2a btc_etf_flow_trend rule).
+    etf_candidate = Path(data_path).parent / 'etf_flows.parquet'
+    if not etf_candidate.exists():
+        etf_candidate = repo_root / 'data' / 'etf_flows.parquet'
+    etf_kwarg = str(etf_candidate) if etf_candidate.exists() else _arg_not_supplied
+    if etf_kwarg is not _arg_not_supplied:
+        logger.info(f"Auto-discovered ETF flows: {etf_candidate}")
+    else:
+        logger.info("etf_flows.parquet not found — etf_flow_trend rule will produce empty forecasts")
+
+    # Auto-discover premium-index basis (used by C2c basis_mr rule).
+    # Live env writes to envs/<env>/data; research uses repo data/.
+    basis_candidate = Path(data_path).parent / 'binance_premium_index_processed.parquet'
+    if not basis_candidate.exists():
+        basis_candidate = repo_root / 'envs' / 'dev' / 'data' / 'binance_premium_index_processed.parquet'
+    if not basis_candidate.exists():
+        basis_candidate = repo_root / 'data' / 'binance_premium_index_processed.parquet'
+    basis_kwarg = str(basis_candidate) if basis_candidate.exists() else _arg_not_supplied
+    if basis_kwarg is not _arg_not_supplied:
+        logger.info(f"Auto-discovered premium-index basis: {basis_candidate}")
+    else:
+        logger.info("binance_premium_index_processed.parquet not found — basis_mr rule will produce empty forecasts")
+
     data = parquetCryptoPerpsSimData(
         dataset_path=data_path,
         config_path=config_path,
@@ -657,6 +713,9 @@ def run_backtest(
         market_cap_data_path=mcap_kwarg,
         hl_instruments_path=hl_kwarg,
         volume_data_path=volume_kwarg,
+        stablecoin_supply_path=stablecoin_kwarg,
+        etf_flows_path=etf_kwarg,
+        premium_index_path=basis_kwarg,
     )
 
     data._spread_multiplier = spread_multiplier
@@ -720,13 +779,20 @@ def run_backtest(
         combiner = ForecastCombine()
         logger.info("  Using standard forecast combination")
 
+    if use_vol_attenuation:
+        from systems.crypto_perps.vol_atten_forecast_scale_cap import volAttenForecastScaleCap
+        scale_cap_stage = volAttenForecastScaleCap()
+        logger.info("  Using vol-attenuation ForecastScaleCap")
+    else:
+        scale_cap_stage = ForecastScaleCap()
+
     system = System(
         stage_list=[
             Account(),
             portfolio_stage,
             PositionSizing(),
             combiner,
-            ForecastScaleCap(),
+            scale_cap_stage,
             Rules(),
             RawData(),
         ],
@@ -838,6 +904,13 @@ def run_backtest(
         # Collect key diagnostic series
         diagnostics_data = []
 
+        # IDM is portfolio-level (same for all instruments on a given date)
+        try:
+            _idm_raw = system.portfolio.get_instrument_diversification_multiplier()
+            _idm_arr = _idm_raw.reindex(portfolio_positions.index, method='ffill').values
+        except Exception:
+            _idm_arr = np.full(len(portfolio_positions.index), np.nan)
+
         for instrument in portfolio_positions.columns:
             # Positions
             position = portfolio_positions[instrument]
@@ -869,6 +942,7 @@ def run_backtest(
                 'combined_forecast': combined_forecast.reindex(portfolio_positions.index).values,
                 'instrument_weight': instrument_weight.reindex(portfolio_positions.index).values,
                 'fdm': fdm_values,
+                'idm': _idm_arr,
             })
 
             diagnostics_data.append(diag)
@@ -1032,6 +1106,14 @@ def main():
         help='Override notional_trading_capital with current account equity (USD). '
              'Use this in live advisory to ensure position sizing reflects actual balance.'
     )
+    parser.add_argument(
+        '--vol-atten',
+        action='store_true',
+        help='Enable volatility attenuation stage (volAttenForecastScaleCap). '
+             'Multiplies momentum/trend rule forecasts by a vol-regime multiplier '
+             '(0.5 to 2.0) based on where current vol sits in its 10-year history. '
+             'Requires use_attenuation list in config or uses default momentum rules.'
+    )
 
     args = parser.parse_args()
 
@@ -1043,6 +1125,29 @@ def main():
     if not args.data.exists():
         logger.error(f"Data file not found: {args.data}")
         sys.exit(1)
+
+    # Verify upstream dataset hash matches the manifest_chain entry written by
+    # run_live_advisory.py's dataset_build stage. Skip silently when the chain is
+    # missing — this script is also invoked directly for ad-hoc research backtests
+    # where there's no advisory chain to verify against.
+    try:
+        from sysdata.crypto.manifest_chain import (
+            CHAIN_FILENAME,
+            ManifestChainError,
+            verify_input_against_upstream,
+        )
+        chain_path_check = args.data.parent / CHAIN_FILENAME
+        if chain_path_check.exists():
+            verify_input_against_upstream(
+                chain_path_check,
+                upstream_stage="dataset_build",
+                output_name="dataset",
+                current_path=args.data,
+            )
+            logger.info(f"manifest_chain: dataset hash verified against {chain_path_check}")
+    except ManifestChainError as exc:
+        logger.error(f"manifest_chain verification failed: {exc}")
+        sys.exit(2)
 
     try:
         use_dynamic = not args.static_universe
@@ -1071,7 +1176,31 @@ def main():
             ),
             volume_data_path=str(args.volume_data) if args.volume_data else None,
             capital_override=args.capital,
+            use_vol_attenuation=args.vol_atten,
         )
+
+        # Append the backtest stage to the manifest chain (when one exists upstream).
+        if success:
+            try:
+                from sysdata.crypto.manifest_chain import CHAIN_FILENAME, append_stage
+                chain_path_post = args.data.parent / CHAIN_FILENAME
+                if chain_path_post.exists():
+                    backtest_outputs: dict[str, Path] = {
+                        "positions": args.outdir / "positions.csv",
+                        "diagnostics": args.outdir / "diagnostics.parquet",
+                        "metadata": args.outdir / "metadata.json",
+                    }
+                    append_stage(
+                        chain_path_post,
+                        stage="backtest",
+                        inputs={"dataset": args.data},
+                        outputs={
+                            name: p for name, p in backtest_outputs.items() if p.exists()
+                        },
+                        extra={"config": str(args.config)},
+                    )
+            except Exception as exc:  # never block the run on chain bookkeeping
+                logger.warning(f"manifest_chain: post-backtest record failed: {exc}")
 
         sys.exit(0 if success else 1)
 

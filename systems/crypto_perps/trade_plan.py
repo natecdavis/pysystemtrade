@@ -57,14 +57,40 @@ def load_actual_positions(
     if missing:
         raise ValueError(f"Missing required columns in actual positions: {missing}")
 
-    # Derive mark_price_usd from prices dict if not in CSV
+    # Derive mark_price_usd from prices dict if not in CSV. Leave NaN when missing
+    # so the orphan check below can fail closed; only zero-contract rows get a safe 0.0 fill.
     if "mark_price_usd" not in df.columns:
         if prices is None:
             raise ValueError(
                 "mark_price_usd column missing from positions CSV and no prices dict provided. "
                 "Either include the column or pass last_prices.json from the backtest."
             )
-        df["mark_price_usd"] = df["instrument"].map(prices).fillna(0.0)
+        df["mark_price_usd"] = df["instrument"].map(prices)
+
+    # Fail closed on non-zero contracts with no valid mark price. A delisted/migrated symbol
+    # silently zeroed out here would generate a zero-delta hard exit and the orphan position
+    # would never be flattened. Examples: HL's 1000PEPE → 1000000PEPE migration leaving a
+    # 1000PEPE position in current_positions.csv that's missing from last_prices.json.
+    nonzero_no_price = (df["contracts"] != 0) & (
+        df["mark_price_usd"].isna() | (df["mark_price_usd"] == 0)
+    )
+    if nonzero_no_price.any():
+        orphan_rows = df.loc[nonzero_no_price, ["instrument", "contracts"]]
+        orphans = [
+            f"{r['instrument']}={r['contracts']:+g} contracts"
+            for _, r in orphan_rows.iterrows()
+        ]
+        raise ValueError(
+            f"Cannot value {len(orphans)} actual position(s) with non-zero contracts and "
+            f"no valid mark price (likely delisted/migrated orphans): "
+            f"[{', '.join(orphans)}]. "
+            f"Resolve by adding mark_price_usd to {positions_path}, updating last_prices.json, "
+            f"or manually flattening these positions on Hyperliquid before regenerating "
+            f"the trade plan."
+        )
+
+    # Zero-contract rows with no price are harmless; backfill so notional math stays clean.
+    df["mark_price_usd"] = df["mark_price_usd"].fillna(0.0)
 
     # Recompute notional from contracts × mark_price (mark price drifts between fill and recording)
     df["notional_usd"] = df["contracts"] * df["mark_price_usd"]

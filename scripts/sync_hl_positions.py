@@ -151,13 +151,15 @@ def main() -> int:
     live_dir = env.resolve("live")
     live_dir.mkdir(parents=True, exist_ok=True)
 
+    from sysdata.crypto.atomic_io import atomic_write_csv, atomic_write_text
+
     out_path = live_dir / "current_positions.csv"
-    df.to_csv(out_path, index=False)
+    atomic_write_csv(df, out_path, index=False)
     print(f"\nWritten to {out_path}")
 
     if not args.no_equity:
         equity_path = live_dir / "current_equity.txt"
-        equity_path.write_text(f"{equity}\n")
+        atomic_write_text(equity_path, f"{equity}\n")
         print(f"Written to {equity_path}")
 
     return 0

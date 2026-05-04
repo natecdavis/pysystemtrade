@@ -889,6 +889,106 @@ def oil_momentum(
     return (raw * 10.0).reindex(price.index)  # not inverted: test natural polarity
 
 
+def basis_mr(
+    price: pd.Series,
+    premium_index: pd.Series,
+    lookback: int = 5,
+    threshold_bp: float = 50.0,
+) -> pd.Series:
+    """
+    Per-instrument basis mean-reversion: short when the 5-day rolling mean of the
+    premium-index basis exceeds +threshold_bp; long when it's below -threshold_bp.
+
+    Premium index = (mark_price - index_price) / index_price, EOD daily snapshot
+    from Binance Vision. Persistent basis indicates one-sided positioning that
+    funding payments will eventually unwind — fade the extreme.
+
+    Forecast magnitude scales linearly between threshold and 3×threshold, capped
+    at ±20. Inside the deadband (|basis_5d| < threshold_bp), forecast is zero.
+
+    Sign convention: positive basis (mark > spot, longs paying) → SHORT crypto.
+    Negative basis (mark < spot, shorts paying) → LONG.
+    """
+    if premium_index is None or len(premium_index.dropna()) < lookback * 2:
+        return pd.Series(dtype=float, index=price.index)
+
+    # Convert threshold_bp from basis points to fractional units
+    threshold = threshold_bp / 1e4  # 50 bp = 0.005
+
+    basis_smoothed = premium_index.rolling(lookback, min_periods=lookback).mean()
+
+    # Deadband + linear scaling. Forecast saturates (+/-20) at 3×threshold.
+    raw = -basis_smoothed  # invert: positive basis → short
+    abs_excess = (raw.abs() - threshold).clip(lower=0)
+    scaled = (abs_excess / (2 * threshold)).clip(upper=1) * 20.0
+    forecast = scaled * np.sign(raw)
+    return forecast.reindex(price.index)
+
+
+def btc_etf_flow_trend(
+    price: pd.Series,
+    btc_etf_signed_volume: pd.Series,
+    Lfast: int = 20,
+) -> pd.Series:
+    """
+    Portfolio-level institutional capital signal: EWMAC on BTC spot-ETF (IBIT) signed
+    daily dollar volume. Sign = sign(close − open) × |dollar_volume|.
+
+    Hypothesis: net institutional dollars flowing into the spot BTC ETF over the past
+    20-trading-day window predicts spot BTC and broader crypto price 1-3 weeks ahead.
+    Inflows = institutional accumulation = bullish; outflows = distribution = bearish.
+
+    Same forecast broadcast to every instrument (BTC ETF flows are a market-wide
+    leading signal, not BTC-specific). Pre-launch (before 2024-01-11) returns NaN —
+    the WF stitched OOS series ignores those windows automatically.
+    """
+    if len(btc_etf_signed_volume.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    # Use cumulative signed flow as the "price" series for EWMAC: when cumulative
+    # inflows are accelerating (fast EMA > slow EMA), forecast is positive.
+    cum = btc_etf_signed_volume.fillna(0).cumsum()
+    unit_vol = pd.Series(1.0, index=cum.index)
+    raw = ewmac(cum, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    # Robust normalization: divide by rolling std of raw to put on a stable scale.
+    roll_std = raw.rolling(Lslow * 2, min_periods=Lslow).std().clip(lower=1e-8)
+    scaled = (raw / roll_std).clip(-2.0, 2.0) * 10.0
+    return scaled.reindex(price.index)
+
+
+def stablecoin_supply_trend(
+    price: pd.Series,
+    stablecoin_supply: pd.Series,
+    Lfast: int = 32,
+) -> pd.Series:
+    """
+    Portfolio-level capital-flow signal: EWMAC on log(total USD-pegged stablecoin supply).
+
+    Hypothesis: aggregate stablecoin issuance is a leading indicator of capital entering
+    crypto. Issuance grows when investors are converting fiat into on-chain dollars to
+    deploy into spot/perps over the following days/weeks; supply contracts when capital
+    is exiting. Same forecast broadcast to every instrument — this is a regime signal,
+    not an instrument-specific one.
+
+    Sign committed a priori: rising supply → LONG crypto (positive forecast). The plan
+    text suggested "rising share = risk-off → short" but that interpretation applies to
+    stablecoin DOMINANCE (stables / total crypto), not absolute supply. We test the
+    absolute-supply hypothesis here; the WF harness adjudicates whether it survives.
+
+    Source: data/stablecoin_supply.parquet (DefiLlama aggregate, 2017-present).
+    """
+    if len(stablecoin_supply.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    # Log scale: stablecoin supply has grown ~3000x since 2018 ($100M → $300B), so
+    # absolute returns dominate the EWMAC at higher levels. Log returns normalize.
+    log_supply = np.log(stablecoin_supply.clip(lower=1.0))
+    cum = log_supply  # already a "cumulative" series
+    unit_vol = pd.Series(1.0, index=cum.index)
+    raw = ewmac(cum, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    return (raw * 10.0).reindex(price.index)  # not inverted: rising supply → long
+
+
 # ============================================================================
 # VOLATILITY TIME-SERIES SIGNALS (TS, price-based, full 319-instrument coverage)
 # ============================================================================

@@ -1,6 +1,27 @@
 # Current Work Context
 
-## Coverage-aware FDM dampening REJECTED (2026-05-01)
+## Current Baseline (2026-05-03, kitchen_sink + Carver cost filter)
+
+Live config migrated from manual flat-68 ablation to **all 122 rules at 1/122 weight + `forecast_post_ceiling_cost_SR=0.13`** in both `config/crypto_perps_full_rules.yaml` and `config/crypto_perps_1k.yaml`. Old configs preserved at `*_flat68.yaml.bak`.
+
+**Expected new profile (per `out/wf_rule_selection/flat_122_kitchen_sink_carver_filter/`):**
+- $10K full_rules (SB-corrected 2026-05-01): Sharpe=1.159, Calmar=1.461, CAGR=8.64%, MaxDD=-5.91%, Vol=7.39%
+- ~0.31 Sharpe / 1.06 Calmar gap to historical flat-68 (1.47 / 2.52 / -4.86%) is the accepted cost of dropping manual ablation in exchange for a simpler workflow.
+
+**Migration rationale (full context: `out/wf_rule_selection/REPORT.md`):**
+- 15 walk-forward selection schemes tested across 4 rounds. None of the WF-disciplined methods beat manual flat-68.
+- **The biggest single lever was the Carver cost filter itself**: enabling `forecast_post_ceiling_cost_SR=0.13` on kitchen_sink lifts Sharpe 0.89→1.16 — bigger than any selection scheme delta.
+- Best WF-disciplined method (kitchen_sink_carver_filter) is now the practical default. Per-rule ablation primitives stay in the codebase as research tools but no longer drive production rule curation.
+
+**Things that did NOT change:**
+- top_k=30, entry_buffer=2, exit_buffer=10 (validated by separate sweeps; pool-size-independent)
+- circuit breaker thresholds (kitchen_sink MaxDD -5.91% × 2.5× leverage = -14.8% live, well below current 25-28% CB)
+- capital, idm_cap, fee model, vol_days, exchange filter, leverage_multiple
+
+## Historical: Coverage-aware FDM dampening REJECTED (2026-05-01)
+
+> _Pre-migration result on flat-68. Mechanism remains valid; references to flat-68 are historical._
+
 
 **Tested `FDM_eff = FDM_base × (n_active_rules / n_total_rules)^α` for α ∈ {0, 0.5, 1.0}** on flat-68 SB-corrected, 1k config. Hypothesis was that the existing FDM treats sparsely-populated rule panels as fully populated, so explicit coverage-proportional dampening should help young-instrument forecasts. Result: dampening hurts on every metric except a marginal MaxDD improvement.
 

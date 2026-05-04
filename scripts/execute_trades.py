@@ -28,8 +28,14 @@ REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from sysdata.crypto.env_paths import LiveOpsEnvironment
+from systems.crypto_perps.reconciliation import (
+    format_reconciliation_summary,
+    reconcile_post_execution,
+    write_reconciliation_report,
+)
 
 SLIPPAGE = 0.005  # 0.5% slippage for market orders
+RECONCILIATION_TOLERANCE_USD = 10.0  # tracks min_notional_position in live config
 
 
 # ---------------------------------------------------------------------------
@@ -238,7 +244,46 @@ def main() -> int:
         sync_cmd += ["--env-root", str(args.env_root)]
     else:
         sync_cmd += ["--env", args.env]
-    subprocess.run(sync_cmd, cwd=str(REPO_ROOT))
+    sync_rc = subprocess.run(sync_cmd, cwd=str(REPO_ROOT)).returncode
+    if sync_rc != 0:
+        print(f"  WARNING: sync_hl_positions exited {sync_rc} — reconciliation skipped.")
+        return 0
+
+    # Post-execution reconciliation: did each submitted trade actually move the
+    # position to the planned target? A skipped/failed trade or partial fill will
+    # show up here so it can't silently distort the next day's plan.
+    skipped = sum(1 for r in results if isinstance(r, dict) and r.get("status") == "skipped")
+    errors = sum(1 for r in results if isinstance(r, dict) and "error" in r)
+    submitted = ok
+    execution_summary = {
+        "submitted": submitted,
+        "skipped": skipped,
+        "errors": errors,
+        "total_actionable": len(trades),
+    }
+
+    positions_after = env.env_root / "live" / "current_positions.csv"
+    if not positions_after.exists():
+        print(f"  WARNING: {positions_after} not found — reconciliation skipped.")
+        return 0
+
+    recon = reconcile_post_execution(
+        trade_plan_path=trade_plan_path,
+        positions_after_path=positions_after,
+        tolerance_usd=RECONCILIATION_TOLERANCE_USD,
+        execution_summary=execution_summary,
+    )
+    report_path = trade_plan_path.parent / f"reconciliation_{trade_plan_path.stem.replace('trade_plan_', '')}.json"
+    write_reconciliation_report(recon, report_path)
+
+    print()
+    print(format_reconciliation_summary(recon))
+    print(f"  Report: {report_path}")
+
+    if not recon.passed:
+        # Non-zero exit so the operator notices on review; the run is still salvageable
+        # — they can manually flatten orphans or rerun.
+        return 2
 
     return 0
 

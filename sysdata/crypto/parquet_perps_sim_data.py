@@ -96,6 +96,9 @@ class parquetCryptoPerpsSimData(simData):
         market_cap_data_path: str = arg_not_supplied,
         hl_instruments_path: str = arg_not_supplied,
         volume_data_path: str = arg_not_supplied,
+        stablecoin_supply_path: str = arg_not_supplied,
+        etf_flows_path: str = arg_not_supplied,
+        premium_index_path: str = arg_not_supplied,
         log=get_logger("parquetCryptoPerpsSimData"),
     ):
         super().__init__(log=log)
@@ -133,6 +136,43 @@ class parquetCryptoPerpsSimData(simData):
             self._macro_df = pd.read_parquet(macro_data_path)
             self.log.info(
                 f"Loaded macro factors from {macro_data_path}: {list(self._macro_df.columns)}"
+            )
+
+        # Load total stablecoin supply (DefiLlama) for the C2b stablecoin_supply_trend rule.
+        # Same series broadcast to every instrument — it's a portfolio-wide capital-flow signal.
+        self._stablecoin_supply_df: Optional[pd.DataFrame] = None
+        if stablecoin_supply_path is not arg_not_supplied:
+            self._stablecoin_supply_df = pd.read_parquet(stablecoin_supply_path)
+            self.log.info(
+                f"Loaded stablecoin supply from {stablecoin_supply_path}: "
+                f"{len(self._stablecoin_supply_df)} rows, "
+                f"latest=${self._stablecoin_supply_df['stablecoin_supply_usd'].iloc[-1]:,.0f}"
+            )
+
+        # Load BTC/ETH spot-ETF signed dollar volumes for the C2a etf_flow_trend rule.
+        # Pre-launch (before 2024-01-11 for BTC, 2024-07-23 for ETH) returns NaN.
+        self._etf_flows_df: Optional[pd.DataFrame] = None
+        if etf_flows_path is not arg_not_supplied:
+            self._etf_flows_df = pd.read_parquet(etf_flows_path)
+            self.log.info(
+                f"Loaded ETF flows from {etf_flows_path}: "
+                f"{len(self._etf_flows_df)} rows, columns={list(self._etf_flows_df.columns)}"
+            )
+
+        # Load Binance premium-index daily basis (per-instrument) for the C2c
+        # basis_mr rule. Parquet has columns: date, instrument (with _PERP), basis.
+        # Pivoted to wide form here so per-instrument lookups are cheap.
+        self._basis_df: Optional[pd.DataFrame] = None
+        if premium_index_path is not arg_not_supplied:
+            raw_basis = pd.read_parquet(premium_index_path)
+            raw_basis['date'] = pd.to_datetime(raw_basis['date']).dt.normalize()
+            self._basis_df = raw_basis.pivot_table(
+                index='date', columns='instrument', values='basis'
+            )
+            self.log.info(
+                f"Loaded premium-index basis from {premium_index_path}: "
+                f"{self._basis_df.shape[1]} instruments, "
+                f"{self._basis_df.index.min().date()} to {self._basis_df.index.max().date()}"
             )
 
         # Load OI data if path provided (used by Phase 2 OI/Volume overlay)
@@ -402,16 +442,20 @@ class parquetCryptoPerpsSimData(simData):
     ) -> fxPrices:
         """
         Create an FX price series of 1.0 from start_date to latest data date.
+
+        Uses pd.date_range (calendar days, freq='D') not pd.bdate_range (business
+        days). Crypto trades 7 days/week; bdate_range omits Saturdays and Sundays,
+        producing NaN FX rates on those dates when the price panel is reindexed,
+        which silently zeros out position sizes for those days.
         """
-        # Get date range from prices DataFrame
         if len(self._prices_df) == 0:
             end_date = datetime.datetime.now()
-            index = pd.bdate_range(start=start_date, end=end_date, freq="B")
+            index = pd.date_range(start=start_date, end=end_date, freq="D")
             return fxPrices(pd.Series(1.0, index=index))
 
         actual_start = max(start_date, self._prices_df.index.min()) if start_date else self._prices_df.index.min()
         actual_end = self._prices_df.index.max()
-        index = pd.bdate_range(start=actual_start, end=actual_end, freq="B")
+        index = pd.date_range(start=actual_start, end=actual_end, freq="D")
 
         fx_series = pd.Series(1.0, index=index)
         return fxPrices(fx_series)
@@ -1923,6 +1967,21 @@ class parquetCryptoPerpsSimData(simData):
         """
         return self._get_macro_column('us10y', instrument_code)
 
+    def get_us5y_yield(self, instrument_code: str) -> pd.Series:
+        """
+        US 5-year Treasury yield daily series (values in %). Acts as the 2Y proxy
+        for the C3 regime layer's yield-curve-slope macro state — yfinance has no
+        clean 2Y ticker, so 5Y (^FVX) is the nearest available substitute. The
+        slope sign(10Y − 5Y) captures the same recession/risk-on signal as the
+        canonical (10Y − 2Y), just with reduced sensitivity to short-rate moves.
+
+        Not consumed by any trading rule today — only by `RegimeState.classify()`.
+
+        Returns:
+            pd.Series with DatetimeIndex (empty if macro data not loaded).
+        """
+        return self._get_macro_column('us5y', instrument_code)
+
     def get_gold_price(self, instrument_code: str) -> pd.Series:
         """Gold futures (GC=F) daily close price series. instrument_code ignored."""
         return self._get_macro_column('gold', instrument_code)
@@ -1935,12 +1994,65 @@ class parquetCryptoPerpsSimData(simData):
         """WTI crude oil futures (CL=F) daily close price series. instrument_code ignored."""
         return self._get_macro_column('oil', instrument_code)
 
+    def get_stablecoin_supply(self, instrument_code: str) -> pd.Series:
+        """
+        Total USD-pegged stablecoin supply (DefiLlama aggregate). Same series broadcast
+        to every instrument — used by the C2b stablecoin_supply_trend rule as a leading
+        indicator of capital flowing into crypto.
+
+        Source: data/stablecoin_supply.parquet (built by download_stablecoin_supply.py).
+        Returns empty series if not loaded.
+        """
+        if self._stablecoin_supply_df is None:
+            self.log.warning(
+                "Stablecoin supply not loaded — set stablecoin_supply_path in constructor "
+                "or run download_stablecoin_supply.py"
+            )
+            return pd.Series(dtype=float)
+        return self._stablecoin_supply_df["stablecoin_supply_usd"].dropna()
+
+    def get_premium_index(self, instrument_code: str) -> pd.Series:
+        """
+        Daily perpetual basis (premium index close) for one instrument. Positive =
+        mark trades above spot; negative = mark below spot. Source: Binance Vision
+        premiumIndexKlines daily aggregate. Used by the C2c basis_mr rule.
+
+        Returns empty series if data not loaded or instrument not covered.
+        """
+        if self._basis_df is None:
+            self.log.warning(
+                "Premium-index basis not loaded — set premium_index_path in constructor "
+                "or run download_binance_premium_index.py + convert_premium_index_to_parquet.py"
+            )
+            return pd.Series(dtype=float)
+        if instrument_code not in self._basis_df.columns:
+            return pd.Series(dtype=float)
+        return self._basis_df[instrument_code].dropna()
+
+    def get_btc_etf_signed_volume(self, instrument_code: str) -> pd.Series:
+        """
+        BTC spot-ETF (IBIT) signed daily dollar volume. Same series broadcast to every
+        instrument — used by the C2a btc_etf_flow_trend rule as a proxy for institutional
+        capital deployment into crypto.
+
+        Source: data/etf_flows.parquet (built by download_etf_flows.py). Pre-launch
+        (before 2024-01-11) returns NaN, which the rule and the WF stitched OOS series
+        ignore automatically.
+        """
+        if self._etf_flows_df is None or "btc_etf_signed_volume" not in self._etf_flows_df.columns:
+            self.log.warning(
+                "ETF flows not loaded — set etf_flows_path in constructor or run "
+                "download_etf_flows.py"
+            )
+            return pd.Series(dtype=float)
+        return self._etf_flows_df["btc_etf_signed_volume"].dropna()
+
     def _get_macro_column(self, col: str, instrument_code: str) -> pd.Series:
         """
         Internal helper: return a single column from the macro factors DataFrame.
 
         Args:
-            col: Column name ('spx', 'dxy', or 'us10y').
+            col: Column name (e.g. 'spx', 'dxy', 'us10y', 'us5y', 'gold', 'vix', 'oil').
             instrument_code: Ignored (same data returned for all instruments).
 
         Returns:

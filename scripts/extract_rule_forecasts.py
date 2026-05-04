@@ -60,16 +60,80 @@ def build_system(config_path: str, data_path: str) -> System:
         cfg_dict = yaml.safe_load(f)
     config = Config(cfg_dict)
 
-    macro_path = Path("data/macro_factors.parquet")
-    macro_kwarg = str(macro_path) if macro_path.exists() else arg_not_supplied
+    repo_root = Path(__file__).resolve().parent.parent
 
-    sector_path = Path("data/sector_map.json")
-    sector_kwarg = str(sector_path) if sector_path.exists() else arg_not_supplied
+    def _resolve(*candidates: Path) -> str:
+        for p in candidates:
+            if p.exists():
+                return str(p)
+        return arg_not_supplied
+
+    data_dir = Path(data_path).parent
+
+    macro_kwarg = _resolve(
+        data_dir / "macro_factors.parquet",
+        repo_root / "data" / "macro_factors.parquet",
+    )
+    sector_kwarg = _resolve(
+        data_dir / "sector_map.json",
+        repo_root / "data" / "sector_map.json",
+    )
+    volume_kwarg = _resolve(
+        data_dir / "binance_volume_daily.parquet",
+        repo_root / "data" / "binance_volume_daily.parquet",
+    )
+    oi_kwarg = _resolve(
+        data_dir / "binance_oi_processed.parquet",
+        repo_root / "data" / "binance_oi_processed.parquet",
+    )
+    fg_kwarg = _resolve(
+        data_dir / "fg_index.parquet",
+        repo_root / "data" / "fg_index.parquet",
+    )
+    mvrv_kwarg = _resolve(
+        data_dir / "mvrv_index.parquet",
+        repo_root / "data" / "mvrv_index.parquet",
+    )
+    aa_kwarg = _resolve(
+        data_dir / "active_addresses.parquet",
+        repo_root / "data" / "active_addresses.parquet",
+    )
+    mcap_kwarg = _resolve(
+        data_dir / "market_cap.parquet",
+        repo_root / "data" / "market_cap.parquet",
+    )
+    hl_kwarg = _resolve(
+        data_dir / "hyperliquid_instruments.json",
+        repo_root / "data" / "hyperliquid_instruments.json",
+    )
+    stablecoin_kwarg = _resolve(
+        data_dir / "stablecoin_supply.parquet",
+        repo_root / "data" / "stablecoin_supply.parquet",
+    )
+    etf_kwarg = _resolve(
+        data_dir / "etf_flows.parquet",
+        repo_root / "data" / "etf_flows.parquet",
+    )
+    basis_kwarg = _resolve(
+        data_dir / "binance_premium_index_processed.parquet",
+        repo_root / "envs" / "dev" / "data" / "binance_premium_index_processed.parquet",
+        repo_root / "data" / "binance_premium_index_processed.parquet",
+    )
 
     data = parquetCryptoPerpsSimData(
         data_path,
         macro_data_path=macro_kwarg,
         sector_map_path=sector_kwarg,
+        volume_data_path=volume_kwarg,
+        oi_data_path=oi_kwarg,
+        fg_data_path=fg_kwarg,
+        mvrv_data_path=mvrv_kwarg,
+        active_addresses_data_path=aa_kwarg,
+        market_cap_data_path=mcap_kwarg,
+        hl_instruments_path=hl_kwarg,
+        stablecoin_supply_path=stablecoin_kwarg,
+        etf_flows_path=etf_kwarg,
+        premium_index_path=basis_kwarg,
     )
 
     return System(

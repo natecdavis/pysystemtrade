@@ -48,6 +48,44 @@ BTCUSDT_PERP,0.003
         with pytest.raises(ValueError, match="Missing required columns"):
             load_actual_positions(positions_csv)
 
+    def test_orphan_position_no_price_dict(self, tmp_path):
+        """Non-zero contracts with no price in the prices dict must fail closed."""
+        positions_csv = tmp_path / 'positions.csv'
+        positions_csv.write_text("""instrument,contracts,timestamp
+1000PEPE_PERP,150000,2026-01-28T00:00:00Z
+BTCUSDT_PERP,0.003,2026-01-28T00:00:00Z
+""")
+
+        prices = {"BTCUSDT_PERP": 45000.0}  # 1000PEPE missing — orphan from HL migration
+
+        with pytest.raises(ValueError, match="1000PEPE_PERP"):
+            load_actual_positions(positions_csv, prices=prices)
+
+    def test_orphan_position_zero_price_in_csv(self, tmp_path):
+        """Non-zero contracts with explicit zero/NaN price in CSV must fail closed."""
+        positions_csv = tmp_path / 'positions.csv'
+        positions_csv.write_text("""instrument,contracts,mark_price_usd,timestamp
+FAKE_PERP,10,0.0,2026-01-28T00:00:00Z
+""")
+
+        with pytest.raises(ValueError, match="FAKE_PERP"):
+            load_actual_positions(positions_csv)
+
+    def test_zero_contracts_orphan_is_safe(self, tmp_path):
+        """Zero-contract rows with no price should NOT fail — they're flat positions."""
+        positions_csv = tmp_path / 'positions.csv'
+        positions_csv.write_text("""instrument,contracts,timestamp
+DELISTED_PERP,0,2026-01-28T00:00:00Z
+BTCUSDT_PERP,0.003,2026-01-28T00:00:00Z
+""")
+
+        prices = {"BTCUSDT_PERP": 45000.0}  # DELISTED missing but contracts=0 so harmless
+
+        df = load_actual_positions(positions_csv, prices=prices)
+        assert df.loc['DELISTED_PERP', 'mark_price_usd'] == 0.0
+        assert df.loc['DELISTED_PERP', 'notional_usd'] == 0.0
+        assert df.loc['BTCUSDT_PERP', 'notional_usd'] == pytest.approx(0.003 * 45000.0)
+
 
 class TestCalculatePositionDeltas:
     """Test calculate_position_deltas function."""

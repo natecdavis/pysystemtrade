@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from sysdata.crypto.atomic_io import atomic_write_csv, atomic_write_json
+
 DEFAULTS = dict(max_daily_loss_pct=0.09, max_drawdown_pct=0.15)
 # Thresholds set 2026-04-25: notional_trading_capital=$10,000 (2.5× phantom leverage
 # on $4K actual equity) with min_notional_position=$10 (HL constraint).
@@ -114,8 +116,7 @@ class CircuitBreaker:
         df = pd.concat([df, new_row], ignore_index=True)
         df = df.sort_values("date")
 
-        self.equity_history_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(self.equity_history_path, index=False, float_format="%.2f")
+        atomic_write_csv(df, self.equity_history_path, index=False, float_format="%.2f")
 
     def reset(self) -> None:
         """Clear triggered state."""
@@ -164,6 +165,4 @@ class CircuitBreaker:
         else:
             state["triggered_at"] = None
             state["reason"] = None
-        self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.state_path, "w") as f:
-            json.dump(state, f, indent=2)
+        atomic_write_json(self.state_path, state, indent=2)

@@ -123,6 +123,7 @@ def existing_aux_args(config_path: Path, env_root: Path) -> list[str]:
         "active_addresses": "--active-addresses-data",
         "market_cap": "--market-cap-data",
         "hyperliquid_instruments": "--hl-instruments",
+        "binance_volume": "--volume-data",
     }
     args: list[str] = []
     for key, flag in arg_map.items():
@@ -817,6 +818,18 @@ Examples:
             raise FileNotFoundError(f"Dataset not created: {dataset_path}")
 
         logger.info(f"Dataset created: {dataset_path}")
+
+        # Stage 1: record the dataset hash. Subsequent stages (backtest, trade-plan)
+        # verify their inputs against this entry so a half-written or out-of-band-replaced
+        # dataset cannot silently feed downstream.
+        from sysdata.crypto.manifest_chain import CHAIN_FILENAME, append_stage
+        chain_path = output_dir / CHAIN_FILENAME
+        append_stage(
+            chain_path,
+            stage="dataset_build",
+            outputs={"dataset": dataset_path},
+            extra={"config": str(args.config)},
+        )
 
         # STEP 3: Run backtest
         backtest_dir = output_dir / "backtest_latest"

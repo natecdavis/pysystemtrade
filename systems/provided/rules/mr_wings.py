@@ -1,3 +1,4 @@
+from sysquant.estimators.vol import robust_vol_calc
 from systems.provided.rules.ewmac import ewmac
 
 
@@ -9,3 +10,8 @@ def mr_wings(price, vol, Lfast=4):
     mr_signal = -ewmac_signal
 
     return mr_signal
+
+
+def mr_wings_calc_vol(price, Lfast=4, vol_days=35):
+    vol = robust_vol_calc(price.diff(), vol_days)
+    return mr_wings(price, vol, Lfast=Lfast)

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-25T22:26:40.286045Z",
+  "generated_at": "2026-05-03T12:56:13.661897Z",
   "dataset_metadata": {
     "requested_start_date": "2023-01-01",
     "requested_end_date": "2023-12-31",
@@ -42,14 +42,14 @@
       "last_data_date": "2023-12-31",
       "data_days": 365,
       "status": "STALE",
-      "days_since_last": 815
+      "days_since_last": 854
     },
     "ETHUSDT_PERP": {
       "first_data_date": "2023-01-01",
       "last_data_date": "2023-12-31",
       "data_days": 365,
       "status": "STALE",
-      "days_since_last": 815
+      "days_since_last": 854
     }
   },
   "lifecycle_summary": {

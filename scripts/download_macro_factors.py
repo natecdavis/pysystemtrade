@@ -50,6 +50,10 @@ def download_macro_factors(
         "spx": "^GSPC",
         "dxy": "DX-Y.NYB",
         "us10y": "^TNX",
+        # us5y is fetched as a 2Y-yield proxy for the C3 regime layer
+        # (yield-curve slope = 10Y − 5Y instead of brief's 10Y − 2Y; yfinance
+        # exposes ^FVX/^TNX/^TYX but no clean 2Y, so 5Y is the nearest available).
+        "us5y": "^FVX",
         "gold": "GC=F",
         "vix": "^VIX",
         "oil": "CL=F",
@@ -129,7 +133,7 @@ def main():
 
     # Basic sanity checks
     assert len(df) > 1000, f"Expected >1000 rows, got {len(df)}"
-    assert set(df.columns) == {"spx", "dxy", "us10y", "gold", "vix", "oil"}, f"Unexpected columns: {df.columns.tolist()}"
+    assert set(df.columns) == {"spx", "dxy", "us10y", "us5y", "gold", "vix", "oil"}, f"Unexpected columns: {df.columns.tolist()}"
     assert df.isna().sum().sum() == 0, "Unexpected NaN values in output"
     print("\n✓ Sanity checks passed")
 
