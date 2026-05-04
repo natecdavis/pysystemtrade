@@ -117,7 +117,47 @@ class ForecastCombineGated(ForecastCombine):
         mapping_func, kwargs = self._get_forecast_mapping_function(instrument_code)
         final_forecast = mapping_func(final_multiplied, **kwargs)
 
+        # C4 multiplier hook: applied AFTER cap so the model's modulation rides
+        # on the same well-calibrated signal Carver's pipeline already produced.
+        # Re-bind cap defensively in case multiplier * forecast crosses ±20.
+        final_forecast = self._apply_walk_forward_multiplier(
+            instrument_code, final_forecast
+        )
+
         return final_forecast
+
+    @dont_cache
+    def _apply_walk_forward_multiplier(
+        self, instrument_code: str, forecast: pd.Series
+    ) -> pd.Series:
+        """C4 hook: multiply post-cap forecast by a per-(instrument, date)
+        multiplier loaded from `walk_forward_multiplier_panel_path`.
+
+        Identity (no-op) when:
+        - config key is absent (default), OR
+        - the instrument is not a column in the panel.
+
+        Multiplier is forward-filled across daily gaps in the panel index
+        (panels are dense daily but defensive). NaN cells map to 1.0
+        (identity) so a sparse panel cannot zero out the forecast silently.
+        """
+        mult_path = self.parent.config.get_element_or_default(
+            "walk_forward_multiplier_panel_path", None
+        )
+        if mult_path is None:
+            return forecast
+        if not hasattr(self, "_wf_multiplier_panel"):
+            self._wf_multiplier_panel = pd.read_parquet(mult_path)
+        panel = self._wf_multiplier_panel
+        if instrument_code not in panel.columns:
+            return forecast
+        mult = (
+            panel[instrument_code]
+            .reindex(forecast.index, method="ffill")
+            .fillna(1.0)
+        )
+        result = (forecast * mult).clip(lower=-20.0, upper=20.0)
+        return result
 
     def _get_xs_addr_growth_panel(
         self, lookback: int = 30, growth_window: int = 90
