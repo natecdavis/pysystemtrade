@@ -254,6 +254,157 @@ class TestWalkForwardLeakageGate:
             )
 
 
+class TestModelPersistence:
+    """save_fit / load_latest_fit roundtrip + schema validation + corruption
+    handling. These guard the live daily flow's incremental path — if any of
+    these break, multiplier values could silently drift over days.
+    """
+
+    def _train_tiny_model(self):
+        """Train a small XGB model on synthetic data; return (model, artifact, feature_cols)."""
+        from systems.crypto_perps.c4_xgboost_combiner import (
+            FitArtifact, _train_one_fit,
+        )
+        rng = np.random.default_rng(7)
+        n = 500
+        X = pd.DataFrame(
+            rng.normal(0, 1, (n, 3)),
+            columns=["f1", "f2", "f3"],
+            index=pd.RangeIndex(n),
+        )
+        y = pd.Series(rng.normal(0, 0.5, n), name="label")
+        model, artifact = _train_one_fit(X, y, pd.Timestamp("2024-06-01"))
+        return model, artifact, list(X.columns), X
+
+    def test_save_load_roundtrip_predictions_match(self, tmp_path):
+        from systems.crypto_perps.c4_xgboost_combiner import save_fit, load_latest_fit
+
+        model, artifact, cols, X = self._train_tiny_model()
+        save_fit(model, artifact, cols, tmp_path)
+        loaded_model, loaded_artifact, loaded_cols = load_latest_fit(tmp_path)
+
+        # Predictions must match bitwise
+        np.testing.assert_array_equal(loaded_model.predict(X), model.predict(X))
+        # Metadata round-tripped correctly
+        assert loaded_artifact.refit_date == artifact.refit_date
+        assert loaded_artifact.train_pred_iqr == artifact.train_pred_iqr
+        assert loaded_artifact.is_uninformative == artifact.is_uninformative
+        assert loaded_cols == cols
+
+    def test_load_fails_on_schema_mismatch(self, tmp_path):
+        from systems.crypto_perps.c4_xgboost_combiner import (
+            save_fit, load_latest_fit, FitNotPersistedError,
+        )
+
+        model, artifact, cols, _ = self._train_tiny_model()
+        save_fit(model, artifact, cols, tmp_path)
+
+        # Try to load with a different feature set
+        with pytest.raises(FitNotPersistedError, match="schema"):
+            load_latest_fit(tmp_path, expected_feature_cols=["f1", "f2", "DIFFERENT"])
+
+    def test_load_fails_on_missing_files(self, tmp_path):
+        from systems.crypto_perps.c4_xgboost_combiner import (
+            load_latest_fit, FitNotPersistedError,
+        )
+        with pytest.raises(FitNotPersistedError, match="No persisted fit"):
+            load_latest_fit(tmp_path)
+
+    def test_load_fails_on_corrupt_joblib(self, tmp_path):
+        from systems.crypto_perps.c4_xgboost_combiner import (
+            save_fit, load_latest_fit, FitNotPersistedError,
+        )
+        model, artifact, cols, _ = self._train_tiny_model()
+        save_fit(model, artifact, cols, tmp_path)
+        # Corrupt the model file
+        (tmp_path / "latest.joblib").write_bytes(b"not a valid joblib file")
+        with pytest.raises(FitNotPersistedError, match="joblib.load"):
+            load_latest_fit(tmp_path)
+
+    def test_load_fails_on_meta_schema_version_mismatch(self, tmp_path):
+        from systems.crypto_perps.c4_xgboost_combiner import (
+            save_fit, load_latest_fit, FitNotPersistedError,
+        )
+        import json as _json
+        model, artifact, cols, _ = self._train_tiny_model()
+        save_fit(model, artifact, cols, tmp_path)
+        # Bump schema_version in the meta to something we don't recognize
+        meta_path = tmp_path / "latest.meta.json"
+        meta = _json.loads(meta_path.read_text())
+        meta["schema_version"] = 999
+        meta_path.write_text(_json.dumps(meta))
+        with pytest.raises(FitNotPersistedError, match="schema_version"):
+            load_latest_fit(tmp_path)
+
+
+class TestPredictTodayOnly:
+    """The squash logic in predict_today_only must produce identical output
+    to predictions_to_multiplier_panel for the same inputs. Otherwise the
+    incremental path drifts from the from-scratch path.
+    """
+
+    def test_predict_today_matches_full_squash(self, tmp_path):
+        from systems.crypto_perps.c4_xgboost_combiner import (
+            FitArtifact, predict_today_only, predictions_to_multiplier_panel,
+        )
+        # Build a contrived predictor: y_hat values per instrument, sigma=0.5.
+        # Compare predict_today_only output to predictions_to_multiplier_panel
+        # output for the same y_hats squashed via the full pipeline.
+        instruments = ["BTC", "ETH", "SOL", "DOGE"]
+        y_hats = pd.Series([0.0, 0.5, -0.3, 1.2], index=instruments)
+
+        artifact = FitArtifact(
+            refit_date=pd.Timestamp("2024-06-01"),
+            n_train_rows=100, n_val_rows=25,
+            best_iteration=5, best_val_rmse=0.9,
+            feature_importance={}, train_pred_iqr=0.5,
+            is_uninformative=False,
+        )
+
+        # Stub model whose predict() just returns the y_hats
+        class _StubModel:
+            def predict(self, X):
+                return y_hats.loc[X.index].values
+
+        # X_today indexed by instrument (single date implicit)
+        X_today = pd.DataFrame(np.zeros((4, 3)), index=instruments, columns=["a", "b", "c"])
+        from_today = predict_today_only(_StubModel(), artifact, X_today)
+
+        # Compare to running predictions_to_multiplier_panel with the same y_hat
+        # values reshaped into the (date, instrument) MultiIndex form
+        idx = pd.MultiIndex.from_product(
+            [[pd.Timestamp("2024-06-01")], instruments],
+            names=["__date__", "__instrument__"],
+        )
+        preds_full = pd.Series(y_hats.values, index=idx, name="y_hat")
+        panel = predictions_to_multiplier_panel(preds_full, [artifact])
+        from_full = panel.iloc[0]
+        # Align index ordering
+        from_full = from_full.reindex(instruments)
+
+        np.testing.assert_array_almost_equal(from_today.values, from_full.values, decimal=12)
+
+    def test_predict_today_uninformative_returns_identity(self):
+        from systems.crypto_perps.c4_xgboost_combiner import FitArtifact, predict_today_only
+
+        artifact = FitArtifact(
+            refit_date=pd.Timestamp("2024-06-01"),
+            n_train_rows=100, n_val_rows=25,
+            best_iteration=0, best_val_rmse=1.0,
+            feature_importance={}, train_pred_iqr=0.5,
+            is_uninformative=True,  # <-- key flag
+        )
+
+        class _StubModel:
+            def predict(self, X):
+                return np.array([5.0, -10.0, 100.0])
+
+        X = pd.DataFrame(np.zeros((3, 2)), index=["A", "B", "C"], columns=["a", "b"])
+        out = predict_today_only(_StubModel(), artifact, X)
+        # All multipliers must be exactly 1.0 regardless of prediction values
+        assert (out == 1.0).all()
+
+
 class TestParamPlumbing:
     """Sanity checks that the random_state and freeze_training_after parameters
     threaded into fit_predict_walk_forward actually take effect.

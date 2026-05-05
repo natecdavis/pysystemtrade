@@ -36,6 +36,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -48,16 +50,22 @@ sys.path.insert(0, str(REPO_ROOT))
 from systems.crypto_perps.c4_xgboost_combiner import (  # noqa: E402
     XGB_PARAMS,
     EARLY_STOPPING_ROUNDS,
+    FitArtifact,
+    FitNotPersistedError,
+    _train_one_fit,
     aggregate_feature_importance,
     build_feature_panel,
     fit_predict_walk_forward,
     load_baseline_daily_returns,
     load_baseline_diagnostics,
+    load_latest_fit,
     load_macro_factors,
     load_returns_panel,
     load_rule_forecast_panel,
     multiplier_distribution_stats,
+    predict_today_only,
     predictions_to_multiplier_panel,
+    save_fit,
     uniform_multiplier_panel,
 )
 
@@ -162,6 +170,164 @@ def _write_training_report(
     (out_dir / "training_report.md").write_text("\n".join(lines))
 
 
+def _run_incremental(
+    args, panels_dir, baseline_dir, macro_path, stable_path,
+    live_panel_path, model_store_dir,
+) -> int:
+    """Incremental path: load persisted latest fit, predict only today's row,
+    append to the existing live multiplier panel.
+
+    Falls back to full rebuild (returns -1) if:
+      - the live multiplier panel doesn't exist (first-time bootstrap)
+      - load_latest_fit raises FitNotPersistedError (no persisted fit, corrupt
+        file, schema mismatch)
+      - month boundary requires a fresh fit (we DO train inline in this case
+        rather than fall back)
+
+    The full-rebuild fallback path is the existing main() body — caller
+    handles the -1 return code by re-running with args.incremental=False.
+    """
+    print("=== build_c4_multiplier_panel (INCREMENTAL) ===")
+    print(f"Horizon:      {args.horizon}d")
+    print(f"Live panel:   {live_panel_path}")
+    print(f"Model store:  {model_store_dir}")
+    print()
+
+    t0 = time.time()
+
+    # Live panel must exist for incremental
+    if not live_panel_path.exists():
+        print(f"[FALLBACK] Live multiplier panel missing at {live_panel_path}.")
+        print("  Falling back to full rebuild (will create the panel + save latest fit).")
+        return -1
+
+    print("Loading existing live panel ...")
+    live_panel = pd.read_parquet(live_panel_path)
+    print(f"  shape: {live_panel.shape}, dates {live_panel.index.min().date()} → {live_panel.index.max().date()}")
+
+    # Load all inputs (the rolling features need full history)
+    print("Loading inputs ...")
+    forecasts = load_rule_forecast_panel(panels_dir)
+    returns = load_returns_panel(panels_dir)
+    diag = load_baseline_diagnostics(baseline_dir)
+    base_returns = load_baseline_daily_returns(baseline_dir)
+    macro = load_macro_factors(macro_path)
+    stable = _load_stablecoin_supply(stable_path)
+
+    today = forecasts.index.max()
+    print(f"Today (= forecast panel last date): {today.date()}")
+
+    # Try to load the persisted latest fit
+    instruments = sorted(
+        set(forecasts.columns.get_level_values("instrument"))
+        & set(returns.columns)
+        & set(diag["instrument"].unique())
+    )
+    if args.max_instruments:
+        instruments = instruments[: args.max_instruments]
+    print(f"Instrument set: {len(instruments)}")
+
+    # Build feature panel ONLY for today (rolling features still use full history)
+    print(f"\nBuilding feature panel for today only ({today.date()}) ...")
+    today_idx = pd.DatetimeIndex([today])
+    bundle = build_feature_panel(
+        forecasts=forecasts,
+        returns=returns,
+        baseline_diagnostics=diag,
+        baseline_daily_returns=base_returns,
+        macro=macro,
+        stablecoin_supply=stable,
+        horizon_days=args.horizon,
+        instruments=instruments,
+        only_dates=today_idx,
+    )
+    feature_cols = bundle.feature_cols
+    print(f"  Today's rows: {len(bundle.df)} (feature_cols={len(feature_cols)})")
+
+    # Try to load the persisted fit. If schema mismatch or missing → full rebuild.
+    try:
+        model, artifact, persisted_cols = load_latest_fit(
+            model_store_dir, expected_feature_cols=feature_cols
+        )
+        print(f"Loaded persisted fit: refit_date={artifact.refit_date.date()}, "
+              f"sigma={artifact.train_pred_iqr:.4f}, is_uninformative={artifact.is_uninformative}")
+    except FitNotPersistedError as exc:
+        print(f"[FALLBACK] {exc}")
+        print("  Falling back to full rebuild.")
+        return -1
+
+    # Month-boundary check: does today's expected refit match what's persisted?
+    today_expected_refit = pd.Timestamp(today).to_period("M").start_time
+    if artifact.refit_date < today_expected_refit:
+        print(f"\nMonth boundary: persisted fit is for {artifact.refit_date.date()}, "
+              f"today's expected refit is {today_expected_refit.date()}.")
+        print("  Training a new fit for this month ...")
+        # Build full-history training panel (just for fitting)
+        train_bundle = build_feature_panel(
+            forecasts=forecasts, returns=returns,
+            baseline_diagnostics=diag, baseline_daily_returns=base_returns,
+            macro=macro, stablecoin_supply=stable,
+            horizon_days=args.horizon, instruments=instruments,
+        )
+        train_df = train_bundle.df.dropna(subset=[train_bundle.label_col]).copy()
+        cutoff_feature_date = today_expected_refit - pd.Timedelta(days=1 + args.horizon)
+        train_mask = train_df.index.get_level_values(0) <= cutoff_feature_date
+        if train_mask.sum() < args.min_train_rows:
+            print(f"  Not enough training rows ({train_mask.sum()} < {args.min_train_rows}). "
+                  f"Falling back to full rebuild.")
+            return -1
+        X_train = train_df.loc[train_mask, feature_cols]
+        y_train = train_df.loc[train_mask, train_bundle.label_col]
+        model, artifact = _train_one_fit(
+            X_train, y_train, today_expected_refit, random_state=args.random_state
+        )
+        save_fit(model, artifact, feature_cols, model_store_dir)
+        print(f"  Saved new fit: best_iter={artifact.best_iteration}, "
+              f"sigma={artifact.train_pred_iqr:.4f}, is_uninformative={artifact.is_uninformative}")
+    elif artifact.refit_date > today_expected_refit:
+        print(f"[FALLBACK] Persisted fit's refit_date ({artifact.refit_date.date()}) is in the FUTURE "
+              f"vs today's expected ({today_expected_refit.date()}). Suspicious — full rebuild.")
+        return -1
+    else:
+        # Stale-model defensive log
+        age_days = (today - artifact.refit_date).days
+        if age_days > 35:
+            print(f"WARNING: persisted fit is {age_days} days old (refit_date={artifact.refit_date.date()}). "
+                  f"Month-boundary detection should have caught this.")
+
+    # Today's features → today's multiplier
+    print(f"\nApplying model to today's features ...")
+    X_today = bundle.df[feature_cols]
+    # Set index to instrument-only for the predict call
+    X_today_by_instr = X_today.copy()
+    X_today_by_instr.index = X_today_by_instr.index.get_level_values("__instrument__")
+    today_multipliers = predict_today_only(model, artifact, X_today_by_instr)
+    print(f"  N={len(today_multipliers)}, mean={today_multipliers.mean():.4f}, "
+          f"std={today_multipliers.std():.4f}, "
+          f"frac_at_floor={(today_multipliers <= 0.501).mean():.2%}, "
+          f"frac_at_ceiling={(today_multipliers >= 1.499).mean():.2%}")
+
+    # Append today's row to the live panel (idempotent: drop any existing today row)
+    print(f"\nAppending today's row to live panel ...")
+    today_row = today_multipliers.to_frame().T
+    today_row.index = pd.DatetimeIndex([today])
+    today_row.index.name = live_panel.index.name
+    # Reindex to match panel's columns (panel may have instruments not predicted today)
+    today_row = today_row.reindex(columns=live_panel.columns)
+    new_panel = pd.concat([live_panel.loc[live_panel.index < today], today_row]).sort_index()
+    new_panel = new_panel[~new_panel.index.duplicated(keep="last")]
+
+    # Atomic write
+    tmp_path = live_panel_path.with_suffix(".parquet.tmp")
+    new_panel.to_parquet(tmp_path)
+    os.replace(tmp_path, live_panel_path)
+    print(f"  Wrote {live_panel_path} (shape={new_panel.shape}, last date={new_panel.index.max().date()})")
+
+    elapsed = time.time() - t0
+    print(f"\nDone in {elapsed:.1f}s.")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build C4 XGBoost multiplier panel")
     parser.add_argument("--horizon", type=int, default=5, choices=[5, 20], help="Label horizon (days).")
@@ -223,6 +389,29 @@ def main() -> int:
         "predictions thereafter use the frozen final model. Used by the no-continued-"
         "adaptation stress test.",
     )
+    parser.add_argument(
+        "--incremental",
+        action="store_true",
+        help="Incremental mode: load the persisted latest fit (data/c4_models/h20/), "
+        "predict only today's row, append to the existing multiplier panel. ~5-15s "
+        "instead of ~100s. Falls back to full rebuild if no persisted fit, schema "
+        "mismatch, or month boundary crossed (in which case it trains a new fit and "
+        "persists it). Default off.",
+    )
+    parser.add_argument(
+        "--live-panel-path",
+        type=str,
+        default="data/c4_multiplier_panel_h20.parquet",
+        help="Path to the live-consumed multiplier panel. Read for --incremental, "
+        "written by the full-rebuild promotion at the end of run.",
+    )
+    parser.add_argument(
+        "--model-store-dir",
+        type=str,
+        default="data/c4_models/h20",
+        help="Directory where the persisted latest fit (latest.joblib + .meta.json) "
+        "lives. Created on full rebuild; loaded by --incremental.",
+    )
     args = parser.parse_args()
     freeze_after = (
         pd.Timestamp(args.freeze_training_after)
@@ -233,6 +422,10 @@ def main() -> int:
     baseline_dir = REPO_ROOT / args.baseline_dir
     macro_path = REPO_ROOT / args.macro_data
     stable_path = REPO_ROOT / args.stablecoin_data
+    live_panel_path = (Path(args.live_panel_path) if Path(args.live_panel_path).is_absolute()
+                       else REPO_ROOT / args.live_panel_path)
+    model_store_dir = (Path(args.model_store_dir) if Path(args.model_store_dir).is_absolute()
+                       else REPO_ROOT / args.model_store_dir)
 
     suffix = "_self_replication" if args.uniform_multipliers else ""
     out_dir = (
@@ -241,6 +434,17 @@ def main() -> int:
         else REPO_ROOT / f"out/wf_c4_xgboost_h{args.horizon}{suffix}"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # ---------- Incremental mode: try fast path, fall through on failure ----------
+    if args.incremental and not args.uniform_multipliers:
+        rc = _run_incremental(
+            args, panels_dir, baseline_dir, macro_path, stable_path,
+            live_panel_path, model_store_dir,
+        )
+        if rc == 0:
+            return 0
+        # rc == -1 → fall through to full rebuild
+        print("\n--- Falling through to full rebuild ---\n")
 
     print(f"=== build_c4_multiplier_panel ===")
     print(f"Horizon:      {args.horizon}d")
@@ -377,6 +581,38 @@ def main() -> int:
         elapsed_s=elapsed,
     )
     print(f"Wrote {out_dir / 'training_report.md'}")
+
+    # Save the most-recent fit to the model store so future --incremental
+    # runs can use it. Skip for uniform mode (fake artifact, not a real model).
+    if not args.uniform_multipliers and artifacts:
+        # The most-recent (last in the list) artifact corresponds to the
+        # final monthly model. We need to retrain it briefly to grab the
+        # actual model object — fit_predict_walk_forward currently doesn't
+        # return models alongside artifacts. For now, retrain just the last
+        # month's fit on the same training data and save that.
+        print(f"\nRe-fitting latest month and persisting to {model_store_dir}/ ...")
+        latest_artifact = artifacts[-1]
+        cutoff_fd = latest_artifact.refit_date - pd.Timedelta(days=1 + args.horizon)
+        train_df = bundle.df.dropna(subset=[bundle.label_col]).copy()
+        mask = train_df.index.get_level_values(0) <= cutoff_fd
+        X_tr = train_df.loc[mask, bundle.feature_cols]
+        y_tr = train_df.loc[mask, bundle.label_col]
+        latest_model, latest_artifact_refit = _train_one_fit(
+            X_tr, y_tr, latest_artifact.refit_date, random_state=args.random_state
+        )
+        save_fit(latest_model, latest_artifact_refit, bundle.feature_cols, model_store_dir)
+        print(f"  Persisted {model_store_dir}/latest.joblib (refit_date={latest_artifact_refit.refit_date.date()})")
+
+    # Promote built panel to the live path (atomic).
+    if not args.uniform_multipliers:
+        built_panel = out_dir / "multiplier_panel.parquet"
+        if built_panel.exists() and built_panel != live_panel_path:
+            tmp = live_panel_path.with_suffix(".parquet.tmp")
+            live_panel_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(built_panel, tmp)
+            os.replace(tmp, live_panel_path)
+            print(f"Promoted to live: {live_panel_path}")
+
     print(f"\nDone in {elapsed:.0f}s.")
     return 0
 

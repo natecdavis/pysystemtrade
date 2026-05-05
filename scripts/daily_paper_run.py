@@ -961,27 +961,31 @@ def main() -> int:
     elif c4_forecast_rc != 0:
         log_lines.append("  Skipped (forecast panel rebuild failed; existing multiplier panel preserved).")
     else:
+        # Manual flow uses --incremental: load persisted latest fit, predict
+        # only today's row, append to live panel. ~5-15s instead of ~100s.
+        # Falls through to full rebuild on schema mismatch / missing model /
+        # month boundary (in which case it trains the new month's fit inline
+        # and persists it).
         cmd = [
             sys.executable, "scripts/build_c4_multiplier_panel.py",
             "--horizon", "20",
             "--out-dir", str(c4_build_outdir),
+            "--incremental",
+            "--live-panel-path", str(multiplier_panel_path),
         ]
         rc, _ = run_subprocess(cmd, log_lines)
         if rc != 0:
             log_lines.append(f"  WARNING: multiplier panel build failed (exit {rc})")
             warnings.append("C4 multiplier panel build failed")
         else:
-            # Promote the build output to the live path (atomic via shutil.copy
-            # + os.replace would be cleaner; keep simple for now).
-            built = c4_build_outdir / "multiplier_panel.parquet"
-            if built.exists():
-                tmp = multiplier_panel_path.with_suffix(".parquet.tmp")
-                shutil.copyfile(built, tmp)
-                os.replace(tmp, multiplier_panel_path)
-                log_lines.append(f"  Promoted to live: {multiplier_panel_path}")
+            # In incremental mode the script writes directly to the live path.
+            # In a fall-through full rebuild, it also promotes to live at the
+            # end. Either way, the live path should be fresh now.
+            if multiplier_panel_path.exists():
+                log_lines.append(f"  Live panel updated: {multiplier_panel_path}")
             else:
-                log_lines.append(f"  WARNING: build script reported success but {built} missing.")
-                warnings.append("C4 multiplier panel: built file missing")
+                log_lines.append(f"  WARNING: live panel missing at {multiplier_panel_path}.")
+                warnings.append("C4 multiplier panel: live file missing after build")
 
     # -----------------------------------------------------------------------
     # Step 4: Doctor preflight

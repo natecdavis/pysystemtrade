@@ -30,7 +30,10 @@ problem to solve, on top of that linear baseline.
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -41,6 +44,18 @@ import pandas as pd
 def _import_xgb():
     import xgboost as xgb
     return xgb
+
+
+def _import_joblib():
+    import joblib
+    return joblib
+
+
+class FitNotPersistedError(Exception):
+    """Raised by load_latest_fit when no usable persisted fit is on disk
+    (file missing, corrupt, or feature schema mismatched). Callers handle this
+    by falling back to a full from-scratch rebuild.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -333,12 +348,18 @@ def build_feature_panel(
     stablecoin_supply: Optional[pd.Series],
     horizon_days: int,
     instruments: Optional[Iterable[str]] = None,
+    only_dates: Optional[pd.DatetimeIndex] = None,
 ) -> FeatureBundle:
     """Assemble the long-form (date, instrument) -> features+label panel.
 
     Strict no-look-ahead: every feature at date t uses only data <= t. The
     label uses returns in [t+1, t+horizon_days] and the vol normalizer uses
     instrument vol at date t.
+
+    `only_dates`: if set, the returned bundle is restricted to those dates
+    (rolling-feature lookbacks still see the full history; we just emit
+    fewer rows). Used by incremental inference for today-only feature
+    construction.
     """
     if instruments is None:
         instruments = sorted(set(forecasts.columns.get_level_values("instrument")) & set(returns.columns))
@@ -420,6 +441,14 @@ def build_feature_panel(
         block["__label__"] = label
         block["__instrument__"] = instr
         block["__date__"] = block.index
+        # If a date filter was passed, drop rows outside it BEFORE the concat
+        # to keep memory low for the incremental path. Rolling features have
+        # already been computed against the full history above.
+        if only_dates is not None:
+            mask = block["__date__"].isin(only_dates)
+            block = block.loc[mask]
+            if block.empty:
+                continue
         rows.append(block.reset_index(drop=True))
 
     if not rows:
@@ -460,6 +489,164 @@ class FitArtifact:
     feature_importance: dict[str, float]  # gain-weighted, normalized to sum=1
     train_pred_iqr: float  # IQR of training-time predictions, used as tanh sigma
     is_uninformative: bool = False  # True iff best_iter==0 (model is bias-only)
+
+
+# ---------------------------------------------------------------------------
+# Persistence: save / load the latest monthly fit so the daily flow doesn't
+# have to retrain all 65 monthly models from scratch each run.
+#
+# Storage layout:
+#   {dir}/latest.joblib       — XGBRegressor pickled via joblib
+#   {dir}/latest.meta.json    — sigma, is_uninformative, refit_date,
+#                                feature_cols (for schema validation), and
+#                                an audit-trail subset of the FitArtifact
+#
+# Atomic write: tmp + os.replace, same pattern as parquet writes elsewhere.
+# Schema validation on load: feature_cols must match exactly. Mismatch
+# raises FitNotPersistedError; callers fall back to full rebuild.
+# ---------------------------------------------------------------------------
+
+_META_SCHEMA_VERSION = 1
+
+
+def save_fit(
+    model,
+    artifact: FitArtifact,
+    feature_cols: list[str],
+    out_dir: Path,
+) -> None:
+    """Persist a single fit (the most-recent monthly refit) to disk."""
+    joblib = _import_joblib()
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    model_path = out_dir / "latest.joblib"
+    meta_path = out_dir / "latest.meta.json"
+
+    # Atomic model write
+    tmp_model = model_path.with_suffix(".joblib.tmp")
+    joblib.dump(model, tmp_model)
+    os.replace(tmp_model, model_path)
+
+    meta = {
+        "schema_version": _META_SCHEMA_VERSION,
+        "refit_date": artifact.refit_date.isoformat(),
+        "train_pred_iqr": artifact.train_pred_iqr,
+        "is_uninformative": artifact.is_uninformative,
+        "best_iteration": artifact.best_iteration,
+        "best_val_rmse": artifact.best_val_rmse,
+        "n_train_rows": artifact.n_train_rows,
+        "n_val_rows": artifact.n_val_rows,
+        "feature_cols": list(feature_cols),
+        "xgb_params": dict(XGB_PARAMS),
+        "created_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    tmp_meta = meta_path.with_suffix(".meta.json.tmp")
+    tmp_meta.write_text(json.dumps(meta, indent=2))
+    os.replace(tmp_meta, meta_path)
+
+
+def load_latest_fit(
+    in_dir: Path,
+    expected_feature_cols: Optional[list[str]] = None,
+) -> tuple[object, FitArtifact, list[str]]:
+    """Load the latest persisted fit. Returns (model, artifact, feature_cols).
+
+    Raises FitNotPersistedError if:
+      - either of latest.joblib / latest.meta.json is missing
+      - the meta JSON is malformed or missing required keys
+      - joblib.load fails (corrupt model file)
+      - expected_feature_cols is provided and doesn't match the persisted set
+
+    Callers should treat this as a clean signal to fall back to a full
+    rebuild — never silently use a stale or wrong model.
+    """
+    joblib = _import_joblib()
+    in_dir = Path(in_dir)
+    model_path = in_dir / "latest.joblib"
+    meta_path = in_dir / "latest.meta.json"
+
+    if not model_path.exists() or not meta_path.exists():
+        raise FitNotPersistedError(
+            f"No persisted fit at {in_dir} (model exists={model_path.exists()}, "
+            f"meta exists={meta_path.exists()})"
+        )
+
+    try:
+        meta = json.loads(meta_path.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        raise FitNotPersistedError(f"Cannot read meta {meta_path}: {exc}") from exc
+
+    required_keys = {
+        "schema_version", "refit_date", "train_pred_iqr",
+        "is_uninformative", "feature_cols",
+    }
+    missing = required_keys - meta.keys()
+    if missing:
+        raise FitNotPersistedError(
+            f"Meta {meta_path} missing required keys: {sorted(missing)}"
+        )
+    if meta["schema_version"] != _META_SCHEMA_VERSION:
+        raise FitNotPersistedError(
+            f"Meta {meta_path} has schema_version={meta['schema_version']}, "
+            f"expected {_META_SCHEMA_VERSION}"
+        )
+
+    persisted_feature_cols = list(meta["feature_cols"])
+    if expected_feature_cols is not None and persisted_feature_cols != list(expected_feature_cols):
+        raise FitNotPersistedError(
+            f"Persisted fit's feature schema does not match expected. "
+            f"Persisted has {len(persisted_feature_cols)} features; "
+            f"expected has {len(expected_feature_cols)}. "
+            f"First mismatch: persisted={persisted_feature_cols[:3]}, "
+            f"expected={list(expected_feature_cols)[:3]}"
+        )
+
+    try:
+        model = joblib.load(model_path)
+    except Exception as exc:
+        raise FitNotPersistedError(
+            f"joblib.load({model_path}) failed: {exc}"
+        ) from exc
+
+    artifact = FitArtifact(
+        refit_date=pd.Timestamp(meta["refit_date"]),
+        n_train_rows=int(meta.get("n_train_rows", 0)),
+        n_val_rows=int(meta.get("n_val_rows", 0)),
+        best_iteration=int(meta.get("best_iteration", 0)),
+        best_val_rmse=float(meta.get("best_val_rmse", float("nan"))),
+        feature_importance={},  # not persisted; reconstructable from model.feature_importances_
+        train_pred_iqr=float(meta["train_pred_iqr"]),
+        is_uninformative=bool(meta["is_uninformative"]),
+    )
+    return model, artifact, persisted_feature_cols
+
+
+def predict_today_only(
+    model,
+    artifact: FitArtifact,
+    X_today: pd.DataFrame,
+) -> pd.Series:
+    """Apply a single fit to today's feature rows and produce per-instrument
+    multipliers using the same squash logic as predictions_to_multiplier_panel.
+
+    `X_today` must be indexed by instrument (no date level — one row per
+    instrument), with columns matching the fit's training feature_cols.
+
+    Returns a Series indexed by instrument → multiplier in [0.5, 1.5].
+
+    The squash here mirrors `predictions_to_multiplier_panel` byte-for-byte
+    so today's row is identical to what the from-scratch path would produce.
+    """
+    if artifact.is_uninformative:
+        # Bias-only model — emit identity, do not modulate.
+        return pd.Series(1.0, index=X_today.index, name="multiplier")
+
+    y_hat = np.asarray(model.predict(X_today))
+    sigma = max(artifact.train_pred_iqr, TANH_SIGMA_MIN)
+    multiplier = 1.0 + 0.5 * np.tanh(y_hat / sigma)
+    multiplier = np.clip(multiplier, MULT_FLOOR, MULT_CEILING)
+    return pd.Series(multiplier, index=X_today.index, name="multiplier")
 
 
 def _label_end_date(feature_date: pd.Timestamp, horizon_days: int) -> pd.Timestamp:
