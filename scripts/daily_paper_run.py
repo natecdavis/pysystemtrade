@@ -952,6 +952,12 @@ def main() -> int:
     log_lines.append("\n[3o/10] C4 multiplier panel rebuild...")
     if args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
+    elif args.non_binance_only:
+        # Cron path: the manual run will retrain anyway and overwrite the
+        # panel before any live trading happens. Skipping ~100s of redundant
+        # compute. The cron's [3n] still runs to pre-stage the slow forecast
+        # panel rebuild for the manual run's --since today incremental append.
+        log_lines.append("  Skipped (--non-binance-only — manual run's [3o] is authoritative).")
     elif c4_forecast_rc != 0:
         log_lines.append("  Skipped (forecast panel rebuild failed; existing multiplier panel preserved).")
     else:
