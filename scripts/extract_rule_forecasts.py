@@ -23,8 +23,10 @@ Usage:
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -167,12 +169,78 @@ def get_active_rules(config_path: str, include_zero_weight: bool = False) -> lis
 # Extraction
 # ---------------------------------------------------------------------------
 
+def _atomic_write_parquet(df: pd.DataFrame, path: Path) -> None:
+    """Write parquet via tmp + os.replace so a mid-write crash doesn't leave
+    a half-written file behind. Same pattern as live-state writes."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    df.to_parquet(tmp)
+    os.replace(tmp, path)
+
+
+def _merge_incremental(
+    old: pd.DataFrame,
+    new: pd.DataFrame,
+    since: pd.Timestamp,
+) -> pd.DataFrame:
+    """Splice `new` (dates >= since) onto `old` (full history). Drop any
+    existing rows in `old` at dates >= since first (idempotent — re-running
+    for the same date overwrites that day's row, doesn't double-append).
+
+    Returns the merged DataFrame, sorted by date with no duplicate dates.
+
+    Equality invariant (enforced by tests): if `new` is the strict tail of a
+    full-history compute, then this merge function applied to `old` (the
+    truncated head) must produce a DataFrame identical to the original full
+    history within the date range covered by `new`.
+    """
+    old_head = old.loc[old.index < since]
+    merged = pd.concat([old_head, new]).sort_index()
+    # Defensive against duplicate dates from upstream — keep the latest row.
+    merged = merged[~merged.index.duplicated(keep="last")]
+    return merged
+
+
 def extract_panels(
     config_path: str, data_path: str, out_dir: Path,
     include_zero_weight: bool = False,
+    since: Optional[pd.Timestamp] = None,
 ) -> None:
+    """Extract per-rule capped forecasts and per-instrument log-returns into
+    parquet panels.
+
+    Modes:
+      - Full rebuild (default, `since=None`): build system, compute every
+        (rule, instrument) forecast, write panels from scratch.
+      - Incremental append (`since=<date>`): load existing panels, build
+        system on the new dataset, compute forecasts, slice each (rule, instr)
+        series to dates >= `since`, drop any existing rows >= `since` from the
+        loaded panels (idempotent), concatenate the new tail, write atomically.
+
+    The bulk of the runtime is the system construction + forecast iteration —
+    which we do anyway. The incremental mode just emits less to disk.
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    fc_path = out_dir / "forecasts.parquet"
+    ret_path = out_dir / "returns.parquet"
+
+    existing_forecasts: Optional[pd.DataFrame] = None
+    existing_returns: Optional[pd.DataFrame] = None
+    if since is not None:
+        if not fc_path.exists() or not ret_path.exists():
+            print(
+                f"\nERROR: incremental mode (--since {since.date()}) requires "
+                f"existing panels at {fc_path} and {ret_path}. "
+                f"Run a full extract first (omit --since)."
+            )
+            sys.exit(1)
+        print(f"Loading existing panels for incremental append (since={since.date()})...")
+        existing_forecasts = pd.read_parquet(fc_path)
+        existing_returns = pd.read_parquet(ret_path)
+        print(f"  existing forecasts: {existing_forecasts.shape}, "
+              f"last date: {existing_forecasts.index.max().date() if len(existing_forecasts) else 'empty'}")
+        print(f"  existing returns:   {existing_returns.shape}")
 
     print(f"Building system from {config_path} / {data_path}...")
     system = build_system(config_path, data_path)
@@ -183,7 +251,10 @@ def extract_panels(
     print(
         f"Extracting forecasts: {len(active_rules)} rules × {len(instruments)} instruments"
     )
-    print("(Progress shown per rule. Expect 20-60 min total.)\n")
+    if since is None:
+        print("(Progress shown per rule. Expect 20-60 min total.)\n")
+    else:
+        print(f"(Incremental: emitting only rows >= {since.date()}.)\n")
 
     forecast_dict: dict = {}
     return_dict: dict = {}
@@ -194,7 +265,11 @@ def extract_panels(
         try:
             price = system.data.daily_prices(inst)
             if price is not None and len(price.dropna()) > 10:
-                return_dict[inst] = np.log(price / price.shift(1))
+                ret = np.log(price / price.shift(1))
+                if since is not None:
+                    ret = ret.loc[ret.index >= since]
+                if not ret.empty:
+                    return_dict[inst] = ret
         except Exception:
             pass
     print(f"done ({len(return_dict)} instruments with valid prices)")
@@ -203,41 +278,55 @@ def extract_panels(
     for i, rule in enumerate(active_rules, 1):
         count = 0
         for inst in instruments:
-            if inst not in return_dict:
-                continue
             try:
                 fc = system.forecastScaleCap.get_capped_forecast(inst, rule)
                 if fc is not None and not fc.dropna().empty:
+                    if since is not None:
+                        fc = fc.loc[fc.index >= since]
+                        if fc.empty:
+                            continue
                     forecast_dict[(rule, inst)] = fc
                     count += 1
             except Exception:
                 pass
         print(f"  [{i:2d}/{len(active_rules)}] {rule:<35} {count} instruments")
 
-    if not forecast_dict:
+    if not forecast_dict and since is None:
         print("\nERROR: No forecasts extracted. Check config and data paths.")
         sys.exit(1)
+    if not forecast_dict and since is not None:
+        print(f"\nWARNING: No forecasts emitted for since={since.date()} — "
+              f"nothing to append. Existing panels left unchanged.")
+        return
 
-    # --- Build MultiIndex DataFrame ---
+    # --- Build MultiIndex DataFrame for the new tail ---
     print("\nBuilding forecast panel...", end=" ", flush=True)
-    forecast_df = pd.DataFrame(forecast_dict)
-    forecast_df.columns = pd.MultiIndex.from_tuples(
-        forecast_df.columns.tolist(), names=["rule", "instrument"]
+    new_forecasts = pd.DataFrame(forecast_dict)
+    new_forecasts.columns = pd.MultiIndex.from_tuples(
+        new_forecasts.columns.tolist(), names=["rule", "instrument"]
     )
-    print(f"done  shape={forecast_df.shape}")
+    print(f"done  shape={new_forecasts.shape}")
 
-    return_df = pd.DataFrame(return_dict)
-    print(f"Return panel shape={return_df.shape}")
+    new_returns = pd.DataFrame(return_dict)
+    print(f"Return panel shape={new_returns.shape}")
 
-    # --- Save ---
-    fc_path = out_dir / "forecasts.parquet"
-    ret_path = out_dir / "returns.parquet"
-    forecast_df.to_parquet(fc_path)
-    return_df.to_parquet(ret_path)
+    # --- Merge with existing panels (incremental) or write fresh (full) ---
+    if since is None:
+        forecast_out = new_forecasts
+        return_out = new_returns
+    else:
+        forecast_out = _merge_incremental(existing_forecasts, new_forecasts, since)
+        return_out = _merge_incremental(existing_returns, new_returns, since)
+
+    # --- Atomic write ---
+    _atomic_write_parquet(forecast_out, fc_path)
+    _atomic_write_parquet(return_out, ret_path)
 
     print(f"\nSaved:")
-    print(f"  {fc_path}  ({fc_path.stat().st_size / 1e6:.1f} MB)")
-    print(f"  {ret_path}  ({ret_path.stat().st_size / 1e6:.1f} MB)")
+    print(f"  {fc_path}  ({fc_path.stat().st_size / 1e6:.1f} MB)  shape={forecast_out.shape}")
+    print(f"  {ret_path}  ({ret_path.stat().st_size / 1e6:.1f} MB)  shape={return_out.shape}")
+    if since is not None:
+        print(f"  Appended {len(new_forecasts)} new dates from {since.date()} onwards.")
 
 
 # ---------------------------------------------------------------------------
@@ -261,10 +350,22 @@ def main() -> None:
         "--all-rules", action="store_true",
         help="Include zero-weight (rejected/held-out) rules in extraction",
     )
+    parser.add_argument(
+        "--since",
+        type=str,
+        default=None,
+        help="Incremental-append mode: only emit rows with date >= YYYY-MM-DD. "
+        "Loads existing panels in --outdir, drops any existing rows >= since-date, "
+        "appends the freshly-computed tail. Atomic write (tmp + os.replace). "
+        "If existing panels are missing, fails with a clear message.",
+    )
     args = parser.parse_args()
 
+    since_ts = pd.Timestamp(args.since) if args.since else None
+
     extract_panels(args.config, args.data, Path(args.outdir),
-                   include_zero_weight=args.all_rules)
+                   include_zero_weight=args.all_rules,
+                   since=since_ts)
 
 
 if __name__ == "__main__":

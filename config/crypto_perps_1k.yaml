@@ -1,17 +1,24 @@
 system:
-  capital: 9984.33
+  capital: 10028.25
   vol_target_ann: 0.25
   idm_cap: 2.5
   min_position_frac: 0.03
   allow_jagged: true
 percentage_vol_target: 25.0
 leverage_multiple: 2.5
-notional_trading_capital: 9984.33
+notional_trading_capital: 10028.25
 min_notional_position: 10.0
 instrument_weight_ewma_span: 1
 use_instrument_div_mult_estimates: true
 use_forecast_scale_estimates: true
 use_forecast_div_mult_estimates: true
+# C4 XGBoost forecast-multiplier combiner (live promotion 2026-05-05). Hook
+# in forecast_combine_gated.py:_apply_walk_forward_multiplier reads this key;
+# returns identity if the key is missing OR the file is missing OR an
+# instrument is absent from the panel. Rebuilt nightly: bulk in the 22:00 UTC
+# cron (prestage_daily.py), today's row appended in the 00:00 UTC manual flow
+# (daily_paper_run.py [3n]). Trade-plan fail-closes if panel age > 30h.
+walk_forward_multiplier_panel_path: data/c4_multiplier_panel_h20.parquet
 forecast_correlation_estimate:
   shrinkage_parameter: 0.3
 data_acquisition:

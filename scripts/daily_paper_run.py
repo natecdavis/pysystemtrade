@@ -30,6 +30,8 @@ Usage:
 """
 
 import argparse
+import os
+import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -886,6 +888,94 @@ def main() -> int:
             warnings.append("SB-corrected dataset rebuild failed")
         else:
             log_lines.append("  OK.")
+
+    # -----------------------------------------------------------------------
+    # Step 3n: C4 forecast feature panel
+    #   Cron (--non-binance-only):   full rebuild on yesterday's dataset (~60-90 min)
+    #   Manual (post-Binance fetch): incremental append for today's row (~3-7 min)
+    # The forecast panel feeds the C4 multiplier panel which gates live trading
+    # via walk_forward_multiplier_panel_path. If this step fails, [3o] still
+    # runs against yesterday's panel — degraded but not catastrophic. The
+    # trade-plan layer's staleness check (>30h) will fail-close if the rebuild
+    # is repeatedly broken.
+    # -----------------------------------------------------------------------
+    sb_dataset_path = REPO_ROOT / "data" / "dataset_sb_corrected_6yr_jagged.parquet"
+    forecast_panel_dir = REPO_ROOT / "data" / "forecast_panels_122"
+    multiplier_panel_path = REPO_ROOT / "data" / "c4_multiplier_panel_h20.parquet"
+    c4_build_outdir = REPO_ROOT / "out" / "wf_c4_xgboost_h20_live"
+
+    log_lines.append("\n[3n/10] C4 forecast feature panel...")
+    c4_forecast_rc = 0
+    if args.dry_run:
+        log_lines.append("  Skipped (--dry-run).")
+    elif not sb_dataset_path.exists():
+        log_lines.append(f"  WARNING: dataset {sb_dataset_path} missing — cannot build forecast panel.")
+        warnings.append("C4 forecast panel: SB dataset missing")
+        c4_forecast_rc = 1
+    else:
+        if args.non_binance_only:
+            # Cron path: full rebuild
+            log_lines.append("  Mode: FULL rebuild (cron, ~60-90 min).")
+            cmd = [
+                sys.executable, "scripts/extract_rule_forecasts.py",
+                "--config", args.config,
+                "--data", str(sb_dataset_path),
+                "--outdir", str(forecast_panel_dir),
+                "--all-rules",
+            ]
+        else:
+            # Manual path: incremental append for today's row
+            today_iso = datetime.now(timezone.utc).date().isoformat()
+            log_lines.append(f"  Mode: INCREMENTAL append --since {today_iso} (~3-7 min).")
+            cmd = [
+                sys.executable, "scripts/extract_rule_forecasts.py",
+                "--config", args.config,
+                "--data", str(sb_dataset_path),
+                "--outdir", str(forecast_panel_dir),
+                "--all-rules",
+                "--since", today_iso,
+            ]
+        c4_forecast_rc, _ = run_subprocess(cmd, log_lines)
+        if c4_forecast_rc != 0:
+            log_lines.append(f"  WARNING: forecast panel rebuild failed (exit {c4_forecast_rc})")
+            warnings.append("C4 forecast panel rebuild failed")
+        else:
+            log_lines.append("  OK.")
+
+    # -----------------------------------------------------------------------
+    # Step 3o: C4 multiplier panel
+    # Re-runs in both cron + manual paths (~100s). Uses whatever the forecast
+    # panel currently contains — so in the manual path it picks up today's
+    # row. The build script's deterministic XGBoost (random_state=42, fixed
+    # hyperparams) produces a reproducible panel.
+    # -----------------------------------------------------------------------
+    log_lines.append("\n[3o/10] C4 multiplier panel rebuild...")
+    if args.dry_run:
+        log_lines.append("  Skipped (--dry-run).")
+    elif c4_forecast_rc != 0:
+        log_lines.append("  Skipped (forecast panel rebuild failed; existing multiplier panel preserved).")
+    else:
+        cmd = [
+            sys.executable, "scripts/build_c4_multiplier_panel.py",
+            "--horizon", "20",
+            "--out-dir", str(c4_build_outdir),
+        ]
+        rc, _ = run_subprocess(cmd, log_lines)
+        if rc != 0:
+            log_lines.append(f"  WARNING: multiplier panel build failed (exit {rc})")
+            warnings.append("C4 multiplier panel build failed")
+        else:
+            # Promote the build output to the live path (atomic via shutil.copy
+            # + os.replace would be cleaner; keep simple for now).
+            built = c4_build_outdir / "multiplier_panel.parquet"
+            if built.exists():
+                tmp = multiplier_panel_path.with_suffix(".parquet.tmp")
+                shutil.copyfile(built, tmp)
+                os.replace(tmp, multiplier_panel_path)
+                log_lines.append(f"  Promoted to live: {multiplier_panel_path}")
+            else:
+                log_lines.append(f"  WARNING: build script reported success but {built} missing.")
+                warnings.append("C4 multiplier panel: built file missing")
 
     # -----------------------------------------------------------------------
     # Step 4: Doctor preflight

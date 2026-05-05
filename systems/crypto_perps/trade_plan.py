@@ -9,6 +9,7 @@ V1 Extension: Staleness-based eligibility overlay for daily operations.
 
 import pandas as pd
 import numpy as np
+import time
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime, date as Date
@@ -448,6 +449,40 @@ def generate_trade_plan(
         raise ValueError(
             f"Date mismatch: backtest ends at {backtest_end_date}, requested {as_of_date}. "
             f"Targets must be FRESH (not stale). Re-run backtest with latest data."
+        )
+
+    # C4 multiplier-panel staleness check (fail-closed). When the live config
+    # has walk_forward_multiplier_panel_path set, the live trades depend on
+    # that panel being current. If the panel is older than 30h (24h cadence
+    # + 6h grace), the daily rebuild step has been broken for at least a day
+    # — refusing to trade is safer than trading on stale regime conditioning.
+    # The hook in forecast_combine_gated.py also returns identity when the
+    # file is missing, but we want a clearer signal than silent fallback.
+    mult_path_str = (
+        config.get("walk_forward_multiplier_panel_path")
+        if isinstance(config, dict)
+        else config.get_element_or_default("walk_forward_multiplier_panel_path", None)
+    )
+    if mult_path_str:
+        mult_path = Path(mult_path_str)
+        if not mult_path.is_absolute():
+            mult_path = Path(__file__).resolve().parent.parent.parent / mult_path
+        if not mult_path.exists():
+            raise ValueError(
+                f"walk_forward_multiplier_panel_path is set in config but file is missing: "
+                f"{mult_path}. Run scripts/build_c4_multiplier_panel.py to rebuild, or "
+                f"remove the config key to fall back to the baseline (no C4 multiplier)."
+            )
+        age_hours = (time.time() - mult_path.stat().st_mtime) / 3600.0
+        if age_hours > 30.0:
+            raise ValueError(
+                f"C4 multiplier panel at {mult_path} is {age_hours:.1f}h old "
+                f"(threshold 30h). Daily rebuild step appears to have failed. "
+                f"Investigate scripts/extract_rule_forecasts.py + "
+                f"scripts/build_c4_multiplier_panel.py before trading."
+            )
+        logger.info(
+            f"C4 multiplier panel: {mult_path.name} ({age_hours:.1f}h old, fresh)"
         )
 
     # 2. Load backtest outputs
