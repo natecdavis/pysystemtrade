@@ -82,8 +82,14 @@ def _run_trade_plan(
     actual_positions: Path,
     as_of_date: str,
     output_dir: Path,
+    config_path: Path,
 ) -> Path:
-    """Invoke generate_trade_plan.py, return the trade-plan CSV path."""
+    """Invoke generate_trade_plan.py, return the trade-plan CSV path.
+
+    `config_path` is required because the harness's temp YAML (referenced from
+    metadata.json) gets deleted by `_run_backtest_subprocess` after the
+    backtest finishes — pulling it from metadata at trade-plan time fails.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
         sys.executable,
@@ -93,6 +99,7 @@ def _run_trade_plan(
         "--current-equity", str(SMOKE_EQUITY_USD),
         "--as-of-date", as_of_date,
         "--output-dir", str(output_dir),
+        "--config", str(config_path),
     ]
     print(f"  Running: {' '.join(cmd)}")
     subprocess.run(cmd, check=True, cwd=str(REPO_ROOT))
@@ -124,7 +131,7 @@ def _diff_trade_plans(
     # position varies across versions of the script. Pick the most likely
     # candidate columns and fail loudly if the schema changed.
     target_col = None
-    for c_name in ("target_contracts", "target_position", "target", "contracts_target"):
+    for c_name in ("target_notional", "target_contracts", "target_position", "target"):
         if c_name in b.columns:
             target_col = c_name
             break
@@ -236,6 +243,13 @@ def main() -> int:
     p.add_argument("--candidate-dir", type=Path, required=True)
     p.add_argument("--multiplier-panel", type=Path, required=True)
     p.add_argument("--out-dir", type=Path, required=True)
+    p.add_argument(
+        "--config",
+        type=Path,
+        default=REPO_ROOT / "config" / "crypto_perps_full_rules.yaml",
+        help="Config path to feed both trade-plan invocations. Defaults to the "
+        "research config the harness used to run both backtests.",
+    )
     args = p.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -260,10 +274,10 @@ def main() -> int:
 
     # Run trade-plan twice
     print("\nRunning trade plan against BASELINE backtest dir ...")
-    baseline_csv = _run_trade_plan(args.baseline_dir, stub_path, as_of, args.out_dir / "baseline")
+    baseline_csv = _run_trade_plan(args.baseline_dir, stub_path, as_of, args.out_dir / "baseline", args.config)
 
     print("\nRunning trade plan against CANDIDATE backtest dir ...")
-    candidate_csv = _run_trade_plan(args.candidate_dir, stub_path, as_of, args.out_dir / "candidate")
+    candidate_csv = _run_trade_plan(args.candidate_dir, stub_path, as_of, args.out_dir / "candidate", args.config)
 
     # Diff
     print("\nDiffing trade plans ...")
