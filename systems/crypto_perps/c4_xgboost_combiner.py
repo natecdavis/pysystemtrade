@@ -554,15 +554,28 @@ def fit_predict_walk_forward(
     predictions for all dates after the last eligible refit use that frozen
     model. This is the "no continued retraining" stress test.
     """
-    df = bundle.df.dropna(subset=[bundle.label_col]).copy()
+    # Training set: only rows with valid labels (forward returns observable).
+    train_df = bundle.df.dropna(subset=[bundle.label_col]).copy()
+    # Inference set: every row with valid features, INCLUDING the most-recent
+    # ~horizon_days where forward returns aren't observable yet (i.e. the
+    # label is NaN). For live deployment we need a multiplier for today; today
+    # has no future returns by definition. Filtering to label-valid rows for
+    # inference would mean today's multiplier never reaches the live panel.
+    feature_only_cols = list(bundle.feature_cols)
+    infer_df = bundle.df[feature_only_cols].dropna(how="all").copy()
+
     feature_cols = bundle.feature_cols
 
-    all_dates = sorted(df.index.get_level_values(0).unique())
+    all_dates = sorted(train_df.index.get_level_values(0).unique())
     if not all_dates:
         raise ValueError("Feature bundle has no usable rows after label dropna.")
     start, end = all_dates[0], all_dates[-1]
+    # End of inference data may extend past end of training data (the last
+    # ~horizon_days). Refit-date schedule is anchored to the inference end so
+    # the final refit covers today even if the labels don't.
+    infer_end = infer_df.index.get_level_values(0).max()
 
-    refit_dates = pd.date_range(start, end, freq=retrain_freq)
+    refit_dates = pd.date_range(start, infer_end, freq=retrain_freq)
     if freeze_training_after is not None:
         refit_dates = refit_dates[refit_dates <= pd.Timestamp(freeze_training_after)]
     # Drop refit dates before we have enough history
@@ -572,28 +585,30 @@ def fit_predict_walk_forward(
     artifacts: list[FitArtifact] = []
     pred_chunks: list[pd.Series] = []
 
+    train_dates = train_df.index.get_level_values(0)
+    infer_dates = infer_df.index.get_level_values(0)
+
     for i, t in enumerate(refit_dates):
         # Eligible training rows: label end <= t - 1 day
         cutoff = t - pd.Timedelta(days=1)
         max_feature_date_for_training = cutoff - pd.Timedelta(days=horizon_days)
-        feature_dates = df.index.get_level_values(0)
-        train_mask = feature_dates <= max_feature_date_for_training
+        train_mask = train_dates <= max_feature_date_for_training
         if train_mask.sum() < min_train_rows:
             continue
-        X_train = df.loc[train_mask, feature_cols]
-        y_train = df.loc[train_mask, bundle.label_col]
+        X_train = train_df.loc[train_mask, feature_cols]
+        y_train = train_df.loc[train_mask, bundle.label_col]
 
         model, artifact = _train_one_fit(X_train, y_train, t, random_state=random_state)
         artifacts.append(artifact)
 
         # Inference window: [t, next_refit). The last refit's window extends
-        # to end+1day, so when freeze_training_after truncates the schedule,
-        # the frozen model's predictions naturally cover all post-cutoff dates.
-        next_t = refit_dates[i + 1] if i + 1 < len(refit_dates) else end + pd.Timedelta(days=1)
-        infer_mask = (feature_dates >= t) & (feature_dates < next_t)
+        # to infer_end+1day, so the most-recent refit naturally covers any
+        # dates with valid features through today, even if labels are NaN.
+        next_t = refit_dates[i + 1] if i + 1 < len(refit_dates) else infer_end + pd.Timedelta(days=1)
+        infer_mask = (infer_dates >= t) & (infer_dates < next_t)
         if infer_mask.sum() == 0:
             continue
-        X_infer = df.loc[infer_mask, feature_cols]
+        X_infer = infer_df.loc[infer_mask, feature_cols]
         preds = pd.Series(model.predict(X_infer), index=X_infer.index, name="y_hat")
         pred_chunks.append(preds)
 
