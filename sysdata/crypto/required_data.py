@@ -90,6 +90,23 @@ HL_METHODS = {
     "data.get_hl_cross_sectional_median_funding",
 }
 
+# Macro-extension feeds previously excluded from the freshness checker (audit
+# F25, 2026-05-06). They are consumed only by the forecast extractor, but a
+# stale feed silently feeds stale rule forecasts into the trade plan with no
+# operator-visible warning. Adding them here surfaces the staleness in the
+# `[3g] Active-rule data status` block.
+ETF_FLOWS_METHODS = {
+    "data.get_btc_etf_signed_volume",
+}
+
+STABLECOIN_SUPPLY_METHODS = {
+    "data.get_stablecoin_supply",
+}
+
+PREMIUM_INDEX_METHODS = {
+    "data.get_premium_index",
+}
+
 
 def load_config_dict(config_path: Path) -> dict[str, Any]:
     with open(config_path) as f:
@@ -187,6 +204,35 @@ def required_auxiliary_files(
         requirements["binance_volume"] = {
             "path": _resolve_path(data_dir, "binance_volume_daily.parquet"),
             "required_by": sorted(methods & VOLUME_METHODS),
+            "max_lag_days": 2,
+            "kind": "parquet_date_column",
+        }
+
+    if methods & ETF_FLOWS_METHODS:
+        # max_lag=5 covers a long-weekend gap. ETF data publishes US-market-day-only;
+        # weekend rows are absent rather than zero. Warn on Tue if Fri's data didn't land.
+        requirements["etf_flows"] = {
+            "path": _resolve_path(data_dir, "etf_flows.parquet"),
+            "required_by": sorted(methods & ETF_FLOWS_METHODS),
+            "max_lag_days": 5,
+            "kind": "parquet_index",
+        }
+
+    if methods & STABLECOIN_SUPPLY_METHODS:
+        # max_lag=2 gives Sunday a pass; warns from Monday onward if DefiLlama is down.
+        requirements["stablecoin_supply"] = {
+            "path": _resolve_path(data_dir, "stablecoin_supply.parquet"),
+            "required_by": sorted(methods & STABLECOIN_SUPPLY_METHODS),
+            "max_lag_days": 2,
+            "kind": "parquet_index",
+        }
+
+    if methods & PREMIUM_INDEX_METHODS:
+        # Vision publishes premium-index daily with ~1d lag. max_lag=2 absorbs
+        # the natural lag and a one-day Vision outage.
+        requirements["binance_premium_index"] = {
+            "path": _resolve_path(data_dir, "binance_premium_index_processed.parquet"),
+            "required_by": sorted(methods & PREMIUM_INDEX_METHODS),
             "max_lag_days": 2,
             "kind": "parquet_date_column",
         }

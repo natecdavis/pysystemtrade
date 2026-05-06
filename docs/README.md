@@ -15,6 +15,6 @@ The other files in this directory are from the upstream pysystemtrade project an
 
 ## See Also
 
-- **[../OPERATIONALIZATION.md](../OPERATIONALIZATION.md)** - Daily operations guide
+- **[_archive/2026-Q1/OPERATIONALIZATION.md](_archive/2026-Q1/OPERATIONALIZATION.md)** - Early operations guide (historical; superseded by `runbook_541_perps.md` + `AUXILIARY_DATA_FRESHNESS.md`)
 - **[../ENVIRONMENT_SETUP.md](../ENVIRONMENT_SETUP.md)** - Dev/prod environment setup
 - **[../reports/](../reports/)** - Historical implementation notes

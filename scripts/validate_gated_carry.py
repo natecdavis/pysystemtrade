@@ -213,7 +213,7 @@ def main():
         print("1. Run baseline backtest to verify Sharpe 0.84")
         print("2. Run gated carry test backtest")
         print("3. Compare results")
-        print("\nSee TESTING_GUIDE_GATED_CARRY.md for detailed instructions.")
+        print("\nSee docs/_archive/2026-Q1/TESTING_GUIDE_GATED_CARRY.md for detailed instructions.")
         return 0
     else:
         print("\n✗ Some validation tests failed. Fix errors before running backtests.")
