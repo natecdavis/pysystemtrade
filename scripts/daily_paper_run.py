@@ -220,9 +220,9 @@ def main() -> int:
         action="store_true",
         default=False,
         help=(
-            "Rebuild data/sector_map.json from CoinGecko API. Takes ~10 minutes. "
-            "Run monthly or when the instrument universe changes significantly, "
-            "NOT on every daily run."
+            "Rebuild data/sector_map.json from CoinGecko API. Takes ~90 minutes "
+            "(12s rate-limit per call × ~470 base assets). Run monthly or when "
+            "the instrument universe changes significantly, NOT on every daily run."
         ),
     )
     parser.add_argument(

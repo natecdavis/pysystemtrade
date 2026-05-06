@@ -2,22 +2,38 @@
 """
 Live Operations Advisory System - Main Orchestrator
 
-Single entry point for full monthly advisory workflow:
-1. Update raw data (monthly batch through M-2)
-2. Rebuild processed dataset with latest data
-3. Run research_v1 backtest to get fresh targets
+Single entry point for the advisory workflow:
+1. Update raw data (Binance Vision monthly base + recent-tail API for daily mode)
+2. Rebuild processed dataset (or extend a base dataset with the API-cache delta)
+3. Run the backtest to get fresh targets (research_v1 or dynamic-universe)
 4. Generate trade plan comparing targets to actual positions
 5. Optional: Generate human-readable report
 
-**CRITICAL:** This is a MONTHLY advisory system (not daily) due to Binance Vision
-publication lag (~2-4 weeks after month end).
+Two cadences supported via `--cadence`:
 
-Usage:
+* `monthly` (V0) — full monthly batch through M-2. Used historically when only
+  Binance Vision monthly ZIPs were the source of truth. Still runnable.
+* `daily` (V1) — production-of-record. Combines the monthly base with a daily
+  API tail and applies the per-instrument staleness overlay. Invoked nightly
+  by `daily_paper_run.py` (see `--use-dynamic-universe`).
+
+Usage (daily, the production path):
+    python scripts/run_live_advisory.py \
+        --config config/crypto_perps_1k.yaml \
+        --actual-positions live/current_positions.csv \
+        --current-equity 4000.00 \
+        --output-dir out/paper_$(date -u +%Y%m%d) \
+        --cadence daily \
+        --use-dynamic-universe \
+        --base-dataset data/dataset_538registry_6yr_jagged.parquet
+
+Usage (monthly, V0):
     python scripts/run_live_advisory.py \
         --config config/crypto_perps_baseline_v1.yaml \
         --actual-positions live/current_positions.csv \
         --current-equity 5125.50 \
-        --output-dir out/live_advisory_$(date +%Y%m%d)
+        --output-dir out/live_advisory_$(date +%Y%m%d) \
+        --cadence monthly
 
     # Dry run (skip data download, use existing data)
     python scripts/run_live_advisory.py \

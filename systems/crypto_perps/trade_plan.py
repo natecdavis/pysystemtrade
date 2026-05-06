@@ -458,11 +458,7 @@ def generate_trade_plan(
     # — refusing to trade is safer than trading on stale regime conditioning.
     # The hook in forecast_combine_gated.py also returns identity when the
     # file is missing, but we want a clearer signal than silent fallback.
-    mult_path_str = (
-        config.get("walk_forward_multiplier_panel_path")
-        if isinstance(config, dict)
-        else config.get_element_or_default("walk_forward_multiplier_panel_path", None)
-    )
+    mult_path_str = config.get("walk_forward_multiplier_panel_path")
     if mult_path_str:
         mult_path = Path(mult_path_str)
         if not mult_path.is_absolute():
@@ -678,11 +674,7 @@ def generate_trade_plan(
     logger.info("Running sanity checks...")
 
     # Min position size check
-    min_order_notional = (
-        config.get("min_notional_position", 10.0)
-        if isinstance(config, dict)
-        else config.get_element_or_default("min_notional_position", 10.0)
-    )
+    min_order_notional = config.get("min_notional_position", 10.0)
     min_size_check = check_min_position_sizes(
         deltas, min_order_notional=min_order_notional
     )
