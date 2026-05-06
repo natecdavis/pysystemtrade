@@ -847,6 +847,7 @@ def main() -> int:
     # reports min(all_instruments) which pulls back to Jan 2026 for Vision-only
     # instruments. Patch it to reflect only "fetched" (API-cache-fresh) instruments.
     status_path = env.resolve("out") / "raw_data_status_v1.json"
+    status_per_run = output_dir / "raw_data_status.json"
     if not args.dry_run and status_path.exists():
         try:
             import json
@@ -865,6 +866,16 @@ def main() -> int:
                 log_lines.append(f"\n[3i/10] Patched dataset_as_of_date → {_effective_date} (fetched instruments only).")
         except Exception as _e:
             log_lines.append(f"\n[3i/10] WARNING: Could not patch status file: {_e}")
+        # Mirror the (possibly-patched) status file into the per-run dir under the
+        # filename run_live_advisory.py:957 expects. Without this, --skip-data-update
+        # leaves no raw_data_status.json in paper_<today>/, so the staleness overlay
+        # silently runs in V0 mode and the trade plan loses per-instrument staleness
+        # protection (audit F1, 2026-05-06).
+        try:
+            shutil.copy(status_path, status_per_run)
+            log_lines.append(f"  Copied {status_path.name} → {status_per_run.name} for advisory.")
+        except Exception as _e:
+            log_lines.append(f"  WARNING: Could not copy status to per-run dir: {_e}")
 
     # -----------------------------------------------------------------------
     # Step 3k-base: Base dataset (538-registry) rebuild
