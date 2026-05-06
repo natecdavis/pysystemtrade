@@ -1118,35 +1118,12 @@ def main() -> int:
             log_lines.append("  OK.")
 
     # -----------------------------------------------------------------------
-    # Step 6: Append equity to history
-    # -----------------------------------------------------------------------
-    log_lines.append("\n[6/10] Appending equity to history...")
-    if args.non_binance_only:
-        log_lines.append("  Skipped (--non-binance-only).")
-    else:
-        cb.append_equity(today_iso, equity)
-        log_lines.append(f"  Appended {today_iso}: ${equity:,.2f}")
-
-    # -----------------------------------------------------------------------
-    # Step 7: Re-evaluate circuit breaker
-    # -----------------------------------------------------------------------
-    log_lines.append("\n[7/10] Re-evaluating circuit breaker...")
-    if args.non_binance_only:
-        log_lines.append("  Skipped (--non-binance-only).")
-    elif not args.skip_cb_check:
-        cb_triggered, cb_reason = cb.check()
-        if cb_triggered:
-            log_lines.append(f"  TRIGGERED: {cb_reason}")
-            warnings.append(f"CIRCUIT BREAKER: {cb_reason}")
-        else:
-            log_lines.append("  Clear.")
-    else:
-        log_lines.append("  Skipped (--skip-cb-check).")
-
-    # -----------------------------------------------------------------------
     # Step 7b: Verify the manifest hash chain end-to-end. Any link missing or
     # drifting since it was recorded means the trade plan was generated from
-    # incoherent inputs — fail the run rather than send the operator a stale plan.
+    # incoherent inputs — fail the run rather than send the operator a stale
+    # plan. This MUST run before [6] equity append so a chain-incoherent run
+    # doesn't pollute equity_history.csv with today's row, which would skew
+    # tomorrow's circuit-breaker drawdown calc (audit F6, 2026-05-06).
     # -----------------------------------------------------------------------
     if not args.non_binance_only and not args.dry_run:
         log_lines.append("\n[7b/10] Verifying manifest hash chain...")
@@ -1181,7 +1158,46 @@ def main() -> int:
                 f"  OK ({verify_result['stages']} stages, run_id={verify_result['run_id']}{legacy_note})."
             )
         except Exception as exc:
-            log_lines.append(f"  WARNING — chain check raised: {exc}")
+            # Fail-closed on any unexpected verifier failure, matching the
+            # file-missing and integrity-fail branches above. Previously this
+            # was WARN-only — inconsistent envelope (audit F5, 2026-05-06).
+            log_lines.append(
+                f"  FAILED — chain check raised unexpected {type(exc).__name__}: {exc}"
+            )
+            if args.notify:
+                send_notification(
+                    "⚠️ Paper Run Failed",
+                    f"Manifest chain check raised: {type(exc).__name__}",
+                )
+            log_path.write_text("\n".join(log_lines))
+            return 1
+
+    # -----------------------------------------------------------------------
+    # Step 6: Append equity to history (post chain-verify so a chain-incoherent
+    # run doesn't pollute equity_history.csv).
+    # -----------------------------------------------------------------------
+    log_lines.append("\n[6/10] Appending equity to history...")
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    else:
+        cb.append_equity(today_iso, equity)
+        log_lines.append(f"  Appended {today_iso}: ${equity:,.2f}")
+
+    # -----------------------------------------------------------------------
+    # Step 7: Re-evaluate circuit breaker
+    # -----------------------------------------------------------------------
+    log_lines.append("\n[7/10] Re-evaluating circuit breaker...")
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only).")
+    elif not args.skip_cb_check:
+        cb_triggered, cb_reason = cb.check()
+        if cb_triggered:
+            log_lines.append(f"  TRIGGERED: {cb_reason}")
+            warnings.append(f"CIRCUIT BREAKER: {cb_reason}")
+        else:
+            log_lines.append("  Clear.")
+    else:
+        log_lines.append("  Skipped (--skip-cb-check).")
 
     # -----------------------------------------------------------------------
     # Step 8: Parse trade plan
