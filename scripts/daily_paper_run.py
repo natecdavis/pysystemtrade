@@ -867,6 +867,53 @@ def main() -> int:
             log_lines.append(f"\n[3i/10] WARNING: Could not patch status file: {_e}")
 
     # -----------------------------------------------------------------------
+    # Step 3k-base: Base dataset (538-registry) rebuild
+    # -----------------------------------------------------------------------
+    # Consolidates raw Binance klines + funding + API cache into the base
+    # dataset that auto_rebuild_sb_dataset reads as input. Without this,
+    # the base dataset is a frozen one-off research artifact and [3l] silently
+    # decides "no rebuild needed" because its base hash never changes.
+    # Skipped under --non-binance-only because the cron path doesn't have
+    # fresh klines anyway.
+    base_dataset_path = REPO_ROOT / "data" / "dataset_538registry_6yr_jagged.parquet"
+    registry_path = REPO_ROOT / "envs" / "dev" / "data" / "raw" / "metadata" / "discovered_candidate_instruments.json"
+    binance_data_dir = REPO_ROOT / "envs" / "dev" / "data" / "raw" / "binance"
+    log_lines.append("\n[3k-base/10] Rebuilding base 538-registry dataset...")
+    if args.non_binance_only:
+        log_lines.append("  Skipped (--non-binance-only — no fresh Binance klines in cron path).")
+    elif args.dry_run:
+        log_lines.append("  Skipped (--dry-run).")
+    elif not registry_path.exists():
+        log_lines.append(f"  WARNING: registry missing at {registry_path}. Skipping.")
+        warnings.append("Base dataset rebuild: registry missing")
+    elif not binance_data_dir.exists():
+        log_lines.append(f"  WARNING: binance data dir missing at {binance_data_dir}. Skipping.")
+        warnings.append("Base dataset rebuild: binance data dir missing")
+    else:
+        from datetime import datetime as _dt, timezone as _tz
+        end_date = _dt.now(_tz.utc).date().isoformat()
+        cmd = [
+            sys.executable, "scripts/build_example_dataset.py",
+            "--source", "real",
+            "--start-date", "2020-01-01",
+            "--end-date", end_date,
+            "--instruments-from-registry", str(registry_path),
+            "--output-path", str(base_dataset_path),
+            "--data-dir", str(binance_data_dir),
+            "--metadata-dir", str(registry_path.parent),
+            "--allow-jagged",
+            "--include-api-cache",
+            "--min-coverage", "0.0",
+            "--min-history-days", "1",
+        ]
+        rc, _ = run_subprocess(cmd, log_lines)
+        if rc != 0:
+            log_lines.append(f"  WARNING: base dataset rebuild failed (exit {rc})")
+            warnings.append("Base dataset rebuild failed")
+        else:
+            log_lines.append("  OK.")
+
+    # -----------------------------------------------------------------------
     # Step 3l: SB-corrected dataset auto-rebuild
     # -----------------------------------------------------------------------
     # Runs after Binance OI/LSR/volume have updated dataset_latest.parquet
