@@ -26,6 +26,7 @@ from systems.crypto_perps.c4_xgboost_combiner import (
     MULT_FLOOR,
     XGB_PARAMS,
     aggregate_feature_importance,
+    assert_multiplier_panel_fresh,
     multiplier_distribution_stats,
     predictions_to_multiplier_panel,
     realized_xcorr,
@@ -552,3 +553,60 @@ class TestHarnessMultiplierInjection:
         assert "walk_forward_weights_path" not in parsed
         # Original keys preserved.
         assert "ewmac_8" in parsed["forecast_weights"]
+
+
+class TestAssertMultiplierPanelFresh:
+    """Helper that gates both consumers (combiner + trade-plan) against stale
+    or missing C4 multiplier panels (audit F4 + F10, 2026-05-06)."""
+
+    def test_passes_when_fresh(self, tmp_path):
+        panel = tmp_path / "panel.parquet"
+        panel.write_text("synthetic")
+        # Default 30h threshold; freshly-written file is well under it.
+        resolved = assert_multiplier_panel_fresh(panel)
+        assert resolved == panel
+        assert resolved.is_absolute()
+
+    def test_raises_when_missing(self, tmp_path):
+        panel = tmp_path / "does_not_exist.parquet"
+        with pytest.raises(ValueError, match="file is missing"):
+            assert_multiplier_panel_fresh(panel)
+
+    def test_raises_when_too_old(self, tmp_path):
+        import os
+        import time as _time
+        panel = tmp_path / "stale.parquet"
+        panel.write_text("synthetic")
+        # Backdate the file 31h. mtime first (atime second; only mtime is consulted).
+        old = _time.time() - 31 * 3600
+        os.utime(panel, (old, old))
+        with pytest.raises(ValueError, match="threshold"):
+            assert_multiplier_panel_fresh(panel)
+
+    def test_resolves_relative_path_against_repo_root(self, tmp_path, monkeypatch):
+        # Construct a relative path string; the helper should resolve it
+        # against the repo root (per `_REPO_ROOT`) rather than CWD.
+        # Strategy: make the repo-root resolution land in tmp_path by
+        # monkeypatching the module-level _REPO_ROOT.
+        from systems.crypto_perps import c4_xgboost_combiner as mod
+        rel_panel = Path("data") / "panel_relative.parquet"
+        (tmp_path / "data").mkdir()
+        (tmp_path / rel_panel).write_text("synthetic")
+        monkeypatch.setattr(mod, "_REPO_ROOT", tmp_path)
+        resolved = assert_multiplier_panel_fresh(str(rel_panel))
+        assert resolved == tmp_path / rel_panel
+        assert resolved.is_absolute()
+
+    def test_custom_max_age_threshold(self, tmp_path):
+        import os
+        import time as _time
+        panel = tmp_path / "panel.parquet"
+        panel.write_text("synthetic")
+        # 5h old file should pass at 6h, fail at 4h.
+        old = _time.time() - 5 * 3600
+        os.utime(panel, (old, old))
+        # Passes at 6h
+        assert_multiplier_panel_fresh(panel, max_age_hours=6.0)
+        # Fails at 4h
+        with pytest.raises(ValueError, match="threshold 4h"):
+            assert_multiplier_panel_fresh(panel, max_age_hours=4.0)

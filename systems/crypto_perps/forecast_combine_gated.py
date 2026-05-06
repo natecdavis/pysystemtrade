@@ -140,6 +140,10 @@ class ForecastCombineGated(ForecastCombine):
         Multiplier is forward-filled across daily gaps in the panel index
         (panels are dense daily but defensive). NaN cells map to 1.0
         (identity) so a sparse panel cannot zero out the forecast silently.
+
+        Fail-closed when the panel is missing on disk or older than 30 hours
+        (`assert_multiplier_panel_fresh`) — the backtest must not silently
+        emit modulated forecasts from a stale panel (audit F4, 2026-05-06).
         """
         mult_path = self.parent.config.get_element_or_default(
             "walk_forward_multiplier_panel_path", None
@@ -147,7 +151,11 @@ class ForecastCombineGated(ForecastCombine):
         if mult_path is None:
             return forecast
         if not hasattr(self, "_wf_multiplier_panel"):
-            self._wf_multiplier_panel = pd.read_parquet(mult_path)
+            from systems.crypto_perps.c4_xgboost_combiner import (
+                assert_multiplier_panel_fresh,
+            )
+            resolved = assert_multiplier_panel_fresh(mult_path)
+            self._wf_multiplier_panel = pd.read_parquet(resolved)
         panel = self._wf_multiplier_panel
         if instrument_code not in panel.columns:
             return forecast

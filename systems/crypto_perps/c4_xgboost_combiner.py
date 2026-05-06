@@ -31,7 +31,9 @@ problem to solve, on top of that linear baseline.
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +41,12 @@ from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+# Used by `assert_multiplier_panel_fresh` to anchor relative paths from config.
+# Matches the resolution that trade_plan.py historically used.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Lazy import — xgboost is heavy and only needed when actually fitting
 def _import_xgb():
@@ -56,6 +64,50 @@ class FitNotPersistedError(Exception):
     (file missing, corrupt, or feature schema mismatched). Callers handle this
     by falling back to a full from-scratch rebuild.
     """
+
+
+def assert_multiplier_panel_fresh(
+    panel_path: "Path | str",
+    max_age_hours: float = 30.0,
+) -> Path:
+    """Resolve `panel_path` (relative paths anchored at repo root) and assert
+    the file exists and has been modified within the last `max_age_hours`.
+
+    Both consumers of the C4 multiplier panel call this so a stale panel
+    fails-closed at both checkpoints (audit F4, 2026-05-06):
+      * `forecast_combine_gated._apply_walk_forward_multiplier` — fires once
+        at backtest start so the backtest's `positions.csv` cannot be silently
+        modulated by a stale panel.
+      * `trade_plan.generate_trade_plan` — re-checks at trade-plan time so a
+        panel that ages past the threshold between backtest and trade-plan
+        (e.g. an unusually slow run) still fails-closed.
+
+    Returns the resolved absolute Path on success.
+
+    Raises:
+        ValueError: if the file is missing or older than the threshold.
+    """
+    p = Path(panel_path)
+    if not p.is_absolute():
+        p = _REPO_ROOT / p
+    if not p.exists():
+        raise ValueError(
+            f"walk_forward_multiplier_panel_path is set in config but file is missing: "
+            f"{p}. Run scripts/build_c4_multiplier_panel.py to rebuild, or "
+            f"remove the config key to fall back to the baseline (no C4 multiplier)."
+        )
+    age_hours = (time.time() - p.stat().st_mtime) / 3600.0
+    if age_hours > max_age_hours:
+        raise ValueError(
+            f"C4 multiplier panel at {p} is {age_hours:.1f}h old "
+            f"(threshold {max_age_hours:g}h). Daily rebuild step appears to have failed. "
+            f"Investigate scripts/extract_rule_forecasts.py + "
+            f"scripts/build_c4_multiplier_panel.py before trading."
+        )
+    logger.info(
+        "C4 multiplier panel: %s (%.1fh old, fresh)", p.name, age_hours
+    )
+    return p
 
 
 # ---------------------------------------------------------------------------
