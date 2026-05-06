@@ -137,7 +137,7 @@ def required_auxiliary_files(
 
     if methods & MACRO_METHODS:
         requirements["macro_factors"] = {
-            "path": data_dir / "macro_factors.parquet",
+            "path": _resolve_path(data_dir, "macro_factors.parquet"),
             "required_by": sorted(methods & MACRO_METHODS),
             "max_lag_days": 3,
             "kind": "parquet_index",
@@ -145,7 +145,7 @@ def required_auxiliary_files(
 
     if methods & ACTIVE_ADDRESS_METHODS:
         requirements["active_addresses"] = {
-            "path": data_dir / "active_addresses.parquet",
+            "path": _resolve_path(data_dir, "active_addresses.parquet"),
             "required_by": sorted(methods & ACTIVE_ADDRESS_METHODS),
             "max_lag_days": 2,
             "kind": "parquet_index",
@@ -153,7 +153,7 @@ def required_auxiliary_files(
 
     if methods & MARKET_CAP_METHODS:
         requirements["market_cap"] = {
-            "path": data_dir / "market_cap.parquet",
+            "path": _resolve_path(data_dir, "market_cap.parquet"),
             "required_by": sorted(methods & MARKET_CAP_METHODS),
             "max_lag_days": 2,
             "kind": "parquet_index",
@@ -169,7 +169,7 @@ def required_auxiliary_files(
 
     if methods & OI_METHODS:
         requirements["binance_oi_lsr"] = {
-            "path": data_dir / "binance_oi_processed.parquet",
+            "path": _resolve_path(data_dir, "binance_oi_processed.parquet"),
             "required_by": sorted(methods & OI_METHODS),
             "max_lag_days": 2,
             "kind": "parquet_date_column",
@@ -177,7 +177,7 @@ def required_auxiliary_files(
 
     if methods & HL_METHODS:
         requirements["hyperliquid_instruments"] = {
-            "path": data_dir / "hyperliquid_instruments.json",
+            "path": _resolve_path(data_dir, "hyperliquid_instruments.json"),
             "required_by": sorted(methods & HL_METHODS),
             "max_lag_days": 2,
             "kind": "json_fetched_at",
