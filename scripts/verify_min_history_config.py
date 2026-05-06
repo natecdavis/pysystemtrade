@@ -89,7 +89,7 @@ def test_config_parameters():
     import yaml
 
     # Test baseline config
-    baseline_path = Path(__file__).parent.parent / "config" / "crypto_perps_test_365d_baseline.yaml"
+    baseline_path = Path(__file__).parent.parent / "config" / "research" / "crypto_perps_test_365d_baseline.yaml"
     with open(baseline_path) as f:
         baseline_config = yaml.safe_load(f)
 
@@ -101,7 +101,7 @@ def test_config_parameters():
     print(f"  ✅ Baseline config: topk={du_config['min_history_days_topk']}d, mode={du_config['min_history_rule_requirement']}")
 
     # Test alternative 1 config
-    alt1_path = Path(__file__).parent.parent / "config" / "crypto_perps_test_15d_any_rule.yaml"
+    alt1_path = Path(__file__).parent.parent / "config" / "research" / "crypto_perps_test_15d_any_rule.yaml"
     with open(alt1_path) as f:
         alt1_config = yaml.safe_load(f)
 
@@ -111,7 +111,7 @@ def test_config_parameters():
     print(f"  ✅ Alt1 config: topk={du_config['min_history_days_topk']}d, mode={du_config['min_history_rule_requirement']}")
 
     # Test alternative 2 config
-    alt2_path = Path(__file__).parent.parent / "config" / "crypto_perps_test_270d_all_rules.yaml"
+    alt2_path = Path(__file__).parent.parent / "config" / "research" / "crypto_perps_test_270d_all_rules.yaml"
     with open(alt2_path) as f:
         alt2_config = yaml.safe_load(f)
 

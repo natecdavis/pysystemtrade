@@ -73,7 +73,7 @@ fi
 # Test 3: Trend-aware overlay (Phase 1.5 fix)
 echo -e "${BLUE}[3/3] Running TREND-AWARE OVERLAY (Phase 1.5)...${NC}"
 python scripts/run_dynamic_universe_backtest.py \
-  --config config/crypto_perps_oi_trend_aware.yaml \
+  --config config/research/crypto_perps_oi_trend_aware.yaml \
   --data "$DATA" \
   --outdir "$OUTDIR/trend_aware"
 echo -e "${GREEN}✓ Trend-aware overlay complete${NC}"

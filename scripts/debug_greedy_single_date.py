@@ -7,7 +7,7 @@ to help diagnose alignment issues between declared and optimized instruments.
 
 Usage:
     python scripts/debug_greedy_single_date.py \
-        --config config/crypto_perps_greedy.yaml \
+        --config config/research/crypto_perps_greedy.yaml \
         --data data/dataset_538registry_6yr_jagged.parquet \
         --date 2021-07-20 \
         --instrument ETHUSDT_PERP
@@ -330,7 +330,7 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="config/crypto_perps_greedy.yaml",
+        default="config/research/crypto_perps_greedy.yaml",
         help="Path to config YAML",
     )
     parser.add_argument(

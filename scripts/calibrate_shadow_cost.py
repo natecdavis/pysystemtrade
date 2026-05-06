@@ -252,7 +252,7 @@ def main():
     # Configuration
     # Using 15-instrument dataset for clean calibration (smoke-tested instruments)
     data_path = project_root / "data" / "example_crypto_perps_15x4yr.parquet"
-    config_path = project_root / "config" / "crypto_perps_greedy_simple.yaml"
+    config_path = project_root / "config" / "research" / "crypto_perps_greedy_simple.yaml"
     output_dir = project_root / "out" / "calibration_shadow_cost_15instr"
 
     # Create output directory

@@ -223,7 +223,7 @@ def main():
 
     # Configuration
     data_path = project_root / "data" / "dataset_538registry_6yr_jagged.parquet"
-    config_path = project_root / "config" / "crypto_perps_greedy_simple.yaml"
+    config_path = project_root / "config" / "research" / "crypto_perps_greedy_simple.yaml"
     output_dir = project_root / "out" / "calibration_buffer"
 
     # Create output directory

@@ -1,3 +1,10 @@
+import pytest
+
+# Upstream Carver tests transitively import ib_insync via sysdata.data_blob.
+# Crypto-perps doesn't ship ib_insync; skip the whole module gracefully when
+# the dependency is missing (audit F28, 2026-05-06).
+pytest.importorskip("ib_insync")
+
 from sysdata.sim.csv_futures_sim_data import csvFuturesSimData
 from sysquant.estimators.vol import robust_vol_calc
 from systems.provided.rules.ewmac import ewmac_forecast_with_defaults as ewmac

@@ -261,12 +261,12 @@ When building a new dataset variant, verify:
    - Changes from default: `diagnostics.enabled: true`
    - Status: FROZEN - any changes require new version (v2, v3, etc.)
 
-2. **`config/crypto_perps_baseline_v1_carry_off.yaml`** (Counterfactual)
+2. **`config/research/crypto_perps_baseline_v1_carry_off.yaml`** (Counterfactual)
    - Purpose: Quantify carry effect via counterfactual analysis
    - Changes: `forecasts.rule_weights.carry_funding: 0.0`
    - Attribution: `equity_baseline - equity_carry_off = carry effect`
 
-3. **`config/crypto_perps_baseline_v1_constraints_off.yaml`** (Counterfactual)
+3. **`config/research/crypto_perps_baseline_v1_constraints_off.yaml`** (Counterfactual)
    - Purpose: Quantify constraint binding effect via counterfactual analysis
    - Changes: `gross_leverage_cap: 999.0`, `idm_cap: 999.0`
    - Attribution: `equity_constraints_off - equity_baseline = constraint effect`

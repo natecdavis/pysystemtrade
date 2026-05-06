@@ -78,7 +78,7 @@ def test_config():
     print("✓ Gating parameters defined correctly in baseline")
 
     # Test test config
-    test_path = Path("config/crypto_perps_gated_carry_test.yaml")
+    test_path = Path("config/research/crypto_perps_gated_carry_test.yaml")
     if not test_path.exists():
         print(f"✗ Test config not found: {test_path}")
         return False

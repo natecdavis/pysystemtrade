@@ -49,7 +49,7 @@ def main():
     print()
 
     # Load simple config (EWMAC only for speed)
-    config_path = Path("config/crypto_perps_greedy_simple.yaml")
+    config_path = Path("config/research/crypto_perps_greedy_simple.yaml")
     if not config_path.exists():
         print(f"ERROR: Config file not found: {config_path}")
         sys.exit(1)

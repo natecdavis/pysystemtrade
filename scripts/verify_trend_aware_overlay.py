@@ -233,7 +233,7 @@ def test_config_loading():
     import yaml
     from sysdata.config.configdata import Config
 
-    config_path = "config/crypto_perps_oi_trend_aware.yaml"
+    config_path = "config/research/crypto_perps_oi_trend_aware.yaml"
     try:
         with open(config_path) as f:
             config_dict = yaml.safe_load(f)
@@ -308,7 +308,7 @@ def main():
         print("Next steps:")
         print("  1. Run backtest with trend-aware config:")
         print("     python scripts/run_dynamic_universe_backtest.py \\")
-        print("       --config config/crypto_perps_oi_trend_aware.yaml \\")
+        print("       --config config/research/crypto_perps_oi_trend_aware.yaml \\")
         print("       --data data/dataset_538registry_6yr_jagged.parquet \\")
         print("       --outdir out/oi_trend_aware/combined")
         print()

@@ -10,7 +10,7 @@ Shows:
 
 Usage:
     python scripts/diagnose_greedy_positions.py \
-        --config config/crypto_perps_greedy.yaml \
+        --config config/research/crypto_perps_greedy.yaml \
         --data data/example_crypto_perps_15x4yr.parquet \
         --dates 2021-02-15,2021-06-15,2022-01-15
 """

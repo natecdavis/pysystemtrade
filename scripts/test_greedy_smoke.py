@@ -53,7 +53,7 @@ def create_greedy_system(
     """
     # Load config
     if config_path is None:
-        config_path = project_root / "config" / "crypto_perps_greedy_simple.yaml"
+        config_path = project_root / "config" / "research" / "crypto_perps_greedy_simple.yaml"
 
     config = Config(str(config_path))
 
@@ -101,7 +101,7 @@ def run_smoke_test():
         sys.exit(1)
 
     print(f"\nDataset: {data_path}")
-    print(f"Config: config/crypto_perps_greedy_simple.yaml (EWMAC only)")
+    print(f"Config: config/research/crypto_perps_greedy_simple.yaml (EWMAC only)")
 
     # Create system
     print("\n" + "-" * 80)
