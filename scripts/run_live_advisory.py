@@ -464,7 +464,25 @@ Examples:
         ),
     )
 
+    parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help=(
+            "Optional run_id (hex) to tag the manifest_chain entries for this pipeline "
+            "invocation. Auto-generated if omitted. Propagated to backtest and trade-plan "
+            "stages so verify_chain() can group all three under the same run."
+        ),
+    )
+
     args = parser.parse_args()
+
+    # Generate a run_id for this pipeline invocation and propagate it through
+    # backtest + trade-plan subprocesses so manifest_chain.verify_chain() sees a
+    # single coherent run cohort.
+    from sysdata.crypto.manifest_chain import new_run_id as _new_run_id
+    run_id = args.run_id or _new_run_id()
+    logger.info(f"Pipeline run_id: {run_id}")
 
     # Initialize environment resolver
     env = LiveOpsEnvironment(
@@ -829,6 +847,7 @@ Examples:
             stage="dataset_build",
             outputs={"dataset": dataset_path},
             extra={"config": str(args.config)},
+            run_id=run_id,
         )
 
         # STEP 3: Run backtest
@@ -845,6 +864,8 @@ Examples:
                 str(dataset_path),
                 "--outdir",
                 str(backtest_dir),
+                "--run-id",
+                run_id,
             ]
             backtest_cmd.extend(existing_aux_args(args.config, env.env_root))
             run_command(backtest_cmd, "Run dynamic universe backtest (parquet-backed)")
@@ -928,6 +949,8 @@ Examples:
             str(output_dir),
             "--config",
             str(args.config),
+            "--run-id",
+            run_id,
         ]
 
         # Add data status for staleness overlay and API staleness hard exits

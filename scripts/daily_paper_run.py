@@ -1140,7 +1140,7 @@ def main() -> int:
     if not args.non_binance_only and not args.dry_run:
         log_lines.append("\n[7b/10] Verifying manifest hash chain...")
         try:
-            from sysdata.crypto.manifest_chain import CHAIN_FILENAME, load_chain, verify_chain
+            from sysdata.crypto.manifest_chain import CHAIN_FILENAME, verify_chain
             chain_path = output_dir / CHAIN_FILENAME
             if not chain_path.exists():
                 log_lines.append(f"  FAILED — chain file not found: {chain_path}")
@@ -1148,19 +1148,6 @@ def main() -> int:
                     send_notification(
                         "⚠️ Paper Run Failed",
                         f"Manifest chain missing at {chain_path}",
-                    )
-                log_path.write_text("\n".join(log_lines))
-                return 1
-            entries = load_chain(chain_path)
-            stages_seen = {e["stage"] for e in entries}
-            required = {"dataset_build", "backtest", "trade_plan"}
-            missing = required - stages_seen
-            if missing:
-                log_lines.append(f"  FAILED — chain missing stages: {sorted(missing)}")
-                if args.notify:
-                    send_notification(
-                        "⚠️ Paper Run Failed",
-                        f"Manifest chain missing stages: {sorted(missing)}",
                     )
                 log_path.write_text("\n".join(log_lines))
                 return 1
@@ -1174,7 +1161,14 @@ def main() -> int:
                     )
                 log_path.write_text("\n".join(log_lines))
                 return 1
-            log_lines.append(f"  OK ({verify_result['stages']} stages).")
+            legacy_note = (
+                f", {verify_result['legacy_skipped']} legacy entries skipped"
+                if verify_result.get("legacy_skipped")
+                else ""
+            )
+            log_lines.append(
+                f"  OK ({verify_result['stages']} stages, run_id={verify_result['run_id']}{legacy_note})."
+            )
         except Exception as exc:
             log_lines.append(f"  WARNING — chain check raised: {exc}")
 

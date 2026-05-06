@@ -1114,6 +1114,17 @@ def main():
              '(0.5 to 2.0) based on where current vol sits in its 10-year history. '
              'Requires use_attenuation list in config or uses default momentum rules.'
     )
+    parser.add_argument(
+        '--run-id',
+        type=str,
+        default=None,
+        help=(
+            'Optional run_id (hex) to tag this stage in the manifest_chain. When '
+            'invoked from run_live_advisory.py the orchestrator passes a shared '
+            'run_id so all three stages group together. If omitted, a fresh run_id '
+            'is generated for ad-hoc invocations.'
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -1198,6 +1209,7 @@ def main():
                             name: p for name, p in backtest_outputs.items() if p.exists()
                         },
                         extra={"config": str(args.config)},
+                        run_id=args.run_id,
                     )
             except Exception as exc:  # never block the run on chain bookkeeping
                 logger.warning(f"manifest_chain: post-backtest record failed: {exc}")

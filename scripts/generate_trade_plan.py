@@ -714,6 +714,17 @@ Notes:
         type=Path,
         help="Optional: path to registry_changelog.json (for delisting hard exits). If not provided, delisting check skipped.",
     )
+    parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help=(
+            "Optional run_id (hex) to tag this stage in the manifest_chain. When "
+            "invoked from run_live_advisory.py the orchestrator passes a shared "
+            "run_id so all three stages group together. If omitted, a fresh run_id "
+            "is generated for ad-hoc invocations."
+        ),
+    )
 
     # Environment isolation
     env_group = parser.add_argument_group("Environment settings")
@@ -1009,6 +1020,7 @@ Notes:
                         "audit_bundle": audit_bundle_path,
                     },
                     extra={"as_of_date": args.as_of_date, "config": str(config_path)},
+                    run_id=args.run_id,
                 )
         except Exception as exc:
             logger.warning(f"manifest_chain: post-trade-plan record failed: {exc}")
