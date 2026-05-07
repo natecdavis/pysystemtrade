@@ -30,6 +30,7 @@ from systems.crypto_perps.c4_xgboost_combiner import (
     multiplier_distribution_stats,
     predictions_to_multiplier_panel,
     realized_xcorr,
+    summarize_multiplier_row,
     uniform_multiplier_panel,
     vol_normalized_forward_return,
 )
@@ -610,3 +611,103 @@ class TestAssertMultiplierPanelFresh:
         # Fails at 4h
         with pytest.raises(ValueError, match="threshold 4h"):
             assert_multiplier_panel_fresh(panel, max_age_hours=4.0)
+
+
+class TestSummarizeMultiplierRow:
+    """`summarize_multiplier_row` is the operator-visibility helper for C4
+    modulation state (audit F3, 2026-05-06). It must distinguish four
+    observed states: identity, portfolio-only, modulated, no_data."""
+
+    @staticmethod
+    def _panel(rows: dict[str, list[float]], dates=None) -> pd.DataFrame:
+        """Build a DateTimeIndex × instrument panel from a dict of
+        {date_str: [val_per_instrument...]}."""
+        if dates is None:
+            dates = [pd.Timestamp(d) for d in rows.keys()]
+        instruments = [f"INST_{i}" for i in range(len(next(iter(rows.values()))))]
+        df = pd.DataFrame(
+            list(rows.values()), index=dates, columns=instruments
+        )
+        return df
+
+    def test_returns_no_data_for_empty_panel(self):
+        empty = pd.DataFrame()
+        s = summarize_multiplier_row(empty)
+        assert s["mode"] == "no_data"
+        assert s["n_instruments"] == 0
+        assert s["mean"] is None
+
+    def test_returns_no_data_for_all_nan_row(self):
+        idx = pd.DatetimeIndex(["2026-05-06"])
+        panel = pd.DataFrame([[np.nan, np.nan]], index=idx, columns=["BTC", "ETH"])
+        s = summarize_multiplier_row(panel)
+        assert s["mode"] == "no_data"
+        assert s["n_instruments"] == 0
+        assert s["as_of_date"] == "2026-05-06"
+
+    def test_identifies_identity_panel(self):
+        panel = self._panel({"2026-05-06": [1.0, 1.0, 1.0, 1.0]})
+        s = summarize_multiplier_row(panel)
+        assert s["mode"] == "identity"
+        assert s["all_identity"] is True
+        assert s["frac_identity"] == 1.0
+        assert s["std"] == 0.0
+        assert s["mean"] == 1.0
+        assert s["n_instruments"] == 4
+
+    def test_identifies_portfolio_only_panel(self):
+        # Single value broadcast to every instrument — model split only
+        # on portfolio-state features.
+        panel = self._panel({"2026-05-06": [1.31, 1.31, 1.31, 1.31, 1.31]})
+        s = summarize_multiplier_row(panel)
+        assert s["mode"] == "portfolio-only"
+        assert s["std"] == 0.0
+        assert s["all_identity"] is False
+        assert s["mean"] == 1.31
+
+    def test_identifies_modulated_panel(self):
+        panel = self._panel({"2026-05-06": [0.72, 0.95, 1.10, 1.42]})
+        s = summarize_multiplier_row(panel)
+        assert s["mode"] == "modulated"
+        assert s["std"] > 0
+        assert s["all_identity"] is False
+        assert 0.5 <= s["min"] <= 1.5
+        assert 0.5 <= s["max"] <= 1.5
+        # Saturation tracking
+        assert s["frac_at_floor"] == 0.0  # 0.72 > 0.501
+        assert s["frac_at_ceiling"] == 0.0  # 1.42 < 1.499
+
+    def test_handles_partial_nan_row(self):
+        idx = pd.DatetimeIndex(["2026-05-06"])
+        panel = pd.DataFrame(
+            [[1.10, np.nan, 0.95, np.nan]], index=idx,
+            columns=["BTC", "ETH", "SOL", "DOGE"],
+        )
+        s = summarize_multiplier_row(panel)
+        # n_instruments excludes NaN cells
+        assert s["n_instruments"] == 2
+        assert s["mode"] == "modulated"
+        assert s["mean"] == pytest.approx((1.10 + 0.95) / 2, rel=1e-6)
+
+    def test_picks_specified_row_date(self):
+        panel = self._panel({
+            "2026-05-04": [1.0, 1.0, 1.0],     # identity row
+            "2026-05-05": [0.8, 1.0, 1.2],     # modulated row
+            "2026-05-06": [1.31, 1.31, 1.31],  # portfolio-only row
+        })
+        # Default → last date
+        assert summarize_multiplier_row(panel)["mode"] == "portfolio-only"
+        # Explicit → midday row
+        s = summarize_multiplier_row(panel, row_date=pd.Timestamp("2026-05-05"))
+        assert s["mode"] == "modulated"
+        assert s["as_of_date"] == "2026-05-05"
+        # Explicit identity day
+        s2 = summarize_multiplier_row(panel, row_date="2026-05-04")
+        assert s2["mode"] == "identity"
+
+    def test_unknown_row_date_falls_back_to_max(self):
+        panel = self._panel({"2026-05-06": [0.9, 1.1]})
+        s = summarize_multiplier_row(panel, row_date=pd.Timestamp("2026-01-01"))
+        # Falls back to last available date
+        assert s["as_of_date"] == "2026-05-06"
+        assert s["mode"] == "modulated"

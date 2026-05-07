@@ -160,6 +160,39 @@ def parse_trade_plan(output_dir: Path) -> tuple[int, float]:
         return 0, 0.0
 
 
+def parse_c4_state(output_dir: Path) -> dict | None:
+    """Read c4_multiplier_state from the latest audit_bundle_*.json in
+    output_dir. Returns None on missing file, malformed JSON, or absent key.
+    Pattern mirrors parse_trade_plan above (audit F3, 2026-05-06).
+    """
+    import json as _json
+    bundles = sorted(output_dir.glob("audit_bundle_*.json"))
+    if not bundles:
+        return None
+    try:
+        return _json.loads(bundles[-1].read_text()).get("c4_multiplier_state")
+    except Exception:
+        return None
+
+
+def format_c4_state_tag(state: dict | None) -> str | None:
+    """Render the C4 modulation state for the macOS notification body. Returns
+    None when the tag should be omitted (feature-flag off or no state)."""
+    if not state:
+        return None
+    mode = state.get("mode")
+    if mode == "modulated":
+        return f"C4 σ={state.get('std', 0.0):.2f}"
+    if mode == "identity":
+        return "C4 identity"
+    if mode == "portfolio-only":
+        return f"C4 portfolio×{state.get('mean', 1.0):.2f}"
+    if mode == "no_data":
+        return "C4 no-data"
+    # mode == "disabled" (key absent) → silent, no tag
+    return None
+
+
 def get_current_maxdd(cb: CircuitBreaker) -> str:
     """Return current max drawdown as a string, e.g. '-9.4%'."""
     history = cb.get_history_summary(n=9999)
@@ -1235,6 +1268,9 @@ def main() -> int:
             title = "📋 Paper Trade Plan Ready"
 
         body_parts = [f"{num_trades} trades • Est cost ${total_cost:.2f} • MaxDD {maxdd}"]
+        c4_tag = format_c4_state_tag(parse_c4_state(output_dir))
+        if c4_tag:
+            body_parts.append(c4_tag)
         if warnings:
             body_parts.append(f"{len(warnings)} warning(s) — check live/paper_run_latest.log")
 

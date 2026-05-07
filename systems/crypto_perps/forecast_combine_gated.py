@@ -153,9 +153,23 @@ class ForecastCombineGated(ForecastCombine):
         if not hasattr(self, "_wf_multiplier_panel"):
             from systems.crypto_perps.c4_xgboost_combiner import (
                 assert_multiplier_panel_fresh,
+                summarize_multiplier_row,
             )
             resolved = assert_multiplier_panel_fresh(mult_path)
             self._wf_multiplier_panel = pd.read_parquet(resolved)
+            # Surface today's modulation state once per backtest so the
+            # operator can tell whether C4 is contributing or no-op-ing
+            # (audit F3, 2026-05-06).
+            import logging as _logging
+            _summary = summarize_multiplier_row(self._wf_multiplier_panel)
+            _logging.getLogger(__name__).info(
+                "C4 multiplier today (%s): mode=%s mean=%.4f σ=%.4f "
+                "frac_identity=%.1f%% (n=%d instruments)",
+                _summary["as_of_date"], _summary["mode"],
+                _summary["mean"] or 0.0, _summary["std"] or 0.0,
+                100 * (_summary["frac_identity"] or 0.0),
+                _summary["n_instruments"],
+            )
         panel = self._wf_multiplier_panel
         if instrument_code not in panel.columns:
             return forecast

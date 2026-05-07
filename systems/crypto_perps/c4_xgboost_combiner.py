@@ -110,6 +110,99 @@ def assert_multiplier_panel_fresh(
     return p
 
 
+# Tolerance band for "exactly 1.0" identity (floating-point) and for
+# "essentially zero std" (portfolio-state-only modulation, where every
+# instrument got the same prediction because tree splits were all on
+# portfolio-state features). Tight enough to distinguish a real bias-only
+# fit from sub-bp instrument-level variation.
+_IDENTITY_TOL = 1e-6
+_PORTFOLIO_ONLY_STD_TOL = 1e-9
+
+
+def summarize_multiplier_row(
+    panel: pd.DataFrame,
+    row_date: Optional[pd.Timestamp] = None,
+) -> dict:
+    """Summarize a single date's multiplier row from a C4 multiplier panel.
+
+    The summary is meant to give the operator a one-glance answer to
+    "is C4 actually contributing today?" — surfacing the four observed
+    states identified in the 2026-05-06 audit (Phase B Probe 6):
+      * "identity"       — every instrument == 1.0 (model is bias-only,
+                            i.e. last refit's `is_uninformative=True`).
+      * "portfolio-only" — every instrument got the same multiplier
+                            (model splits driven only by portfolio-state
+                            features; no per-instrument resolution).
+      * "modulated"      — genuine per-instrument modulation.
+      * "no_data"        — row date has no non-NaN cells.
+
+    Args:
+        panel: DateTimeIndex × instrument-columns DataFrame in [0.5, 1.5].
+        row_date: target date. Defaults to `panel.index.max()`.
+
+    Returns dict suitable for both logging and JSON serialization.
+    """
+    if panel.empty:
+        return {
+            "as_of_date": None,
+            "n_instruments": 0,
+            "mean": None, "std": None, "min": None, "max": None,
+            "frac_identity": None, "frac_at_floor": None, "frac_at_ceiling": None,
+            "all_identity": False,
+            "mode": "no_data",
+        }
+
+    if row_date is None:
+        row_date = panel.index.max()
+    else:
+        row_date = pd.Timestamp(row_date)
+        if row_date not in panel.index:
+            row_date = panel.index.max()
+
+    row = panel.loc[row_date].dropna()
+    n = int(len(row))
+    if n == 0:
+        return {
+            "as_of_date": str(pd.Timestamp(row_date).date()),
+            "n_instruments": 0,
+            "mean": None, "std": None, "min": None, "max": None,
+            "frac_identity": None, "frac_at_floor": None, "frac_at_ceiling": None,
+            "all_identity": False,
+            "mode": "no_data",
+        }
+
+    arr = row.to_numpy(dtype=float)
+    mean = float(arr.mean())
+    std = float(arr.std()) if n > 1 else 0.0
+    mn = float(arr.min())
+    mx = float(arr.max())
+    frac_identity = float(np.mean(np.abs(arr - 1.0) <= _IDENTITY_TOL))
+    frac_at_floor = float(np.mean(arr <= 0.501))
+    frac_at_ceiling = float(np.mean(arr >= 1.499))
+    all_identity = bool(frac_identity == 1.0)
+
+    if all_identity:
+        mode = "identity"
+    elif std <= _PORTFOLIO_ONLY_STD_TOL:
+        mode = "portfolio-only"
+    else:
+        mode = "modulated"
+
+    return {
+        "as_of_date": str(pd.Timestamp(row_date).date()),
+        "n_instruments": n,
+        "mean": round(mean, 6),
+        "std": round(std, 6),
+        "min": round(mn, 6),
+        "max": round(mx, 6),
+        "frac_identity": round(frac_identity, 6),
+        "frac_at_floor": round(frac_at_floor, 6),
+        "frac_at_ceiling": round(frac_at_ceiling, 6),
+        "all_identity": all_identity,
+        "mode": mode,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Constants — pre-stated per the C4 spec; do NOT sweep post-hoc.
 # ---------------------------------------------------------------------------

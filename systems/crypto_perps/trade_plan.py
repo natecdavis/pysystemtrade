@@ -455,13 +455,21 @@ def generate_trade_plan(
     # (forecast_combine_gated.py:_apply_walk_forward_multiplier), so by the time
     # we reach trade-plan generation the panel was fresh at backtest start.
     # Re-checking here catches the rare case where the panel ages past 30h
-    # between backtest and trade-plan generation in the same run.
+    # between backtest and trade-plan generation in the same run. Also
+    # captures today's modulation state for the audit bundle (audit F3).
     mult_path_str = config.get("walk_forward_multiplier_panel_path")
     if mult_path_str:
         from systems.crypto_perps.c4_xgboost_combiner import (
             assert_multiplier_panel_fresh,
+            summarize_multiplier_row,
         )
-        assert_multiplier_panel_fresh(mult_path_str)
+        resolved_panel_path = assert_multiplier_panel_fresh(mult_path_str)
+        c4_state = summarize_multiplier_row(
+            pd.read_parquet(resolved_panel_path),
+            row_date=pd.Timestamp(as_of_date),
+        )
+    else:
+        c4_state = {"mode": "disabled", "as_of_date": as_of_date}
 
     # 2. Load backtest outputs
     logger.info("Loading backtest outputs...")
@@ -875,6 +883,11 @@ def generate_trade_plan(
             "applied": False,
             "reason": "no_data_status_file" if not data_status_path else "v0_mode",
         }
+
+    # C4 multiplier modulation state for the operator-facing audit trail
+    # (audit F3, 2026-05-06). c4_state was populated upstream alongside the
+    # 30h panel-age fail-closed check.
+    audit_bundle["c4_multiplier_state"] = c4_state
 
     logger.info("Trade plan generation complete")
 
