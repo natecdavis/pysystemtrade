@@ -259,6 +259,21 @@ def extract_panels(
     forecast_dict: dict = {}
     return_dict: dict = {}
 
+    # Silent-failure tally: keep the per-(rule, instrument) loop's bare
+    # `except Exception: pass` semantics (one failed rule shouldn't crash
+    # the whole extract), but record everything so the operator gets
+    # actionable visibility instead of "0 instruments" with no reason
+    # (audit F7, 2026-05-06; bridges F2 — silent OI/BTC-dom rule failures).
+    from collections import Counter
+    silent_counts: Counter = Counter()
+    silent_examples: dict = {}
+
+    def _record_silent(scope: str, exc: BaseException, instrument: str) -> None:
+        key = (scope, type(exc).__name__)
+        silent_counts[key] += 1
+        if key not in silent_examples:
+            silent_examples[key] = (instrument, str(exc))
+
     # --- Returns (fast — just price series) ---
     print("Extracting returns...", end=" ", flush=True)
     for inst in instruments:
@@ -270,8 +285,8 @@ def extract_panels(
                     ret = ret.loc[ret.index >= since]
                 if not ret.empty:
                     return_dict[inst] = ret
-        except Exception:
-            pass
+        except Exception as exc:
+            _record_silent("__returns__", exc, inst)
     print(f"done ({len(return_dict)} instruments with valid prices)")
 
     # --- Forecasts per rule ---
@@ -287,9 +302,34 @@ def extract_panels(
                             continue
                     forecast_dict[(rule, inst)] = fc
                     count += 1
-            except Exception:
-                pass
+            except Exception as exc:
+                _record_silent(rule, exc, inst)
         print(f"  [{i:2d}/{len(active_rules)}] {rule:<35} {count} instruments")
+
+    # --- Silent-failure summary (audit F7) ---
+    # Groups failures by (rule|"__returns__", exception_type) so a recurring
+    # failure like "all 477 attn_exhaustion_fade calls KeyError on
+    # 'BTCUSDT_PERP'" surfaces as one line, with the message text on the
+    # first occurrence preserved as a hint. NOT a fail-closed gate — keeps
+    # backwards-compatible swallow behavior; this is purely for visibility.
+    if silent_counts:
+        total = sum(silent_counts.values())
+        n_groups = len(silent_counts)
+        print(f"\n=== Silent extraction failures: {total} across {n_groups} (scope, exception) groups ===")
+        # Sort: largest group first so the loudest signal lands first.
+        for (scope, exc_type), n in sorted(silent_counts.items(), key=lambda x: -x[1]):
+            ex_inst, ex_msg = silent_examples[(scope, exc_type)]
+            short_msg = ex_msg.replace("\n", " ")
+            if len(short_msg) > 100:
+                short_msg = short_msg[:97] + "..."
+            print(
+                f"  {scope:<35} {exc_type:<22} ×{n:>4}  e.g. {ex_inst}: {short_msg}"
+            )
+        print(
+            "  (Each line is a silently-skipped (rule, instrument) pair group. "
+            "If the count == n_instruments for an active forecast_weights rule, "
+            "that rule is contributing zero to the combined forecast today.)"
+        )
 
     if not forecast_dict and since is None:
         print("\nERROR: No forecasts extracted. Check config and data paths.")
