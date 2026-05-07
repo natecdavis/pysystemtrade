@@ -71,54 +71,73 @@ def build_system(config_path: str, data_path: str) -> System:
         return arg_not_supplied
 
     data_dir = Path(data_path).parent
+    # Production writes auxiliary feeds to envs/dev/data/ (post-2026-05-06
+    # migration). Some legacy tracked files still live at data/<file>.parquet
+    # (e.g. data/market_cap.parquet was last refreshed 2026-04-26 and shadows
+    # the fresh envs/dev/data/market_cap.parquet) — so env-first resolution
+    # is REQUIRED, not optional. Without env-first, the resolver picks up
+    # 20-day-stale repo fixtures and rules silently produce stale forecasts
+    # (audit F2 root cause, 2026-05-07; mirrors required_data._resolve_path).
+    env_data = repo_root / "envs" / "dev" / "data"
 
     macro_kwarg = _resolve(
+        env_data / "macro_factors.parquet",
         data_dir / "macro_factors.parquet",
         repo_root / "data" / "macro_factors.parquet",
     )
     sector_kwarg = _resolve(
+        env_data / "sector_map.json",
         data_dir / "sector_map.json",
         repo_root / "data" / "sector_map.json",
     )
     volume_kwarg = _resolve(
+        env_data / "binance_volume_daily.parquet",
         data_dir / "binance_volume_daily.parquet",
         repo_root / "data" / "binance_volume_daily.parquet",
     )
     oi_kwarg = _resolve(
+        env_data / "binance_oi_processed.parquet",
         data_dir / "binance_oi_processed.parquet",
         repo_root / "data" / "binance_oi_processed.parquet",
     )
     fg_kwarg = _resolve(
+        env_data / "fg_index.parquet",
         data_dir / "fg_index.parquet",
         repo_root / "data" / "fg_index.parquet",
     )
     mvrv_kwarg = _resolve(
+        env_data / "mvrv_index.parquet",
         data_dir / "mvrv_index.parquet",
         repo_root / "data" / "mvrv_index.parquet",
     )
     aa_kwarg = _resolve(
+        env_data / "active_addresses.parquet",
         data_dir / "active_addresses.parquet",
         repo_root / "data" / "active_addresses.parquet",
     )
     mcap_kwarg = _resolve(
+        env_data / "market_cap.parquet",
         data_dir / "market_cap.parquet",
         repo_root / "data" / "market_cap.parquet",
     )
     hl_kwarg = _resolve(
+        env_data / "hyperliquid_instruments.json",
         data_dir / "hyperliquid_instruments.json",
         repo_root / "data" / "hyperliquid_instruments.json",
     )
     stablecoin_kwarg = _resolve(
+        env_data / "stablecoin_supply.parquet",
         data_dir / "stablecoin_supply.parquet",
         repo_root / "data" / "stablecoin_supply.parquet",
     )
     etf_kwarg = _resolve(
+        env_data / "etf_flows.parquet",
         data_dir / "etf_flows.parquet",
         repo_root / "data" / "etf_flows.parquet",
     )
     basis_kwarg = _resolve(
+        env_data / "binance_premium_index_processed.parquet",
         data_dir / "binance_premium_index_processed.parquet",
-        repo_root / "envs" / "dev" / "data" / "binance_premium_index_processed.parquet",
         repo_root / "data" / "binance_premium_index_processed.parquet",
     )
 
