@@ -343,13 +343,17 @@ def main() -> int:
     )
     parser.add_argument(
         "--macro-data",
-        default="data/macro_factors.parquet",
-        help="Macro factors parquet (must contain dxy column).",
+        default=None,
+        help=("Macro factors parquet (must contain dxy column). "
+              "Defaults to envs/dev/data/macro_factors.parquet, falling back to "
+              "data/macro_factors.parquet."),
     )
     parser.add_argument(
         "--stablecoin-data",
-        default="data/stablecoin_supply.parquet",
-        help="Stablecoin supply parquet (optional — feature is NaN if missing).",
+        default=None,
+        help=("Stablecoin supply parquet (optional — feature is NaN if missing). "
+              "Defaults to envs/dev/data/stablecoin_supply.parquet, falling back to "
+              "data/stablecoin_supply.parquet."),
     )
     parser.add_argument(
         "--out-dir",
@@ -420,8 +424,22 @@ def main() -> int:
 
     panels_dir = REPO_ROOT / args.panels_dir
     baseline_dir = REPO_ROOT / args.baseline_dir
-    macro_path = REPO_ROOT / args.macro_data
-    stable_path = REPO_ROOT / args.stablecoin_data
+
+    # env-first/repo-fallback resolution mirrors required_data._resolve_path.
+    # Prevents the silent "FileNotFoundError → [3o] WARN-only → panel ages
+    # past 30h → backtest fail-closed" cascade observed 2026-05-07 when the
+    # auxiliary feeds migrated to envs/dev/data/ but defaults pointed at
+    # repo data/ (audit F2-followup, 2026-05-08).
+    def _env_first(arg_value: "str | None", filename: str) -> Path:
+        if arg_value is not None:
+            return REPO_ROOT / arg_value
+        env_p = REPO_ROOT / "envs" / "dev" / "data" / filename
+        if env_p.exists():
+            return env_p
+        return REPO_ROOT / "data" / filename
+
+    macro_path = _env_first(args.macro_data, "macro_factors.parquet")
+    stable_path = _env_first(args.stablecoin_data, "stablecoin_supply.parquet")
     live_panel_path = (Path(args.live_panel_path) if Path(args.live_panel_path).is_absolute()
                        else REPO_ROOT / args.live_panel_path)
     model_store_dir = (Path(args.model_store_dir) if Path(args.model_store_dir).is_absolute()
