@@ -130,6 +130,35 @@ def send_notification(title: str, body: str) -> None:
         pass  # Notification failure is non-fatal
 
 
+def detect_oom_kill(returncode: int, output: str) -> bool:
+    """Heuristic: was this subprocess (or one it spawned) killed by SIGKILL?
+
+    The orchestrator runs `run_live_advisory.py`, which in turn runs
+    `run_dynamic_universe_backtest.py`. When the inner backtest is OOM-killed,
+    the advisory wrapper translates SIGKILL to exit code 1, so we have to grep
+    the captured output for the inner -9. We also catch the direct case where
+    the immediate child was killed (returncode = -9 on Unix, or 137 if shell-
+    translated).
+    """
+    if returncode in (-9, 137):
+        return True
+    needles = ("Exit code: -9", "Killed: 9", "signal 9", "MemoryError", "Cannot allocate memory")
+    return any(n in output for n in needles)
+
+
+def check_available_memory_gb(min_required_gb: float) -> tuple[bool, float]:
+    """Return (ok, available_gb). False means we should abort before the
+    heavy backtest step rather than let the OS SIGKILL it 30 minutes in.
+    """
+    try:
+        import psutil
+        available_gb = psutil.virtual_memory().available / (1024 ** 3)
+        return available_gb >= min_required_gb, available_gb
+    except Exception:
+        # If psutil is unavailable for any reason, don't block the run.
+        return True, float("nan")
+
+
 def parse_trade_plan(output_dir: Path) -> tuple[int, float]:
     """
     Parse trade_plan_*.csv in output_dir.
@@ -300,6 +329,16 @@ def main() -> int:
             "Thread pool size for the independent data-fetch steps (3b–3g). "
             "Each worker waits on its own subprocess (network), so concurrency cuts "
             "wall-clock by ~2-3x without contending the GIL."
+        ),
+    )
+    parser.add_argument(
+        "--min-free-ram-gb",
+        type=float,
+        default=4.0,
+        help=(
+            "Abort before the advisory backtest if available RAM is below this "
+            "threshold. Prevents the heavy forecast-correlation step from being "
+            "SIGKILLed 30+ minutes in. Default 4 GB; pass 0 to disable the check."
         ),
     )
     args = parser.parse_args()
@@ -1125,6 +1164,28 @@ def main() -> int:
     elif args.dry_run:
         log_lines.append("  Skipped (--dry-run).")
     else:
+        # Pre-flight: the forecast-correlation stage of run_dynamic_universe_backtest.py
+        # holds the per-instrument forecast panel × 122 rules in memory and is the
+        # peak-RSS step of the entire pipeline. If we don't have headroom here, the
+        # OS will SIGKILL the child 30+ minutes in with no diagnostic. Abort cleanly
+        # now instead.
+        if args.min_free_ram_gb > 0:
+            ok, available_gb = check_available_memory_gb(args.min_free_ram_gb)
+            if not ok:
+                log_lines.append(
+                    f"  Insufficient RAM: {available_gb:.1f} GB free, need ≥ "
+                    f"{args.min_free_ram_gb:.1f} GB. Close other apps and retry, or "
+                    f"override with --min-free-ram-gb."
+                )
+                log_path.write_text("\n".join(log_lines))
+                if args.notify:
+                    send_notification(
+                        "⚠️ Paper Run Aborted (Low RAM)",
+                        f"Only {available_gb:.1f} GB free, need {args.min_free_ram_gb:.1f} GB — backtest skipped.",
+                    )
+                return 1
+            log_lines.append(f"  RAM check: {available_gb:.1f} GB free (≥ {args.min_free_ram_gb:.1f} GB).")
+
         advisory_cmd = [
             sys.executable, "scripts/run_live_advisory.py",
             "--config", args.config,
@@ -1137,15 +1198,23 @@ def main() -> int:
             "--base-dataset", "data/dataset_538registry_6yr_jagged.parquet",
         ]
         advisory_cmd.extend(env_args)
-        adv_rc, _ = run_subprocess(advisory_cmd, log_lines)
+        adv_rc, adv_out = run_subprocess(advisory_cmd, log_lines)
         if adv_rc != 0:
-            log_lines.append(f"  Advisory failed (exit {adv_rc}) — aborting.")
+            oom = detect_oom_kill(adv_rc, adv_out)
+            label = "Advisory OOM-killed" if oom else f"Advisory failed (exit {adv_rc})"
+            log_lines.append(f"  {label} — aborting.")
             log_path.write_text("\n".join(log_lines))
             if args.notify:
-                send_notification(
-                    "⚠️ Paper Run Failed",
-                    f"Advisory failed (exit {adv_rc}) — check {log_path}",
-                )
+                if oom:
+                    send_notification(
+                        "⚠️ Paper Run Failed (likely OOM)",
+                        f"Backtest SIGKILLed — close apps and retry. See {log_path.name}",
+                    )
+                else:
+                    send_notification(
+                        "⚠️ Paper Run Failed",
+                        f"Advisory failed (exit {adv_rc}) — check {log_path}",
+                    )
             return 1
         else:
             log_lines.append("  OK.")

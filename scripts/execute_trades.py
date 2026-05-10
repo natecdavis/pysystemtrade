@@ -71,6 +71,35 @@ def find_latest_trade_plan(output_root: Path) -> Path:
     return candidates[-1]
 
 
+def check_plan_freshness(trade_plan_path: Path, positions_path: Path) -> tuple[bool, str]:
+    """Return (is_fresh, message). A plan is stale if it was generated before
+    the live positions file was last refreshed — that means the plan's frozen
+    deltas are based on pre-refresh state and re-executing them would over-
+    trade. This is the failure mode that almost bit us 2026-05-09 when the
+    morning trades had filled and an evening daily_paper_run failed before
+    regenerating the plan; a dry-run still surfaced the morning's deltas as
+    if they were pending.
+    """
+    if not positions_path.exists():
+        return True, ""
+    plan_mtime = trade_plan_path.stat().st_mtime
+    pos_mtime = positions_path.stat().st_mtime
+    if plan_mtime >= pos_mtime:
+        return True, ""
+    plan_dt = datetime.fromtimestamp(plan_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    pos_dt = datetime.fromtimestamp(pos_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    gap_h = (pos_mtime - plan_mtime) / 3600
+    msg = (
+        f"⚠  STALE TRADE PLAN\n"
+        f"   Trade plan written:  {plan_dt}\n"
+        f"   Positions refreshed: {pos_dt}  ({gap_h:.1f}h later)\n"
+        f"   Positions have been updated since this plan was generated; the\n"
+        f"   plan's frozen deltas are based on pre-refresh state. Executing\n"
+        f"   again would over-trade. Re-run daily_paper_run.py to regenerate."
+    )
+    return False, msg
+
+
 def load_actionable_trades(trade_plan_path: Path) -> pd.DataFrame:
     df = pd.read_csv(trade_plan_path)
     warnings_col = df["warnings"].fillna("") if "warnings" in df.columns else pd.Series([""] * len(df))
@@ -172,6 +201,11 @@ def main() -> int:
     parser.add_argument("--trade-plan", type=Path, help="Explicit trade plan CSV path")
     parser.add_argument("--dry-run", action="store_true", help="Show trades but don't execute")
     parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompt")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Override stale-plan refusal (use only if you're certain the plan is current).",
+    )
     args = parser.parse_args()
 
     env = LiveOpsEnvironment(env=args.env, env_root=args.env_root, project_root=REPO_ROOT)
@@ -179,6 +213,22 @@ def main() -> int:
     # Load trade plan
     trade_plan_path = args.trade_plan or find_latest_trade_plan(env.resolve("out"))
     print(f"Trade plan: {trade_plan_path}")
+
+    # Refuse to execute a plan that's older than the positions it claims to act on.
+    is_fresh, freshness_msg = check_plan_freshness(
+        trade_plan_path, env.env_root / "live" / "current_positions.csv"
+    )
+    if not is_fresh:
+        print()
+        print(freshness_msg)
+        if args.dry_run:
+            print("\n   (--dry-run: continuing with stale plan for inspection only.)")
+        elif args.force:
+            print("\n   --force: continuing despite stale plan.")
+        else:
+            print("\n   Refusing to execute. Pass --force to override.")
+            return 2
+
     trades = load_actionable_trades(trade_plan_path)
 
     if trades.empty:
