@@ -940,7 +940,7 @@ def run_backtest(
                 'instrument': instrument,
                 'position': position.values,
                 'combined_forecast': combined_forecast.reindex(portfolio_positions.index).values,
-                'instrument_weight': instrument_weight.reindex(portfolio_positions.index).values,
+                'instrument_weight': instrument_weight.reindex(portfolio_positions.index, method='ffill').values,
                 'fdm': fdm_values,
                 'idm': _idm_arr,
             })

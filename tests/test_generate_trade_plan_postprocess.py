@@ -24,6 +24,23 @@ class _NoopLog:
         pass
 
 
+class _CapturingLog:
+    """Log mock that records messages so tests can assert which factor path
+    fired (DIRECT vs back-out median) inside compute_shadow_targets."""
+
+    def __init__(self):
+        self.messages: list[tuple[str, str]] = []
+
+    def info(self, msg, *args, **kwargs):
+        self.messages.append(("info", str(msg)))
+
+    def warning(self, msg, *args, **kwargs):
+        self.messages.append(("warning", str(msg)))
+
+    def debug(self, msg, *args, **kwargs):
+        pass
+
+
 def _trade_plan_row(current, target):
     df = pd.DataFrame(
         {
@@ -389,6 +406,56 @@ def test_compute_shadow_targets_falls_back_to_back_out_without_idm(tmp_path):
     # Must still return *something* — fallback path engaged
     assert "TRXUSDT_PERP" in targets
     assert targets["TRXUSDT_PERP"] != 0.0
+
+
+def test_compute_shadow_targets_handles_ffill_lagged_weights(tmp_path):
+    """Regression for P1-1: ``system.portfolio.get_instrument_weights()``
+    has a 1–2 day terminal NaN lag in production. The diagnostic writer at
+    ``scripts/run_dynamic_universe_backtest.py`` must reindex
+    ``instrument_weight`` with ``method='ffill'`` so the parquet has non-NaN
+    values at the last date — without it, ``compute_shadow_targets`` falls
+    through to the back-out median fallback and shadow targets swing 5×
+    day-to-day (observed live 2026-05-09 → 2026-05-10).
+
+    Two checks:
+
+    1. Source trip-wire: the writer line that reindexes ``instrument_weight``
+       must include ``method='ffill'``. If a future refactor drops it, this
+       fires immediately.
+    2. End-state behaviour: with diagnostics produced as the post-fix writer
+       would emit them (non-NaN ``instrument_weight`` at last_date), the
+       DIRECT factor path is logged and the back-out fallback is not.
+    """
+    import re
+
+    # 1. Source trip-wire on the producer side.
+    writer_src = (
+        Path(__file__).parent.parent / "scripts" / "run_dynamic_universe_backtest.py"
+    ).read_text()
+    assert re.search(
+        r"['\"]instrument_weight['\"]\s*:\s*instrument_weight\.reindex\([^)]*method=['\"]ffill['\"]",
+        writer_src,
+    ), (
+        "P1-1 regression: writer must reindex instrument_weight with method='ffill' "
+        "(scripts/run_dynamic_universe_backtest.py)"
+    )
+
+    # 2. End-state behaviour: DIRECT path fires when diagnostics are populated.
+    backtest_dir = _build_shadow_target_fixture(tmp_path, with_idm=True)
+    log = _CapturingLog()
+    targets = compute_shadow_targets({"TRXUSDT_PERP"}, backtest_dir, log=log)
+
+    factor_logs = [m for _, m in log.messages if "Shadow target implied factor" in m]
+    assert factor_logs, "compute_shadow_targets should log its implied factor"
+    assert "(direct)" in factor_logs[0], (
+        f"DIRECT factor path should fire when idm and instrument_weight are populated; "
+        f"got: {factor_logs[0]!r}"
+    )
+    assert "back-out" not in factor_logs[0], (
+        f"Back-out fallback must not fire when DIRECT inputs are present; "
+        f"got: {factor_logs[0]!r}"
+    )
+    assert targets.get("TRXUSDT_PERP", 0.0) != 0.0
 
 
 def test_compute_shadow_targets_stable_across_repeated_calls(tmp_path):
