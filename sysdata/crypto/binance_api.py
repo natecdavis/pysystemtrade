@@ -20,27 +20,68 @@ logger = logging.getLogger(__name__)
 
 class RateLimiter:
     """
-    Conservative fixed-sleep rate limiter.
+    Adaptive rate limiter that respects Binance's per-IP weight budget.
 
-    Uses fixed sleep between requests rather than tracking headers,
-    which may not be present or consistent on public endpoints.
+    Maintains a base inter-request sleep PLUS adaptive backoff once the
+    server-reported `X-MBX-USED-WEIGHT-1M` approaches the cap (default
+    2400 for fapi). Without the adaptive layer, bursty serial requests
+    can exhaust the per-IP budget mid-run and earn the IP a 403 ban —
+    observed live 2026-05-11 where 207 of 497 funding-rate fetches
+    returned 403 after the budget was silently drained.
+
+    The fixed-sleep fallback (used when no header has been seen yet)
+    stays in place so first-request behaviour is unchanged.
     """
 
-    def __init__(self, sleep_ms: float = 50):
+    def __init__(
+        self,
+        sleep_ms: float = 100,
+        weight_cap: int = 2400,
+        weight_threshold: float = 0.75,
+    ):
         """
         Args:
-            sleep_ms: Sleep duration in milliseconds between requests (default: 50ms)
+            sleep_ms: Base sleep between requests (default: 100ms). Below
+                this rate weight rises faster than it sheds, so any value
+                under ~50ms exhausts the cap on large universes.
+            weight_cap: Binance's per-IP weight budget per minute window.
+                Default 2400 matches fapi public endpoints.
+            weight_threshold: Fraction of cap above which adaptive sleep
+                extends to keep used-weight under the cap (default 0.75).
         """
-        self.sleep_seconds = sleep_ms / 1000.0
+        self.base_sleep = sleep_ms / 1000.0
         self.last_request_time = 0.0
+        self.weight_cap = weight_cap
+        self.weight_threshold = weight_threshold
+        # Most recent X-MBX-USED-WEIGHT-1M; 0 means no header observed yet.
+        self.last_used_weight: int = 0
 
     def wait_if_needed(self):
-        """Sleep if needed to maintain rate limit."""
+        """Sleep before next request. Sleep extends if used-weight is near cap."""
+        sleep_seconds = self.base_sleep
+        # Adaptive scaling: if the server reports we're past the threshold,
+        # extend each sleep so the 1-minute window has time to slide off
+        # used weight before we add more.
+        if self.last_used_weight > self.weight_cap * self.weight_threshold:
+            headroom = max(self.weight_cap - self.last_used_weight, 1)
+            safe_sleep = 60.0 / headroom  # spread remaining budget over 60s
+            sleep_seconds = max(sleep_seconds, safe_sleep)
         if self.last_request_time > 0:
             elapsed = time.time() - self.last_request_time
-            if elapsed < self.sleep_seconds:
-                time.sleep(self.sleep_seconds - elapsed)
+            if elapsed < sleep_seconds:
+                time.sleep(sleep_seconds - elapsed)
         self.last_request_time = time.time()
+
+    def update_from_response(self, response) -> None:
+        """Parse X-MBX-USED-WEIGHT-1M from response headers. Updates the
+        adaptive sleep input so the next wait_if_needed() can throttle."""
+        # Header names are case-insensitive on requests.Response.headers.
+        weight = response.headers.get("X-MBX-USED-WEIGHT-1M")
+        if weight is not None:
+            try:
+                self.last_used_weight = int(weight)
+            except (TypeError, ValueError):
+                pass
 
 
 class BinanceAPIClient:
@@ -59,13 +100,15 @@ class BinanceAPIClient:
     def __init__(
         self,
         cache_dir: Path,
-        sleep_ms: float = 50,
+        sleep_ms: float = 100,
         max_retries: int = 3
     ):
         """
         Args:
             cache_dir: Directory for caching API responses
-            sleep_ms: Sleep between requests in milliseconds (default: 50ms)
+            sleep_ms: Base sleep between requests in milliseconds (default: 100ms).
+                The RateLimiter extends this adaptively when X-MBX-USED-WEIGHT-1M
+                approaches Binance's per-IP cap.
             max_retries: Maximum retry attempts on errors (default: 3)
         """
         self.cache_dir = Path(cache_dir)
@@ -244,19 +287,36 @@ class BinanceAPIClient:
         try:
             response = self.session.request(method, url, params=params, timeout=30)
 
-            # Handle rate limiting
-            if response.status_code in [418, 429]:
+            # Feed observed weight back to the rate limiter so the next call
+            # can adapt before we exhaust the per-IP budget.
+            self.rate_limiter.update_from_response(response)
+
+            # Handle rate limiting AND IP-level bans. 403 (Forbidden) is
+            # what Binance issues when an IP gets ban-listed after budget
+            # exhaustion or anti-bot heuristics — distinct from 429 (soft
+            # rate limit) and 418 (teapot ban). All three are retryable
+            # but 403 needs a much longer cooldown to clear.
+            if response.status_code in (403, 418, 429):
                 if retry_count >= self.max_retries:
                     raise RuntimeError(
                         f"Max retries ({self.max_retries}) exceeded for {endpoint}. "
                         f"Status: {response.status_code}"
                     )
 
-                # Exponential backoff: 2^retry_count seconds
-                backoff_seconds = 2 ** retry_count
+                if response.status_code == 403:
+                    # IP ban: 30s, 60s, 120s. Empirically Binance lifts most
+                    # weight-triggered 403s within a couple of minutes.
+                    backoff_seconds = 30 * (2 ** retry_count)
+                    reason = "IP forbidden (likely budget exhaustion)"
+                else:
+                    # 429/418: standard 2^n exponential backoff.
+                    backoff_seconds = 2 ** retry_count
+                    reason = "rate limited"
                 logger.warning(
-                    f"Rate limited (status {response.status_code}). "
-                    f"Retrying in {backoff_seconds}s (attempt {retry_count + 1}/{self.max_retries})"
+                    f"{reason} (status {response.status_code}). "
+                    f"Retrying in {backoff_seconds}s "
+                    f"(attempt {retry_count + 1}/{self.max_retries}) "
+                    f"[used_weight={self.rate_limiter.last_used_weight}/{self.rate_limiter.weight_cap}]"
                 )
                 time.sleep(backoff_seconds)
                 return self._request_with_retry(method, endpoint, params, retry_count + 1)

@@ -68,6 +68,66 @@ class TestRateLimiter:
         # Should be approximately 40ms (allow ±20ms tolerance)
         assert 0.02 < elapsed < 0.06
 
+    def test_update_from_response_parses_used_weight_header(self):
+        """X-MBX-USED-WEIGHT-1M from a real Binance response must update the
+        adaptive throttle's known used-weight value."""
+        limiter = RateLimiter(sleep_ms=50)
+        assert limiter.last_used_weight == 0
+
+        mock_resp = Mock()
+        mock_resp.headers = {"X-MBX-USED-WEIGHT-1M": "1850"}
+        limiter.update_from_response(mock_resp)
+        assert limiter.last_used_weight == 1850
+
+    def test_update_from_response_no_header_is_noop(self):
+        """When Binance does not return the weight header (e.g., non-fapi
+        endpoint or a 5xx that strips headers), used-weight stays at its
+        prior value rather than resetting to 0 spuriously."""
+        limiter = RateLimiter(sleep_ms=50)
+        limiter.last_used_weight = 1200  # seed
+        mock_resp = Mock()
+        mock_resp.headers = {}  # header absent
+        limiter.update_from_response(mock_resp)
+        assert limiter.last_used_weight == 1200
+
+    def test_adaptive_throttle_extends_sleep_when_weight_near_cap(self):
+        """Regression for 2026-05-11: when used-weight exceeds the threshold
+        fraction of cap, the limiter must wait longer than the base sleep
+        to let the 1-min window slide off some weight before adding more."""
+        limiter = RateLimiter(sleep_ms=10, weight_cap=2400, weight_threshold=0.75)
+
+        # Seed with used_weight = 2300 of 2400 cap → only 100 weight headroom.
+        # safe_sleep = 60.0 / 100 = 0.6s, must dominate the 10ms base.
+        limiter.last_used_weight = 2300
+        limiter.wait_if_needed()  # first call sets last_request_time
+
+        start = time.time()
+        limiter.wait_if_needed()
+        elapsed = time.time() - start
+
+        # Should sleep approximately 0.6s, well above the 10ms base.
+        assert elapsed > 0.5, (
+            f"expected adaptive throttle to dominate base sleep when used_weight≈cap, "
+            f"got elapsed={elapsed:.3f}s"
+        )
+
+    def test_adaptive_throttle_uses_base_sleep_when_weight_low(self):
+        """When used-weight is below the threshold, sleep should match the base
+        sleep — adaptive scaling must not kick in spuriously."""
+        limiter = RateLimiter(sleep_ms=20, weight_cap=2400, weight_threshold=0.75)
+        # Threshold = 0.75 * 2400 = 1800. Setting weight to 1000 → below threshold.
+        limiter.last_used_weight = 1000
+        limiter.wait_if_needed()
+
+        start = time.time()
+        limiter.wait_if_needed()
+        elapsed = time.time() - start
+
+        # Should sleep ~20ms (the base), well under 100ms.
+        assert elapsed < 0.1, (
+            f"expected base sleep when used_weight far below cap, got elapsed={elapsed:.3f}s"
+        )
+
 
 class TestBinanceAPIClient:
     """Test Binance API client with mocking."""
@@ -246,10 +306,61 @@ class TestBinanceAPIClient:
         # Mock: Always return 429
         mock_response = Mock()
         mock_response.status_code = 429
+        mock_response.headers = {}
 
         with patch.object(client.session, 'request', return_value=mock_response):
             with pytest.raises(RuntimeError, match="Max retries"):
                 client._request_with_retry('GET', '/test')
+
+    def test_retry_on_403_uses_longer_backoff(self, client):
+        """Regression for 2026-05-11: 403 Forbidden (IP-ban after weight
+        exhaustion) must be retried with a longer cooldown than 429.
+        Before this fix the fetcher raised immediately on 403, leaving
+        207 instruments with stale data and triggering the staleness-
+        overlay / shadow-target interaction bug downstream.
+        """
+        mock_response_403 = Mock()
+        mock_response_403.status_code = 403
+        mock_response_403.headers = {}
+        mock_response_403.raise_for_status.side_effect = None
+
+        mock_response_ok = Mock()
+        mock_response_ok.status_code = 200
+        mock_response_ok.headers = {}
+        mock_response_ok.json.return_value = []
+
+        # Use small backoffs in this test to keep it fast — patch the sleep
+        # so we can verify the 30s base is being chosen for 403 without
+        # actually waiting 30s.
+        with patch.object(
+            client.session, "request",
+            side_effect=[mock_response_403, mock_response_ok],
+        ), patch("sysdata.crypto.binance_api.time.sleep") as mock_sleep:
+            result = client._request_with_retry("GET", "/test")
+
+        # First call after the 403 must sleep ~30s (30 * 2^0); 429 would have
+        # been 1s (2^0).
+        assert result == []
+        sleep_calls = [args[0] for args, _ in mock_sleep.call_args_list]
+        assert any(arg >= 30 for arg in sleep_calls), (
+            f"expected at least one sleep of >= 30s for 403 retry, "
+            f"got sleep calls: {sleep_calls}"
+        )
+
+    def test_used_weight_header_propagates_to_ratelimiter(self, client):
+        """After every successful response, the rate limiter must be updated
+        with the server-reported used-weight so subsequent requests can
+        throttle adaptively. This is the wiring that prevents the 2026-05-11
+        budget-exhaustion failure mode."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"X-MBX-USED-WEIGHT-1M": "1900"}
+        mock_response.json.return_value = []
+
+        with patch.object(client.session, "request", return_value=mock_response):
+            client._request_with_retry("GET", "/test")
+
+        assert client.rate_limiter.last_used_weight == 1900
 
 
 class TestFundingAggregation:

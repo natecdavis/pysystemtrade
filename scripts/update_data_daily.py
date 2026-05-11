@@ -297,7 +297,7 @@ def update_daily_tail(
     api_cache_dir = data_dir / 'api_cache'
     client = BinanceAPIClient(
         cache_dir=api_cache_dir,
-        sleep_ms=50,  # Conservative rate limiting
+        sleep_ms=100,  # Base rate; RateLimiter extends adaptively when X-MBX-USED-WEIGHT-1M > 75% of cap.
         max_retries=3
     )
 
