@@ -330,6 +330,44 @@ def compute_shadow_targets(reduce_only_instruments, backtest_dir, log=None):
     return shadow_targets
 
 
+def _compute_hysteresis_candidates(
+    trade_plan: pd.DataFrame,
+    adv_ranks: dict | None,
+    exit_threshold: int,
+    stale_blocked: set,
+) -> tuple[set, set]:
+    """Identify instruments eligible for hysteresis-shadow targeting.
+
+    Eligible = live position (|current| >= 1.0) AND backtest target ~0 AND
+    still inside the ADV-rank exit band (rank <= exit_threshold).
+
+    Instruments the staleness overlay touched are EXCLUDED. Their target ~0
+    reflects a data-quality decision (forced wind-down or no-new-positions
+    block), not a natural ADV-rank exit. Re-injecting a shadow target would
+    silently re-add positions the safety overlay wanted out — the failure
+    mode observed live on 2026-05-11 when 207 instruments returned 99-day
+    staleness after a partial Binance fetch.
+
+    Returns (shadow_candidates, skipped_because_stale) so the caller can
+    log the staleness-excluded set for operator visibility.
+    """
+    candidates: set = set()
+    skipped_stale: set = set()
+    if adv_ranks is None:
+        return candidates, skipped_stale
+    for inst in trade_plan.index:
+        current = float(trade_plan.loc[inst, "current_notional"])
+        target = float(trade_plan.loc[inst, "target_notional"])
+        if abs(current) >= 1.0 and abs(target) < 1.0:
+            rank = adv_ranks.get(inst, float("inf"))
+            if rank <= exit_threshold:
+                if inst in stale_blocked:
+                    skipped_stale.add(inst)
+                else:
+                    candidates.add(inst)
+    return candidates, skipped_stale
+
+
 def _compute_hl_adv_ranks(
     data_path: str,
     as_of_date: str,
@@ -909,15 +947,21 @@ Notes:
         # These are treated as fully active positions (not reduce-only) — they can increase or
         # decrease based on the shadow target. Injection must happen before apply_hard_exits_and_reduce_only
         # so the skip guards in that function protect them from being capped.
-        hysteresis_candidates = set()
-        if adv_ranks is not None:
-            for inst in trade_plan.index:
-                current = float(trade_plan.loc[inst, "current_notional"])
-                target = float(trade_plan.loc[inst, "target_notional"])
-                if abs(current) >= 1.0 and abs(target) < 1.0:
-                    rank = adv_ranks.get(inst, float("inf"))
-                    if rank <= exit_threshold:
-                        hysteresis_candidates.add(inst)
+        #
+        # Exclude instruments the staleness overlay already touched — their target ~0 is a
+        # data-quality decision, not a natural ADV-rank exit (see 2026-05-11 incident).
+        stale_blocked = set(
+            audit_bundle.get("staleness_overlay", {}).get("overrides", {}).keys()
+        )
+        hysteresis_candidates, hysteresis_skipped_stale = _compute_hysteresis_candidates(
+            trade_plan, adv_ranks, exit_threshold, stale_blocked
+        )
+        if hysteresis_skipped_stale:
+            logger.info(
+                f"Hysteresis-shadow skipped for {len(hysteresis_skipped_stale)} "
+                f"stale-data instrument(s) (staleness overlay already handled): "
+                f"{sorted(hysteresis_skipped_stale)}"
+            )
 
         if hysteresis_candidates:
             logger.info(

@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from scripts.generate_trade_plan import (
+    _compute_hysteresis_candidates,
     apply_hard_exits_and_reduce_only,
     compute_shadow_targets,
 )
@@ -486,3 +487,77 @@ def test_compute_shadow_targets_stable_across_repeated_calls(tmp_path):
     assert targets_b["TRXUSDT_PERP"] == pytest.approx(
         targets_a["TRXUSDT_PERP"], rel=1e-9
     )
+
+
+# ---------------------------------------------------------------------------
+# _compute_hysteresis_candidates — staleness overlay must override shadow logic
+# ---------------------------------------------------------------------------
+
+
+def test_hysteresis_candidates_excludes_stale_blocked_instruments():
+    """Regression for the 2026-05-11 incident: when the staleness overlay
+    forced wind-downs on 99-day-stale instruments, their targets dropped to
+    ~0. The hysteresis-shadow path then mistook those staleness-flattened
+    targets for natural ADV-rank exits and re-injected shadow positions —
+    silently re-adding $250+ of exposure the safety overlay had wound down.
+
+    The fix excludes any instrument the staleness overlay touched (its
+    instrument code appears in audit_bundle.staleness_overlay.overrides)
+    from the hysteresis-candidate set.
+    """
+    trade_plan = pd.DataFrame(
+        {
+            "current_notional": [1700.0, 200.0, 50.0, 0.0],
+            "target_notional": [0.0, 0.0, 30.0, 0.0],
+        },
+        index=["TRXUSDT_PERP", "BIOUSDT_PERP", "BTCUSDT_PERP", "DOTUSDT_PERP"],
+    )
+    adv_ranks = {
+        "TRXUSDT_PERP": 5,  # in band, position + target≈0 → would be candidate
+        "BIOUSDT_PERP": 15,  # in band, position + target≈0 → would be candidate
+        "BTCUSDT_PERP": 1,  # in band, but target!=0 → not a candidate
+        "DOTUSDT_PERP": 20,  # in band, but no current position → not a candidate
+    }
+
+    # No staleness — TRX and BIO both qualify.
+    candidates, skipped = _compute_hysteresis_candidates(
+        trade_plan, adv_ranks, exit_threshold=40, stale_blocked=set()
+    )
+    assert candidates == {"TRXUSDT_PERP", "BIOUSDT_PERP"}
+    assert skipped == set()
+
+    # Staleness overlay flagged TRX (e.g., forced_wind_down on 99-day stale data).
+    # TRX must move from candidates to skipped_stale; BIO is unaffected.
+    candidates, skipped = _compute_hysteresis_candidates(
+        trade_plan,
+        adv_ranks,
+        exit_threshold=40,
+        stale_blocked={"TRXUSDT_PERP"},
+    )
+    assert candidates == {"BIOUSDT_PERP"}
+    assert skipped == {"TRXUSDT_PERP"}
+
+    # No adv_ranks (e.g., non-HL exchange) → no candidates regardless of staleness.
+    candidates, skipped = _compute_hysteresis_candidates(
+        trade_plan, adv_ranks=None, exit_threshold=40, stale_blocked=set()
+    )
+    assert candidates == set()
+    assert skipped == set()
+
+
+def test_hysteresis_candidates_respects_exit_threshold():
+    """Sanity check: rank outside exit_threshold excludes the instrument
+    regardless of staleness or position state."""
+    trade_plan = pd.DataFrame(
+        {"current_notional": [1000.0], "target_notional": [0.0]},
+        index=["TRXUSDT_PERP"],
+    )
+    # Rank 50 > exit_threshold 40 → not a candidate.
+    candidates, skipped = _compute_hysteresis_candidates(
+        trade_plan,
+        adv_ranks={"TRXUSDT_PERP": 50},
+        exit_threshold=40,
+        stale_blocked=set(),
+    )
+    assert candidates == set()
+    assert skipped == set()
