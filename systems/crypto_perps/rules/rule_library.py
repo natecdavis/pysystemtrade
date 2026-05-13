@@ -956,6 +956,35 @@ def btc_etf_flow_trend(
     return scaled.reindex(price.index)
 
 
+def eth_etf_flow_trend(
+    price: pd.Series,
+    eth_etf_signed_volume: pd.Series,
+    Lfast: int = 20,
+) -> pd.Series:
+    """
+    Portfolio-level institutional capital signal: EWMAC on ETH spot-ETF (ETHA) signed
+    daily dollar volume. Direct mirror of btc_etf_flow_trend, applied to ETHA instead
+    of IBIT. Sign = sign(close − open) × |dollar_volume|.
+
+    Hypothesis: net institutional dollars flowing into the spot ETH ETF over the past
+    20-trading-day window predicts ETH (and broader crypto) price 1-3 weeks ahead.
+    Inflows = institutional accumulation = bullish; outflows = distribution = bearish.
+
+    Same forecast broadcast to every instrument (ETH ETF flows are a market-wide
+    leading signal, not ETH-specific). Pre-launch (before 2024-07-23) returns NaN —
+    the WF stitched OOS series ignores those windows automatically.
+    """
+    if len(eth_etf_signed_volume.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    cum = eth_etf_signed_volume.fillna(0).cumsum()
+    unit_vol = pd.Series(1.0, index=cum.index)
+    raw = ewmac(cum, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    roll_std = raw.rolling(Lslow * 2, min_periods=Lslow).std().clip(lower=1e-8)
+    scaled = (raw / roll_std).clip(-2.0, 2.0) * 10.0
+    return scaled.reindex(price.index)
+
+
 def stablecoin_dominance_trend(
     price: pd.Series,
     stablecoin_dominance: pd.Series,

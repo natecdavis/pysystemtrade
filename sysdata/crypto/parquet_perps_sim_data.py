@@ -2092,6 +2092,24 @@ class parquetCryptoPerpsSimData(simData):
             return pd.Series(dtype=float)
         return self._etf_flows_df["btc_etf_signed_volume"].dropna()
 
+    def get_eth_etf_signed_volume(self, instrument_code: str) -> pd.Series:
+        """
+        ETH spot-ETF (ETHA) signed daily dollar volume. Same series broadcast to every
+        instrument — direct mirror of get_btc_etf_signed_volume for the eth_etf_flow_trend
+        rule.
+
+        Source: data/etf_flows.parquet (built by download_etf_flows.py). Pre-launch
+        (before 2024-07-23) returns NaN, which the rule and the WF stitched OOS series
+        ignore automatically.
+        """
+        if self._etf_flows_df is None or "eth_etf_signed_volume" not in self._etf_flows_df.columns:
+            self.log.warning(
+                "ETF flows not loaded — set etf_flows_path in constructor or run "
+                "download_etf_flows.py"
+            )
+            return pd.Series(dtype=float)
+        return self._etf_flows_df["eth_etf_signed_volume"].dropna()
+
     def _get_macro_column(self, col: str, instrument_code: str) -> pd.Series:
         """
         Internal helper: return a single column from the macro factors DataFrame.
