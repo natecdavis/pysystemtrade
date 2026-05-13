@@ -956,6 +956,40 @@ def btc_etf_flow_trend(
     return scaled.reindex(price.index)
 
 
+def stablecoin_dominance_trend(
+    price: pd.Series,
+    stablecoin_dominance: pd.Series,
+    Lfast: int = 32,
+) -> pd.Series:
+    """
+    Portfolio-level capital-flow signal: EWMAC on log(stablecoin dominance).
+
+    Dominance = total stablecoin supply / total crypto market cap proxy.
+    Hypothesis (opposite of the absolute-supply rule): rising stablecoin share of
+    total crypto value = capital is parked on the sidelines rather than deployed
+    into spot — bearish for next-period prices. Falling dominance = stables being
+    spent into crypto = bullish.
+
+    Sign committed a priori: rising dominance → SHORT (negative forecast). Same
+    forecast broadcast to every instrument. Spearman 0.05 vs the absolute-supply
+    rule (orthogonal — captures the relative-share dimension the supply rule
+    misses by construction).
+
+    Source: data.get_stablecoin_dominance — derived in parquet_perps_sim_data.py
+    from stablecoin_supply.parquet (DefiLlama) and market_cap.parquet (CoinMetrics).
+    """
+    if len(stablecoin_dominance.dropna()) < 4 * Lfast:
+        return pd.Series(dtype=float, index=price.index)
+    Lslow = Lfast * 4
+    log_dom = np.log(stablecoin_dominance.clip(lower=1e-8))
+    unit_vol = pd.Series(1.0, index=log_dom.index)
+    raw = ewmac(log_dom, unit_vol, Lfast=Lfast, Lslow=Lslow)
+    roll_std = raw.rolling(Lslow * 2, min_periods=Lslow).std().clip(lower=1e-8)
+    # Invert: rising dominance → SHORT, so positive raw EWMAC → negative forecast.
+    scaled = -(raw / roll_std).clip(-2.0, 2.0) * 10.0
+    return scaled.reindex(price.index)
+
+
 def stablecoin_supply_trend(
     price: pd.Series,
     stablecoin_supply: pd.Series,

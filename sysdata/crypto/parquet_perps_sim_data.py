@@ -2011,6 +2011,51 @@ class parquetCryptoPerpsSimData(simData):
             return pd.Series(dtype=float)
         return self._stablecoin_supply_df["stablecoin_supply_usd"].dropna()
 
+    def get_stablecoin_dominance(self, instrument_code: str) -> pd.Series:
+        """
+        Stablecoin dominance ratio: total USD-pegged stablecoin supply (DefiLlama)
+        divided by a total-crypto-market-cap proxy = row-wise sum across the
+        CoinMetrics-tracked instruments in `_market_cap_df` (41 majors back to 2020).
+
+        Same series broadcast to every instrument — portfolio-wide capital-flow signal.
+        Sign of the consuming rule (stablecoin_dominance_trend) committed a priori:
+        rising dominance share = capital parking on the sidelines = SHORT crypto.
+
+        Cached on the instance after first computation. Requires both
+        `stablecoin_supply_path` and `market_cap_data_path` to have been wired in
+        the constructor; returns empty series if either is missing.
+        """
+        if getattr(self, "_stablecoin_dominance_series", None) is not None:
+            return self._stablecoin_dominance_series
+        if self._stablecoin_supply_df is None or self._market_cap_df is None:
+            self.log.warning(
+                "Stablecoin dominance unavailable — needs both stablecoin_supply_path "
+                "and market_cap_data_path wired in the SimData constructor."
+            )
+            self._stablecoin_dominance_series = pd.Series(dtype=float)
+            return self._stablecoin_dominance_series
+
+        stables = self._stablecoin_supply_df["stablecoin_supply_usd"].dropna()
+        stables.index = pd.DatetimeIndex(stables.index).normalize()
+
+        mcap = self._market_cap_df.copy()
+        mcap = mcap.ffill(limit=7)
+        coverage = mcap.notna().sum(axis=1)
+        median_cov = coverage.median()
+        valid_dates = coverage[coverage >= median_cov * 0.7].index
+        total_mcap = mcap.loc[valid_dates].sum(axis=1, min_count=10).dropna()
+        total_mcap.index = pd.DatetimeIndex(total_mcap.index).normalize()
+
+        common = stables.index.intersection(total_mcap.index)
+        ratio = (stables.reindex(common) / total_mcap.reindex(common)).dropna()
+        self._stablecoin_dominance_series = ratio
+        self.log.info(
+            f"Computed stablecoin dominance: {len(ratio)} dates "
+            f"{ratio.index.min().date()}→{ratio.index.max().date()}, "
+            f"range {ratio.min():.3f}–{ratio.max():.3f}, latest {ratio.iloc[-1]:.3f}"
+        )
+        return ratio
+
     def get_premium_index(self, instrument_code: str) -> pd.Series:
         """
         Daily perpetual basis (premium index close) for one instrument. Positive =
