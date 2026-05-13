@@ -663,8 +663,12 @@ def run_backtest(
 
     # Auto-discover stablecoin supply (DefiLlama, used by C2b stablecoin_supply_trend rule).
     # Lives in repo data/ rather than next to the dataset since it's a single global series.
+    # Env-first lookup (mirrors the basis_index resolver above — same F2 fix class as
+    # 833e7a37/f4cb4dcf): production daily_paper_run.py writes to envs/dev/data/.
     repo_root = Path(__file__).resolve().parent.parent
     stablecoin_candidate = Path(data_path).parent / 'stablecoin_supply.parquet'
+    if not stablecoin_candidate.exists():
+        stablecoin_candidate = repo_root / 'envs' / 'dev' / 'data' / 'stablecoin_supply.parquet'
     if not stablecoin_candidate.exists():
         stablecoin_candidate = repo_root / 'data' / 'stablecoin_supply.parquet'
     stablecoin_kwarg = (
@@ -675,8 +679,10 @@ def run_backtest(
     else:
         logger.info("stablecoin_supply.parquet not found — stablecoin_supply_trend rule will produce empty forecasts")
 
-    # Auto-discover ETF flows (used by C2a btc_etf_flow_trend rule).
+    # Auto-discover ETF flows (used by C2a btc_etf_flow_trend rule). Same env-first pattern.
     etf_candidate = Path(data_path).parent / 'etf_flows.parquet'
+    if not etf_candidate.exists():
+        etf_candidate = repo_root / 'envs' / 'dev' / 'data' / 'etf_flows.parquet'
     if not etf_candidate.exists():
         etf_candidate = repo_root / 'data' / 'etf_flows.parquet'
     etf_kwarg = str(etf_candidate) if etf_candidate.exists() else _arg_not_supplied
