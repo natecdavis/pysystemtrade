@@ -138,276 +138,6 @@ def _read_capital_from_meta_or_config(meta: dict, log=None):
         return None
 
 
-def compute_shadow_targets(reduce_only_instruments, backtest_dir, log=None):
-    """
-    For reduce_only instruments where the current backtest target is 0 (config-driven),
-    compute a 'shadow target' = what the position would be if sized as a normal active
-    instrument today using the full vol-targeting formula.
-
-    Method:
-        1. Load dataset prices from backtest metadata
-        2. For each active instrument (non-zero backtest position), compute vol_pct_ann
-           from robust_vol_calc and back out the implied (capital × IDM × inv_K) factor:
-               implied_factor = position × vol_pct_ann / ((forecast/10) × vol_target)
-        3. Take median implied_factor across active instruments
-        4. For each reduce_only instrument, compute vol_pct_ann the same way and apply:
-               shadow = implied_factor × (forecast/10) × (vol_target / vol_pct_ann)
-
-    This correctly accounts for each instrument's own volatility, unlike a flat
-    |pos|/|fc| ratio which confounds sizing and vol.
-
-    Returns:
-        dict {instrument: shadow_target_notional}
-    """
-    import numpy as np
-    import json as _json
-    from sysquant.estimators.vol import robust_vol_calc
-    from syscore.dateutils import BUSINESS_DAYS_IN_YEAR
-
-    shadow_targets = {}
-    if not reduce_only_instruments:
-        return shadow_targets
-
-    # --- Load backtest metadata ---
-    meta_path = Path(backtest_dir) / "metadata.json"
-    if not meta_path.exists():
-        if log:
-            log.warning("Shadow targets: no metadata.json — unavailable")
-        return shadow_targets
-    with open(meta_path) as f:
-        meta = _json.load(f)
-
-    data_path = meta.get("data_path")
-    if not data_path or not Path(data_path).exists():
-        # Fall back to default dataset
-        data_path = "data/dataset_538registry_6yr_jagged.parquet"
-    if not Path(data_path).exists():
-        if log:
-            log.warning(f"Shadow targets: dataset not found at {data_path}")
-        return shadow_targets
-
-    # --- Load diagnostics ---
-    diag_path = Path(backtest_dir) / "diagnostics.parquet"
-    if not diag_path.exists():
-        if log:
-            log.warning("Shadow targets: no diagnostics.parquet — unavailable")
-        return shadow_targets
-    try:
-        diag = pd.read_parquet(diag_path)
-        dataset = pd.read_parquet(data_path, columns=["date", "instrument", "close"])
-    except Exception as e:
-        if log:
-            log.warning(f"Shadow targets: failed to load data: {e}")
-        return shadow_targets
-
-    last_date = diag["date"].max()
-    today_diag = diag[diag["date"] == last_date]
-
-    # Config params
-    vol_target = 0.25
-    vol_days = meta.get("dynamic_universe_config", {}).get("vol_window", 63)
-
-    def get_vol_pct_ann(instrument):
-        """Compute annualised percentage vol for an instrument at last_date."""
-        px = (
-            dataset[dataset["instrument"] == instrument]
-            .set_index("date")["close"]
-            .dropna()
-        )
-        if len(px) < vol_days + 5:
-            return None
-        daily_vol = robust_vol_calc(px.diff(), days=vol_days)
-        last_price = px.loc[:last_date].dropna()
-        last_vol = daily_vol.loc[:last_date].dropna()
-        if last_price.empty or last_vol.empty:
-            return None
-        p = float(last_price.iloc[-1])
-        v = float(last_vol.iloc[-1])
-        if p <= 0 or v <= 0 or np.isnan(p) or np.isnan(v):
-            return None
-        return (v / p) * np.sqrt(BUSINESS_DAYS_IN_YEAR)
-
-    # --- Compute sizing factor (capital × IDM × instrument_weight) ---
-    # Preferred path: read directly from any active row's diagnostics. All active
-    # instruments share the same global IDM and identical instrument_weight, so a
-    # direct read is exact and stable day-to-day.
-    #
-    # Fallback path (for older diagnostics schemas without `idm`/`instrument_weight`):
-    # back the factor out from each active instrument's observed position and take
-    # the median. This is biased low when forecasts hit caps, so the direct path is
-    # preferred whenever the diagnostics expose the canonical columns.
-    active = today_diag[
-        (today_diag["position"].abs() > 0.01)
-        & (today_diag["combined_forecast"].abs() > 1)
-    ]
-    if active.empty:
-        if log:
-            log.warning(
-                "Shadow targets: no active instruments — unavailable"
-            )
-        return shadow_targets
-
-    implied_factor = None
-    factor_source = None
-    if (
-        "idm" in active.columns
-        and "instrument_weight" in active.columns
-    ):
-        capital = _read_capital_from_meta_or_config(meta, log)
-        if capital is not None and capital > 0:
-            idm = float(active["idm"].iloc[0])
-            inst_weight = float(active["instrument_weight"].iloc[0])
-            if idm > 0 and inst_weight > 0:
-                implied_factor = capital * idm * inst_weight
-                factor_source = "direct"
-
-    if implied_factor is None:
-        # Fallback: back out from observed positions
-        implied_factors = []
-        for _, row in active.iterrows():
-            inst = row["instrument"]
-            pos = float(row["position"])
-            fc = float(row["combined_forecast"])
-            vpa = get_vol_pct_ann(inst)
-            if vpa is None or vpa <= 0:
-                continue
-            # position = factor × (fc/10) × (vol_target / vol_pct_ann)
-            # → factor = position × vol_pct_ann / ((fc/10) × vol_target)
-            factor = pos * vpa / ((fc / 10.0) * vol_target)
-            implied_factors.append(factor)
-
-        if not implied_factors:
-            if log:
-                log.warning(
-                    "Shadow targets: could not compute implied sizing factor — unavailable"
-                )
-            return shadow_targets
-
-        implied_factor = float(np.median(implied_factors))
-        factor_source = f"back-out median of {len(implied_factors)} active instruments"
-
-    if log:
-        log.info(
-            f"Shadow target implied factor (capital×IDM×instrument_weight): "
-            f"{implied_factor:.1f} ({factor_source})"
-        )
-
-    # --- Compute shadow target for each reduce_only instrument ---
-    for inst in reduce_only_instruments:
-        inst_rows = diag[diag["instrument"] == inst].sort_values("date")
-        if inst_rows.empty:
-            if log:
-                log.debug(f"Shadow target: {inst} not in diagnostics")
-            continue
-
-        cf_val = inst_rows.iloc[-1].get("combined_forecast")
-        current_forecast = (
-            float(cf_val) if cf_val is not None and not pd.isna(cf_val) else None
-        )
-        if current_forecast is None or abs(current_forecast) < 0.1:
-            if log:
-                log.debug(f"Shadow target: no current forecast for {inst}")
-            continue
-
-        vpa = get_vol_pct_ann(inst)
-        if vpa is None or vpa <= 0:
-            if log:
-                log.warning(
-                    f"Shadow target: could not compute vol for {inst} — skipping"
-                )
-            continue
-
-        shadow = implied_factor * (current_forecast / 10.0) * (vol_target / vpa)
-        shadow_targets[inst] = shadow
-        if log:
-            vol_ann_pct = vpa * 100
-            log.info(
-                f"Shadow target for {inst}: factor={implied_factor:.1f} × "
-                f"fc={current_forecast:.2f}/10 × target_vol/inst_vol "
-                f"({vol_target*100:.0f}%/{vol_ann_pct:.0f}%) = {shadow:.0f}"
-            )
-
-    return shadow_targets
-
-
-def _compute_hysteresis_candidates(
-    trade_plan: pd.DataFrame,
-    adv_ranks: dict | None,
-    exit_threshold: int,
-    stale_blocked: set,
-) -> tuple[set, set]:
-    """Identify instruments eligible for hysteresis-shadow targeting.
-
-    Eligible = live position (|current| >= 1.0) AND backtest target ~0 AND
-    still inside the ADV-rank exit band (rank <= exit_threshold).
-
-    Instruments the staleness overlay touched are EXCLUDED. Their target ~0
-    reflects a data-quality decision (forced wind-down or no-new-positions
-    block), not a natural ADV-rank exit. Re-injecting a shadow target would
-    silently re-add positions the safety overlay wanted out — the failure
-    mode observed live on 2026-05-11 when 207 instruments returned 99-day
-    staleness after a partial Binance fetch.
-
-    Returns (shadow_candidates, skipped_because_stale) so the caller can
-    log the staleness-excluded set for operator visibility.
-    """
-    candidates: set = set()
-    skipped_stale: set = set()
-    if adv_ranks is None:
-        return candidates, skipped_stale
-    for inst in trade_plan.index:
-        current = float(trade_plan.loc[inst, "current_notional"])
-        target = float(trade_plan.loc[inst, "target_notional"])
-        if abs(current) >= 1.0 and abs(target) < 1.0:
-            rank = adv_ranks.get(inst, float("inf"))
-            if rank <= exit_threshold:
-                if inst in stale_blocked:
-                    skipped_stale.add(inst)
-                else:
-                    candidates.add(inst)
-    return candidates, skipped_stale
-
-
-def _compute_hl_adv_ranks(
-    data_path: str,
-    as_of_date: str,
-    adv_window: int = 252,
-    log=None,
-) -> dict | None:
-    """
-    Compute ADV rank among HL-listed instruments for the hysteresis guard.
-    Returns {instrument: int_rank} (rank 1 = most liquid), or None on error.
-    """
-    try:
-        from sysdata.crypto.config_helpers import instrument_id_to_hl_symbol, load_hl_symbols
-
-        hl_symbols = load_hl_symbols()
-        if not hl_symbols:
-            return None
-
-        df = pd.read_parquet(data_path, columns=["date", "instrument", "adv_notional"])
-        df = df[df["date"] <= pd.Timestamp(as_of_date)]
-
-        hl_insts = [
-            i
-            for i in df["instrument"].unique()
-            if instrument_id_to_hl_symbol(i) in hl_symbols
-        ]
-        df = df[df["instrument"].isin(hl_insts)]
-
-        adv_wide = df.pivot_table(
-            index="date", columns="instrument", values="adv_notional", aggfunc="last"
-        )
-        adv_252 = adv_wide.tail(adv_window).mean()
-        ranks = adv_252.rank(ascending=False, method="first").fillna(
-            float(len(adv_252) + 1)
-        )
-        return {str(k): int(v) for k, v in ranks.items()}
-    except Exception as e:
-        if log:
-            log.warning(f"ADV rank computation failed (hysteresis guard disabled): {e}")
-        return None
-
 
 def apply_hard_exits_and_reduce_only(
     trade_plan,
@@ -418,7 +148,6 @@ def apply_hard_exits_and_reduce_only(
     banned_instruments,
     log,
     reduce_only_instruments=None,
-    shadow_targets=None,
     min_notional_position=10.0,
 ):
     """
@@ -443,8 +172,6 @@ def apply_hard_exits_and_reduce_only(
         banned_instruments: set of banned instrument codes
         log: Logger
         reduce_only_instruments: set of instrument codes marked 'reduce_only' in positions notes
-        shadow_targets: accepted for backwards compatibility; ignored by notes-based
-            reduce-only because full closes are allowed.
 
     Returns:
         Number of instruments modified
@@ -497,9 +224,9 @@ def apply_hard_exits_and_reduce_only(
         for inst in exits:
             if inst not in trade_plan.index:
                 continue
-            # Skip if already handled by a hard exit or hysteresis injection
+            # Skip if already handled by a hard exit
             current_exit_reason = str(trade_plan.loc[inst, "reason"])
-            if current_exit_reason.startswith("hard_exit") or current_exit_reason == "hysteresis_shadow":
+            if current_exit_reason.startswith("hard_exit"):
                 continue
 
             target = float(trade_plan.loc[inst, "target_notional"])
@@ -533,12 +260,11 @@ def apply_hard_exits_and_reduce_only(
         new_tradable = set(new_snapshot.get("tradable_instruments", []))
 
         for inst in trade_plan.index:
-            # Skip if already handled or protected by hysteresis injection
+            # Skip if already handled
             current_reason = str(trade_plan.loc[inst, "reason"])
             if (
                 current_reason.startswith("hard_exit")
                 or current_reason == "reduce_only_exit"
-                or current_reason == "hysteresis_shadow"
             ):
                 continue
 
@@ -617,11 +343,9 @@ def apply_hard_exits_and_reduce_only(
 
     # Recompute delta_notional and delta_weight for all rows whose targets were
     # rewritten after the initial min-size check ran in generate_trade_plan().
-    # That includes hard exits, reduce-only caps, AND hysteresis-shadow injections
-    # (the caller sets reason='hysteresis_shadow' before invoking this function).
+    # That includes hard exits and reduce-only caps.
     hard_exit_mask = trade_plan["reason"].astype(str).str.startswith("hard_exit")
-    hysteresis_mask = trade_plan["reason"].astype(str) == "hysteresis_shadow"
-    changed_mask = hard_exit_mask | reduce_only_mask | hysteresis_mask
+    changed_mask = hard_exit_mask | reduce_only_mask
 
     if changed_mask.any():
         equity = trade_plan.attrs.get("current_equity", 1.0)
@@ -635,8 +359,8 @@ def apply_hard_exits_and_reduce_only(
             )
 
         # Re-apply min size check on recomputed deltas. The initial check in generate_trade_plan()
-        # ran before this post-processing step, so reduce-only / hysteresis adjustments that shrink
-        # a delta below the minimum would otherwise slip through without a below_min_trade_size warning.
+        # ran before this post-processing step, so reduce-only adjustments that shrink a delta
+        # below the minimum would otherwise slip through without a below_min_trade_size warning.
         if "warnings" in trade_plan.columns:
             is_full_close = trade_plan.loc[changed_mask, "target_notional"].abs() < 1e-6
             is_nonzero_order = (
@@ -906,82 +630,6 @@ Notes:
         except Exception as e:
             logger.warning(f"Could not load notes from positions file: {e}")
 
-        # Compute ADV ranks for hysteresis-zone guard (HL exchange filter only)
-        du_config = config.get("dynamic_universe", {}) or {}
-        top_k = du_config.get("top_k") or config.get("top_k", 30)
-        exit_buf = du_config.get("exit_buffer") or config.get("exit_buffer", 10)
-        exit_threshold = top_k + exit_buf
-        adv_window = du_config.get("adv_window") or config.get("adv_window", 252)
-        exchange_filter = du_config.get("exchange_filter") or config.get(
-            "exchange_filter", ""
-        )
-        adv_ranks = None
-        if exchange_filter == "hyperliquid":
-            metadata_path = args.backtest_dir / "metadata.json"
-            if metadata_path.exists():
-                with open(metadata_path) as f:
-                    bt_meta = json.load(f)
-                data_path_for_ranks = bt_meta.get("data_path")
-                if data_path_for_ranks and Path(data_path_for_ranks).exists():
-                    adv_ranks = _compute_hl_adv_ranks(
-                        data_path=data_path_for_ranks,
-                        as_of_date=args.as_of_date,
-                        adv_window=adv_window,
-                        log=logger,
-                    )
-                    if adv_ranks is not None:
-                        logger.info(
-                            f"ADV ranks computed for {len(adv_ranks)} HL instruments "
-                            f"(exit_threshold={exit_threshold})"
-                        )
-                else:
-                    logger.warning(
-                        "metadata.json data_path missing or not found — hysteresis guard disabled"
-                    )
-            else:
-                logger.warning(
-                    "metadata.json not found — hysteresis guard disabled"
-                )
-
-        # Hysteresis-zone shadow targets: live position + backtest target≈0 + rank ≤ exit_threshold
-        # These are treated as fully active positions (not reduce-only) — they can increase or
-        # decrease based on the shadow target. Injection must happen before apply_hard_exits_and_reduce_only
-        # so the skip guards in that function protect them from being capped.
-        #
-        # Exclude instruments the staleness overlay already touched — their target ~0 is a
-        # data-quality decision, not a natural ADV-rank exit (see 2026-05-11 incident).
-        stale_blocked = set(
-            audit_bundle.get("staleness_overlay", {}).get("overrides", {}).keys()
-        )
-        hysteresis_candidates, hysteresis_skipped_stale = _compute_hysteresis_candidates(
-            trade_plan, adv_ranks, exit_threshold, stale_blocked
-        )
-        if hysteresis_skipped_stale:
-            logger.info(
-                f"Hysteresis-shadow skipped for {len(hysteresis_skipped_stale)} "
-                f"stale-data instrument(s) (staleness overlay already handled): "
-                f"{sorted(hysteresis_skipped_stale)}"
-            )
-
-        if hysteresis_candidates:
-            logger.info(
-                f"Hysteresis candidates (rank ≤ {exit_threshold}): {sorted(hysteresis_candidates)}"
-            )
-            shadow = compute_shadow_targets(
-                hysteresis_candidates, args.backtest_dir, log=logger
-            )
-            for inst, shadow_target in shadow.items():
-                current = float(trade_plan.loc[inst, "current_notional"])
-                trade_plan.loc[inst, "target_notional"] = shadow_target
-                trade_plan.loc[inst, "delta_notional"] = shadow_target - current
-                trade_plan.loc[inst, "reason"] = "hysteresis_shadow"
-            no_shadow = hysteresis_candidates - set(shadow.keys())
-            if no_shadow:
-                logger.warning(
-                    f"Hysteresis candidates with no shadow target (forecast≈0 or missing data) "
-                    f"— will flatten: {sorted(no_shadow)}"
-                )
-
         n_modified = apply_hard_exits_and_reduce_only(
             trade_plan=trade_plan,
             new_snapshot=new_snapshot,
@@ -991,7 +639,6 @@ Notes:
             banned_instruments=banned_instruments,
             log=logger,
             reduce_only_instruments=reduce_only_instruments,
-            shadow_targets=None,
             min_notional_position=config.get("min_notional_position", 10.0),
         )
         if n_modified > 0:
@@ -1004,10 +651,7 @@ Notes:
             new_tradable = set(new_snapshot.get("tradable_instruments", []))
             non_universe = (
                 set(
-                    trade_plan.index[
-                        (trade_plan["target_notional"].abs() > 0.01)
-                        & (trade_plan["reason"] != "hysteresis_shadow")
-                    ]
+                    trade_plan.index[trade_plan["target_notional"].abs() > 0.01]
                 )
                 - new_tradable
             )
