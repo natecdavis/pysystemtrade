@@ -1,6 +1,47 @@
 # Current Work Context
 
-## Current Baseline (2026-05-03, kitchen_sink + Carver cost filter)
+## Universe filter wiring fix + vol-floor sweep (2026-05-14)
+
+Investigation into a vol-floor sweep that didn't reflect live numbers surfaced a five-key wiring bug in `scripts/run_dynamic_universe_backtest.py`: `min_annual_vol`, `min_history_rule_requirement`, `ivol_cap_enabled`, `ivol_cap_percentile`, `ivol_window`, and top-level `forecast_weights` were never plumbed from YAML → `DynamicUniverseManager`. Five of the six were no-ops because the silent fallback matched the YAML; **`min_annual_vol` was the load-bearing one — the live `min_annual_vol: 0.2` had been doing nothing in every backtest, and (since `trade_plan.py` runs through the same script) in live order generation.**
+
+**Patch** extracted `build_dynamic_universe_config(raw_config)` helper and plumbed all six keys. New `tests/test_run_dynamic_universe_backtest.py` with 8 wiring tests including a guardrail that catches the next silent-key omission of this class. Stale pre-fix sweep artifacts preserved under `out/vol_floor_sweep/_pre_fix_run_vf*/`.
+
+**Post-fix sweep verdict** (frozen data snapshot at `out/vol_floor_sweep/data_snapshot/`, live `crypto_perps_1k.yaml`): floors 0.05–0.20 are bit-identical (Sharpe 1.1792 / Calmar 1.2514 / CAGR 8.28% / MaxDD −6.62% / AvgPos 24.4 / Turn 14.65). Floor 0.25 marginally bites — ΔSharpe −0.0012, ΔCalmar −0.0025 — wrong direction. Crypto perp vols don't sit in (0, 0.20] long enough to matter; vol floor is not a tuning lever for this universe.
+
+**Stablecoin filtering**: USDC perp (the only genuine stablecoin perp in the dataset, vol ≈ 0.53%) is filtered by the SR cost filter, not the vol floor. SR cost = 2·taker_fee / annual_vol ≈ 0.17 — 17× the 0.01 threshold.
+
+**"~1.25 Sharpe" baseline reconciled**: every recently-published baseline (1.189, 1.2327, 1.2463) was run on `crypto_perps_full_rules.yaml` (research config), not on the live `1k.yaml`. The actual live-config baseline is **Sharpe 1.1792** (post-fix vf=0.20 at `out/vol_floor_sweep/run_vf0.20/`). The two configs measure different systems; published WF Δ-comparisons are unbiased but absolute headlines don't transfer.
+
+## Open follow-ups from the wiring fix
+
+1. **Test vol attenuation on the current live system.** Prior test (2026-04-29, `out/vol_atten_flat68_sb/`) showed ΔSharpe +0.009 / ΔCalmar **−0.207** on flat-68 / full_rules — REJECTED. That comparison was unbiased by the wiring bugs (both legs identical), so the verdict is sound for flat-68. But it predates: kitchen_sink migration (68 → 124 rules), C4 multiplier promotion (2026-05-05; another position-scaling layer that may interact with vol-atten), and the live-config switch. Worth a fresh ablation on the current snapshot — one run, ~35 min.
+
+2. **Test IVOL cap on the current live system.** Filter is implemented at `parquet_perps_sim_data.py:768` (`_compute_ivol_eligibility_panel`). Mechanism: each day, compute idiosyncratic vol per instrument (return minus cross-sectional median, rolling 35-day std), exclude the top X% (default top-25% via 75th percentile) as "lottery tokens." Currently `ivol_cap_enabled: false` in YAML; with the patch, flipping to `true` would actually take effect. Empirically untested. Suggested sweep: enabled ∈ {false, true} × percentile ∈ {90, 75, 50} — 4 runs, ~3h.
+
+## Current Baseline (2026-05-12, kitchen_sink + Carver cost filter + xs_low_beta_90)
+
+Added **`xs_low_beta_90` only** to live configs at 1/122 weight. Kitchen_sink rule count: 121 → 122 (`attn_panic_rebound` was dropped 2026-05-11). All 122 rules at uniform 1/122 weight (sums to exactly 1.0).
+
+**Full ablation sweep vs flat-122 baseline (Sharpe 1.189, Calmar 1.324):**
+
+| variant | weight | ΔSharpe | ΔCalmar | MaxDD | live |
+|---|---|---|---|---|---|
+| xs_low_beta_60 alone | 1/122 | +0.0473 | +0.0432 | -5.58% | no |
+| **xs_low_beta_90 alone** | **1/122** | **+0.0575** | **+0.0457** | **-5.62%** | **YES** |
+| xs_low_beta_60 + xs_low_beta_90 (dual) | 1/123 each | +0.0608 | +0.0281 | -5.72% | no |
+| xs_low_beta_blend (β_60+β_90 averaged then ranked) | 1/122 | +0.0687 | +0.0137 | -5.78% | no |
+
+All four variants cleared the C2 default bar (`min_delta_sharpe=0.02`, `min_delta_calmar=0.0`). 90d-alone was selected for live because it had the best ΔCalmar/MaxDD profile — consistent with the project's revealed Calmar-weighting from prior decisions.
+
+**Why not the blend** (which was the framework-prescribed choice for highly-correlated rules): the blend deploys an averaged signal at full single-slot leverage, vs dual deploy where the diversification multiplier dampens the correlated pair to ~half leverage. The extra leverage boosts Sharpe (+0.011 vs 90d) but materially worsens Calmar (-0.032 vs 90d) and MaxDD. Under this project's Calmar-weighted decision criterion, single-rule 90d dominates.
+
+**Why not the dual:** dual deploy was the initial pre-registered promotion after both single-lookback ablations passed. The verification combined-rules ablation showed the dual lost Calmar (+0.028) vs 90d alone (+0.046) — the 60d added marginal Sharpe but cost Calmar at the portfolio level.
+
+**Live rule details:** equal-weight leave-self-out basket, 90d rolling beta, cross-sectional pct_rank, ±20 scale. Implementation: `sysdata/crypto/parquet_perps_sim_data.py:_compute_xs_low_beta_panel`. Spearman 0.53 vs `xs_low_vol_60` (~70% orthogonal — the ρ-component of beta).
+
+Artifacts: `out/wf_xs_low_beta_90/`, `out/wf_xs_low_beta_60/`, `out/wf_xs_low_beta_combined/`, `out/wf_xs_low_beta_blend/`.
+
+## Prior Baseline (2026-05-03, kitchen_sink + Carver cost filter)
 
 Live config migrated from manual flat-68 ablation to **all 122 rules at 1/122 weight + `forecast_post_ceiling_cost_SR=0.13`** in both `config/crypto_perps_full_rules.yaml` and `config/crypto_perps_1k.yaml`. Old configs preserved at `*_flat68.yaml.bak`.
 

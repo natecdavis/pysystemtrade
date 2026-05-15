@@ -54,6 +54,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def build_dynamic_universe_config(raw_config: dict) -> dict:
+    """Build the kwargs dict consumed by DynamicUniverseManager (and by the
+    IVOL-eligibility step in parquetCryptoPerpsSimData._init_dynamic_universe).
+
+    Centralised so tests can verify every config key the downstream consumer
+    reads is actually plumbed. Prior to this helper, ``min_annual_vol`` and the
+    IVOL filter keys were declared in the YAML but silently dropped on the way
+    through — the live config's ``min_annual_vol: 0.2`` had been a no-op for
+    every backtest run.
+    """
+    du = raw_config.get('dynamic_universe', {}) or {}
+    return {
+        'max_sr_cost_per_trade': du.get('max_sr_cost_per_trade', 0.01),
+        'max_sr_cost_annual': du.get('max_sr_cost_annual', 0.13),
+        'stack_turnover': du.get('stack_turnover', 15.0),
+        'adv_window': du.get('adv_window', 30),
+        'fee_bps': du.get('fee_bps', 5),
+        'vol_window': du.get('vol_window', 35),
+        'min_annual_vol': du.get('min_annual_vol', 0.0),
+        'min_history_rule_requirement': du.get('min_history_rule_requirement', 'any_rule'),
+        'ivol_cap_enabled': du.get('ivol_cap_enabled', False),
+        'ivol_cap_percentile': du.get('ivol_cap_percentile', 75),
+        'ivol_window': du.get('ivol_window', du.get('vol_window', 35)),
+        'forecast_weights': raw_config.get('forecast_weights'),
+    }
+
+
 def apply_forecast_buffering(
     system,
     optimal_positions: pd.DataFrame,
@@ -534,20 +561,14 @@ def run_backtest(
     # as attributes), so we use .get() rather than get_element_or_default().
     dynamic_universe_config = None
     if use_dynamic_universe:
-        du = getattr(config, 'dynamic_universe', {}) or {}
-        dynamic_universe_config = {
-            'max_sr_cost_per_trade': du.get('max_sr_cost_per_trade', 0.01),
-            'max_sr_cost_annual': du.get('max_sr_cost_annual', 0.13),
-            'stack_turnover': du.get('stack_turnover', 15.0),
-            'adv_window': du.get('adv_window', 30),
-            'fee_bps': du.get('fee_bps', 5),
-            'vol_window': du.get('vol_window', 35),
-        }
+        dynamic_universe_config = build_dynamic_universe_config(config_dict)
         logger.info(f"Dynamic universe enabled:")
         logger.info(f"  Max SR cost per trade: {dynamic_universe_config['max_sr_cost_per_trade']}")
         logger.info(f"  Max SR cost annual: {dynamic_universe_config['max_sr_cost_annual']}")
         logger.info(f"  Stack turnover: {dynamic_universe_config['stack_turnover']}")
         logger.info(f"  Vol window: {dynamic_universe_config['vol_window']}d")
+        logger.info(f"  Min annual vol floor: {dynamic_universe_config['min_annual_vol']}")
+        logger.info(f"  IVOL cap enabled: {dynamic_universe_config['ivol_cap_enabled']}")
 
     # Load data
     logger.info(f"Loading dataset: {data_path}")
