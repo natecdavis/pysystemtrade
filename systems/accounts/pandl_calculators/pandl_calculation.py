@@ -131,7 +131,7 @@ class pandlCalculation(object):
 
     @property
     def length_in_months(self) -> int:
-        positions_monthly = self.positions.resample("1M").last()
+        positions_monthly = self.positions.resample("1ME").last()
         positions_ffill = positions_monthly.ffill()
         positions_no_nans = positions_ffill.dropna()
 

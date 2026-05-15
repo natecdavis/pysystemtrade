@@ -354,9 +354,9 @@ def from_config_frequency_pandas_resample(freq: Frequency) -> str:
     LOOKUP_TABLE = {
         Frequency.BDay: "B",
         Frequency.Week: "W",
-        Frequency.Month: "M",
-        Frequency.Hour: "H",
-        Frequency.Year: "A",
+        Frequency.Month: "ME",
+        Frequency.Hour: "h",
+        Frequency.Year: "YE",
         Frequency.Day: "D",
         Frequency.Minutes_15: "15T",
         Frequency.Minutes_5: "5T",
