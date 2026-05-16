@@ -92,7 +92,10 @@ else
 fi
 
 log "step 2/2: daily_paper_run.py $SKIP_PRESTAGE"
-"$PYTHON" "$DAILY_RUN" --config "$CONFIG" --notify $SKIP_PRESTAGE >> "$LOG" 2>&1
+# Suppress per-instrument forecast-scaling DEBUG chatter (saves ~5-10% wall-
+# clock from stdout I/O alone and keeps launchd_stdout.log from growing
+# 100 MB/week). Honored by syslogging/logger.py::_configure_sim.
+PYSYS_LOG_LEVEL=INFO "$PYTHON" "$DAILY_RUN" --config "$CONFIG" --notify $SKIP_PRESTAGE >> "$LOG" 2>&1
 rc=$?
 if [ $rc -eq 0 ]; then
     log "daily_paper_run.py succeeded"

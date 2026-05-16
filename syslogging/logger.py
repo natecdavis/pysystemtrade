@@ -8,6 +8,11 @@ from syslogging.pyyaml_env import parse_config
 from syscore.fileutils import resolve_path_and_filename_for_package
 
 CONFIG_ENV_VAR = "PYSYS_LOGGING_CONFIG"
+# Optional env-var override for sim-mode root level. Defaults to DEBUG to
+# preserve research-friendly behavior; setting PYSYS_LOG_LEVEL=INFO (or
+# WARNING/ERROR) suppresses the per-instrument forecast-scale chatter that
+# dominates daily_paper_run.py wall-clock and log size.
+LEVEL_ENV_VAR = "PYSYS_LOG_LEVEL"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 
@@ -80,9 +85,11 @@ def _configure_logging():
 
 
 def _configure_sim():
-    print("Configuring sim logging")
+    level_name = os.getenv(LEVEL_ENV_VAR, "DEBUG").upper()
+    level = getattr(logging, level_name, logging.DEBUG)
+    print(f"Configuring sim logging at level {logging.getLevelName(level)}")
     handler = logging.StreamHandler(stream=sys.stdout)
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(level)
     logging.getLogger("ib_insync").setLevel(logging.WARNING)
     logging.getLogger("arctic").setLevel(logging.INFO)
     logging.getLogger("matplotlib").setLevel(logging.INFO)
@@ -90,7 +97,7 @@ def _configure_sim():
         handlers=[handler],
         format=LOG_FORMAT,
         datefmt="%Y-%m-%d %H:%M:%S",
-        level=logging.DEBUG,
+        level=level,
     )
     syslogging.logging_configured = True
 
