@@ -943,10 +943,14 @@ class parquetCryptoPerpsSimData(simData):
                 eligibility_series = self._universe_manager.get_eligibility_series(
                     instrument, prices
                 )
-                # Reindex to match requested dates, forward fill
+                # Reindex to match requested dates, forward fill within range
+                # and default to False before the series starts. fill_value
+                # keeps the result as bool dtype (a separate .fillna(False)
+                # on the reindexed object-dtype Series triggers pandas 2.2+'s
+                # silent-downcasting FutureWarning).
                 eligibility_dict[instrument] = eligibility_series.reindex(
-                    dates, method='ffill'
-                ).fillna(False)
+                    dates, method='ffill', fill_value=False
+                )
             except Exception as e:
                 self.log.warning(
                     f"Could not get eligibility for {instrument}: {str(e)}"

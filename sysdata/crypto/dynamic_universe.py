@@ -251,8 +251,12 @@ class DynamicUniverseManager:
                 continue
 
             eligibility = self.get_eligibility_series(instr, price_data[instr])
-            # Reindex to match dates, forward fill eligibility
-            result[instr] = eligibility.reindex(dates, method='ffill').fillna(False)
+            # Reindex to match dates, forward fill eligibility; fill_value
+            # keeps the result bool dtype (a separate fillna(False) triggers
+            # pandas 2.2+ silent-downcasting FutureWarning).
+            result[instr] = eligibility.reindex(
+                dates, method='ffill', fill_value=False
+            )
 
         return result
 
@@ -369,8 +373,12 @@ class DynamicUniverseManager:
             return pd.Series(True, index=prices.index)
 
         ivol_col = self._ivol_panel[instrument_code]
-        # Reindex to instrument's price index; forward-fill (IVOL changes slowly)
-        aligned = ivol_col.reindex(prices.index, method='ffill').fillna(False)
+        # Reindex to instrument's price index; forward-fill (IVOL changes slowly).
+        # fill_value keeps the result bool dtype (a separate fillna(False)
+        # triggers pandas 2.2+ silent-downcasting FutureWarning).
+        aligned = ivol_col.reindex(
+            prices.index, method='ffill', fill_value=False
+        )
         return aligned
 
     def clear_cache(self):
