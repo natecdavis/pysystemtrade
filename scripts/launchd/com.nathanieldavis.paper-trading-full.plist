@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nathanieldavis.paper-trading-full</string>
+
+    <!--
+        Full automated daily paper-trading run, gated by a non-US Wireguard
+        tunnel (Proton VPN). Runs shortly after 00:00 UTC each day.
+
+        Pipeline:
+            1. scripts/daily_run_with_vpn.sh brings up Proton VPN (NL primary,
+               JP fallback) and verifies the exit IP is non-US.
+            2. On success, runs daily_paper_run.py with full args (Binance
+               update + advisory + trade plan generation).
+            3. Always tears down the VPN on exit (trap), restoring normal US
+               internet for the rest of the day.
+
+        Execution of the resulting trade plan remains manual — this job
+        only produces the plan and supporting artifacts.
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/scripts/daily_run_with_vpn.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TZ</key>
+        <string>UTC</string>
+    </dict>
+
+    <!--
+        macOS launchd evaluates StartCalendarInterval in SYSTEM LOCAL TIME,
+        not the TZ env var. System tz is America/New_York. We fire at TWO
+        local times so one of them always lands at ~00:05 UTC regardless of
+        whether DST is active:
+
+            Hour=19, Minute=5 →   19:05 EDT (= 23:05 UTC, yesterday-UTC: too early)
+                              and 19:05 EST (= 00:05 UTC ✓ winter target)
+            Hour=20, Minute=5 →   20:05 EDT (= 00:05 UTC ✓ summer target)
+                              and 20:05 EST (= 01:05 UTC, redundant)
+
+        The "too early" and "redundant" fires are short-circuited by a UTC-
+        dated marker file in daily_run_with_vpn.sh. DST handling is therefore
+        automatic — no manual schedule change needed twice a year.
+    -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>19</integer>
+            <key>Minute</key>
+            <integer>5</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>20</integer>
+            <key>Minute</key>
+            <integer>5</integer>
+        </dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_full_run_stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_full_run_stderr.log</string>
+
+    <!-- Do not fire immediately on load — wait for next scheduled time. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- Do not restart if it exits — daily one-shot. -->
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

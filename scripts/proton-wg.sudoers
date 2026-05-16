@@ -1,0 +1,17 @@
+# Passwordless sudo for VPN pre-flight wrapper.
+#
+# Install to /etc/sudoers.d/proton-wg (mode 440, owner root:wheel).
+# Validate with `sudo visudo -c -f /etc/sudoers.d/proton-wg` before relying on it.
+#
+# Scope: only the four exact wg-quick invocations the wrapper needs, plus the
+# read-only `wg show interfaces` query. Anything else still prompts for a
+# password.
+
+Cmnd_Alias PROTON_WG = \
+    /opt/homebrew/bin/wg-quick up /Users/nathanieldavis/.proton-wg/proton-nl.conf, \
+    /opt/homebrew/bin/wg-quick down /Users/nathanieldavis/.proton-wg/proton-nl.conf, \
+    /opt/homebrew/bin/wg-quick up /Users/nathanieldavis/.proton-wg/proton-jp.conf, \
+    /opt/homebrew/bin/wg-quick down /Users/nathanieldavis/.proton-wg/proton-jp.conf, \
+    /opt/homebrew/bin/wg show interfaces
+
+nathanieldavis ALL=(root) NOPASSWD: PROTON_WG

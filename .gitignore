@@ -59,6 +59,7 @@ reports/
 
 # Private keys — never commit
 envs/*/live/hl_private_key.txt
+*.conf
 
 # Local rollback backups — never tracked. Glob covers *.bak, *.bak_legacy_*,
 # *.bak_<date>, etc. (audit F22, 2026-05-06).

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nathanieldavis.paper-trading</string>
+
+    <!--
+        Updates non-Binance data sources (macro factors, CoinMetrics, Hyperliquid
+        instruments) so they're fresh by the time the user does the manual,
+        VPN-gated full advisory run at ~00:00 UTC each day.
+
+        Binance data + advisory + execution remain manual.
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/opt/python@3.10/bin/python3.10</string>
+        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/scripts/daily_paper_run.py</string>
+        <string>--config</string>
+        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/config/crypto_perps_1k.yaml</string>
+        <string>--non-binance-only</string>
+        <string>--notify</string>
+    </array>
+
+    <!--
+        TZ=UTC is exported into the running script so date strings in logs are UTC,
+        but it does NOT affect when launchd schedules the job — see comment on
+        StartCalendarInterval below.
+    -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TZ</key>
+        <string>UTC</string>
+    </dict>
+
+    <!--
+        macOS launchd evaluates StartCalendarInterval in SYSTEM LOCAL TIME, not
+        the TZ env var. System tz is America/New_York, so:
+            Hour=15 → fires at 15:00 EDT (= 19:00 UTC) during DST,
+                       and 15:00 EST (= 20:00 UTC) during winter.
+
+        We accept the 1-hour drift between EDT/EST. Moved from 18:00 to 15:00
+        on 2026-05-16 to keep the aux refresh comfortably clear of the new
+        automated full-run plist (com.nathanieldavis.paper-trading-full),
+        which fires at 19:05 EST / 20:05 EDT. With a typical aux duration of
+        5-15 min (and occasional 2h+ outliers on slow-API days), 3 hours of
+        headroom keeps the aux refresh out of the full run's way even on
+        bad days.
+    -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>15</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_stderr.log</string>
+
+    <!-- Do not fire immediately on load — wait for next scheduled time. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- Do not restart if it exits — daily one-shot. -->
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
