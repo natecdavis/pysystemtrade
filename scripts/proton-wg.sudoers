@@ -14,4 +14,13 @@ Cmnd_Alias PROTON_WG = \
     /opt/homebrew/bin/wg-quick down /Users/nathanieldavis/.proton-wg/proton-jp.conf, \
     /opt/homebrew/bin/wg show interfaces
 
+# wg-quick's shebang (`#!/usr/bin/env bash`) requires `bash` resolves to bash 4+.
+# macOS ships bash 3.2 at /bin/bash, and sudo's default `secure_path` puts /bin
+# before any Homebrew prefix — so `/usr/bin/env bash` finds bash 3.2 and
+# wg-quick refuses to run with "Version mismatch: bash 3 detected".
+# Override secure_path for our PROTON_WG commands only so Homebrew's bash 5
+# is found first. Scope is per-command via the !PROTON_WG qualifier — no
+# effect on any other sudo invocation.
+Defaults!PROTON_WG secure_path="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
 nathanieldavis ALL=(root) NOPASSWD: PROTON_WG
