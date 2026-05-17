@@ -6,20 +6,29 @@
     <string>com.nathanieldavis.paper-trading</string>
 
     <!--
-        Updates non-Binance data sources (macro factors, CoinMetrics, Hyperliquid
-        instruments) so they're fresh by the time the user does the manual,
-        VPN-gated full advisory run at ~00:00 UTC each day.
+        Pre-stage data that doesn't depend on the midnight-UTC Binance close
+        (macros, CoinMetrics, HL instruments, Binance OI/LSR, premium index,
+        volume tail). Runs daily ahead of the automated 00:05 UTC full
+        advisory run (com.nathanieldavis.paper-trading-full) so the full run
+        can pass --skip-prestage and avoid duplicate work.
 
-        Binance data + advisory + execution remain manual.
+        Previously ran `daily_paper_run.py --non-binance-only --notify`,
+        which only touched 3 of the 6 prestage outputs — `--non-binance-only`
+        explicitly skips Binance-derived steps (OI/LSR, volume, premium) at
+        `_oi_lsr_step` etc. in daily_paper_run.py. As a result OI never got
+        refreshed by the aux flow, and the full run's freshness check
+        correctly fell back to a full prestage on every fire. Switched to
+        `prestage_daily.py` — which is purpose-built for this — so all 6
+        outputs are touched and --skip-prestage actually fires.
     -->
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/opt/python@3.10/bin/python3.10</string>
-        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/scripts/daily_paper_run.py</string>
+        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/scripts/prestage_daily.py</string>
         <string>--config</string>
         <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/config/crypto_perps_1k.yaml</string>
-        <string>--non-binance-only</string>
-        <string>--notify</string>
+        <string>--env</string>
+        <string>dev</string>
     </array>
 
     <!--
