@@ -15,6 +15,8 @@ Usage:
 
 import argparse
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime, date, timedelta
 import yaml
@@ -248,6 +250,62 @@ def get_last_available_date_from_vision(data_dir: Path, symbol: str) -> date:
     return last_day
 
 
+def _fetch_one_symbol(
+    symbol: str,
+    start_date: date,
+    end_date: date,
+    expected_as_of_date: date,
+    client: BinanceAPIClient,
+) -> dict:
+    """Fetch klines + funding for a single symbol.
+
+    Pure worker function intended to run inside ThreadPoolExecutor. Returns a
+    dict (never raises on per-symbol failure) describing the outcome:
+
+        {
+            'symbol': str,
+            'ok': bool,
+            'kline_rows': int,
+            'funding_events': int,
+            'funding_days': int,
+            'end_date': date,
+            'error': Optional[str],
+        }
+
+    The BinanceAPIClient is shared across workers. Its internal RateLimiter is
+    thread-safe (lock around state mutation + spacing sleep), and
+    requests.Session is documented as safe for concurrent use. The cache layer
+    uses tmpfile + atomic rename so concurrent writers can't tear a parquet.
+    """
+    try:
+        klines_df = client.fetch_klines(symbol, start_date, end_date)
+        funding_df = client.fetch_funding_rates(symbol, start_date, end_date)
+        kline_rows = 0 if klines_df is None or klines_df.empty else len(klines_df)
+        funding_events = 0 if funding_df is None or funding_df.empty else len(funding_df)
+        funding_days = 0
+        if funding_events:
+            funding_days = len(aggregate_funding_to_daily(funding_df))
+        return {
+            'symbol': symbol,
+            'ok': True,
+            'kline_rows': kline_rows,
+            'funding_events': funding_events,
+            'funding_days': funding_days,
+            'end_date': end_date,
+            'error': None,
+        }
+    except Exception as exc:
+        return {
+            'symbol': symbol,
+            'ok': False,
+            'kline_rows': 0,
+            'funding_events': 0,
+            'funding_days': 0,
+            'end_date': end_date,
+            'error': str(exc),
+        }
+
+
 def update_daily_tail(
     config_path: Path,
     data_dir: Path,
@@ -256,7 +314,8 @@ def update_daily_tail(
     expected_as_of_date: date = None,
     output_report: Path = None,
     scope: str = 'prod',
-    env_root: Path = None
+    env_root: Path = None,
+    workers: int = 10,
 ) -> dict:
     """
     Update raw Binance data with recent daily tail via REST API.
@@ -270,6 +329,11 @@ def update_daily_tail(
         output_report: Path to save data status report
         scope: Update scope ('prod', 'explicit_candidates', 'registry_all')
         env_root: Environment root for registry lookup
+        workers: ThreadPoolExecutor size for the per-symbol fetch loop
+            (default: 10, matching the OI raw downloader convention). Concurrent
+            workers share a single BinanceAPIClient; its RateLimiter serializes
+            the per-request spacing globally so the per-IP weight budget is
+            respected regardless of pool size.
 
     Returns:
         Data status report dict with day-level granularity
@@ -390,54 +454,80 @@ def update_daily_tail(
 
         return report
 
-    # Fetch data via API
-    logger.info(f"\nFetching API data for {len(fetch_plan)} symbol(s)...")
+    # Fetch data via API — symbols fan out across a thread pool. The pool size
+    # is decoupled from rate limiting: the shared RateLimiter serializes the
+    # per-request spacing globally so total request rate stays under the
+    # per-IP weight cap regardless of workers.
+    logger.info(
+        f"\nFetching API data for {len(fetch_plan)} symbol(s) "
+        f"with workers={workers}..."
+    )
 
     total_fetched = 0
     total_failed = 0
     fetch_errors = []
+    completed = 0
+    completed_lock = threading.Lock()
 
-    for i, (symbol, start_date, end_date) in enumerate(fetch_plan, 1):
-        logger.info(f"\n[{i}/{len(fetch_plan)}] Fetching {symbol}...")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        future_to_symbol = {
+            pool.submit(
+                _fetch_one_symbol,
+                symbol, start_date, end_date, expected_as_of_date, client,
+            ): symbol
+            for (symbol, start_date, end_date) in fetch_plan
+        }
 
-        try:
-            # Fetch klines
-            klines_df = client.fetch_klines(symbol, start_date, end_date)
-            if not klines_df.empty:
-                logger.info(f"  Klines: {len(klines_df)} days")
-                total_fetched += len(klines_df)
+        for future in as_completed(future_to_symbol):
+            symbol = future_to_symbol[future]
+            result = future.result()
+
+            with completed_lock:
+                completed += 1
+                pos = completed
+
+            if result['ok']:
+                kline_rows = result['kline_rows']
+                funding_events = result['funding_events']
+                funding_days = result['funding_days']
+                end_date = result['end_date']
+                if kline_rows == 0:
+                    logger.warning(f"[{pos}/{len(fetch_plan)}] {symbol}: klines empty")
+                if funding_events == 0:
+                    logger.warning(f"[{pos}/{len(fetch_plan)}] {symbol}: funding empty")
+                logger.info(
+                    f"[{pos}/{len(fetch_plan)}] {symbol}: "
+                    f"klines={kline_rows}d, funding={funding_events} events → "
+                    f"{funding_days}d"
+                )
+
+                total_fetched += kline_rows
+                instrument_status[symbol]['status'] = 'fetched'
+                instrument_status[symbol]['last_available_date'] = str(end_date)
+                instrument_status[symbol]['staleness_days'] = (
+                    expected_as_of_date - end_date
+                ).days
             else:
-                logger.warning(f"  Klines: no data returned")
+                err = result['error'] or 'unknown error'
+                total_failed += 1
+                fetch_errors.append((symbol, err))
+                instrument_status[symbol]['status'] = 'fetch_failed'
+                instrument_status[symbol]['warnings'].append(f"API fetch failed: {err}")
 
-            # Fetch funding rates
-            funding_df = client.fetch_funding_rates(symbol, start_date, end_date)
-            if not funding_df.empty:
-                # Aggregate to daily
-                daily_funding = aggregate_funding_to_daily(funding_df)
-                logger.info(f"  Funding: {len(funding_df)} events → {len(daily_funding)} days")
-            else:
-                logger.warning(f"  Funding: no data returned")
-
-            # Update status
-            instrument_status[symbol]['status'] = 'fetched'
-            instrument_status[symbol]['last_available_date'] = str(end_date)
-            instrument_status[symbol]['staleness_days'] = (expected_as_of_date - end_date).days
-
-        except Exception as e:
-            error_msg = f"{symbol}: {e}"
-            total_failed += 1
-            fetch_errors.append((symbol, str(e)))
-            instrument_status[symbol]['status'] = 'fetch_failed'
-            instrument_status[symbol]['warnings'].append(f"API fetch failed: {e}")
-
-            if strict_mode:
-                # STRICT: Fail immediately on first error
-                logger.error(f"\n✗ {error_msg}")
-                logger.error("ERROR: Strict mode - aborting on first failure")
-                raise RuntimeError(f"Strict mode: fetch failed for {symbol}: {e}")
-            else:
-                # BEST-EFFORT: Log and continue
-                logger.warning(f"⚠ {error_msg} (continuing in best-effort mode)")
+                if strict_mode:
+                    # STRICT: Cancel pending work and fail. The ThreadPoolExecutor
+                    # context manager's __exit__ waits for in-flight calls — we
+                    # explicitly cancel un-started futures so the failure surfaces
+                    # promptly instead of after every queued symbol drains.
+                    logger.error(f"\n✗ {symbol}: {err}")
+                    logger.error("ERROR: Strict mode - aborting on first failure")
+                    pool.shutdown(wait=False, cancel_futures=True)
+                    raise RuntimeError(f"Strict mode: fetch failed for {symbol}: {err}")
+                else:
+                    logger.warning(
+                        f"[{pos}/{len(fetch_plan)}] {symbol}: {err} "
+                        "(continuing in best-effort mode)"
+                    )
 
     # Generate updated data status report
     logger.info("\nGenerating data status report...")
@@ -604,6 +694,18 @@ Notes:
              'explicit_candidates (from config, strict), '
              'registry_all (auto-discover, best-effort)'
     )
+    parser.add_argument(
+        '--workers',
+        type=int,
+        default=10,
+        help=(
+            'ThreadPoolExecutor size for the per-symbol fetch loop '
+            '(default: 10, matching the OI raw downloader convention). The '
+            'shared RateLimiter serializes per-request spacing globally so '
+            "Binance's per-IP weight budget is respected regardless of pool "
+            'size; raising this just overlaps HTTP wait time across symbols.'
+        ),
+    )
 
     # Environment isolation
     env_group = parser.add_argument_group('Environment settings')
@@ -661,7 +763,8 @@ Notes:
             args.dry_run,
             output_report=args.output_report,
             scope=args.scope,
-            env_root=env.env_root
+            env_root=env.env_root,
+            workers=args.workers,
         )
 
         # Exit with success

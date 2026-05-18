@@ -219,6 +219,7 @@ def _oi_lsr_step(
                     sys.executable, "scripts/convert_oi_to_parquet.py",
                     "--input-dir", str(oi_raw_dir),
                     "--output", str(oi_output),
+                    "--incremental",
                 ],
                 log,
             )
@@ -362,6 +363,7 @@ def _premium_index_step(
                     sys.executable, "scripts/convert_premium_index_to_parquet.py",
                     "--input-dir", str(raw_dir),
                     "--output", str(output_path),
+                    "--incremental",
                 ],
                 log,
             )
@@ -413,16 +415,42 @@ def main() -> int:
 
     # Build the step closures. Steps stay independent — each runs its own subprocess
     # chain; the only sharing is via the parent env (filesystem paths), which is fine.
+    #
+    # Exception: OI/LSR and premium-index both hit Binance Vision S3 with their own
+    # `--workers 10` internal downloaders. Running concurrently from the same VPN
+    # exit IP double-loads Vision's per-IP budget and triggers throttling (observed
+    # 2026-05-18: premium download 1.5m → 14m when overlapped with OI). Chain them
+    # serially inside a single pool slot so they share the IP budget without giving
+    # up parallelism against the other 7 steps.
+    oi_runner = _oi_lsr_step(
+        args.config, env.env_root, env_data_dir, output_dir, requirements,
+        yesterday, yesterday_str, args.dry_run,
+    )
+    pi_runner = _premium_index_step(
+        args.config, env.env_root, env_data_dir, output_dir,
+        yesterday, yesterday_str, args.dry_run,
+    )
+
+    def _vision_chain() -> StepResult:
+        oi = oi_runner()
+        pi = pi_runner()
+        warnings = [w for w in (oi.warning, pi.warning) if w]
+        return StepResult(
+            name="vision_chain",
+            rc=max(oi.rc, pi.rc),
+            log=oi.log + pi.log,
+            warning="; ".join(warnings) if warnings else None,
+        )
+
     step_runners: list[Callable[[], StepResult]] = [
         _macro_step(env_data_dir, requirements, args.dry_run),
         _coinmetrics_step(env_data_dir, requirements, args.dry_run),
         _hyperliquid_step(env_data_dir, requirements, args.dry_run),
-        _oi_lsr_step(args.config, env.env_root, env_data_dir, output_dir, requirements, yesterday, yesterday_str, args.dry_run),
+        _vision_chain,  # OI/LSR → premium-index, serialized
         _volume_step(requirements, args.dry_run),
         _sb_dataset_rebuild_step(args.dry_run),
         _stablecoin_supply_step(args.dry_run),
         _etf_flows_step(args.dry_run),
-        _premium_index_step(args.config, env.env_root, env_data_dir, output_dir, yesterday, yesterday_str, args.dry_run),
     ]
 
     results: list[StepResult] = [None] * len(step_runners)  # preserve order in output

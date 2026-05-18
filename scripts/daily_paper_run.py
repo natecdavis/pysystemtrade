@@ -324,11 +324,13 @@ def main() -> int:
     parser.add_argument(
         "--parallel-workers",
         type=int,
-        default=4,
+        default=8,
         help=(
-            "Thread pool size for the independent data-fetch steps (3b–3g). "
+            "Thread pool size for the independent data-fetch steps (3b–3m). "
             "Each worker waits on its own subprocess (network), so concurrency cuts "
-            "wall-clock by ~2-3x without contending the GIL."
+            "wall-clock by ~2-3x without contending the GIL. There are 9 parallel "
+            "steps; default of 8 lets nearly all of them overlap so the run is "
+            "bounded by the single slowest step (~premium-index, ~5 min)."
         ),
     )
     parser.add_argument(
@@ -504,6 +506,7 @@ def main() -> int:
             "--config", args.config,
             "--scope", "registry_all",  # dynamic universe has no layer_a_instruments
             "--output-report", str(env.resolve("out") / "raw_data_status_v1.json"),
+            "--workers", "10",  # parallel symbol fetch; mirrors OI raw downloader
         ]
         update_cmd.extend(env_args)
         rc, output = run_subprocess(update_cmd, log_lines)
@@ -638,6 +641,7 @@ def main() -> int:
                     sys.executable, "scripts/convert_oi_to_parquet.py",
                     "--input-dir", str(oi_raw_dir),
                     "--output", str(oi_output),
+                    "--incremental",
                 ],
                 log,
             )
@@ -844,6 +848,7 @@ def main() -> int:
                     sys.executable, "scripts/convert_premium_index_to_parquet.py",
                     "--input-dir", str(raw_dir),
                     "--output", str(output_path),
+                    "--incremental",
                 ],
                 log,
             )
@@ -856,16 +861,35 @@ def main() -> int:
             log.append(f"  WARNING: premium-index update skipped: {exc}")
             return _StepOutcome("premium_index", log, warning="Premium-index update skipped")
 
+    def _vision_chain_step() -> "_StepOutcome":
+        """Chain _oi_lsr_step → _premium_index_step inside a single pool slot.
+
+        Both hit Binance Vision S3 with their own `--workers 10` internal
+        downloaders. Running them concurrently from the same VPN exit IP
+        double-loads Vision's per-IP budget and triggers throttling — observed
+        2026-05-18 when workers=8 let them overlap: premium download went 1.5m
+        → 14m, OI raw similar. Chaining keeps them in the parallel block
+        (other steps still overlap) but forces the two Vision-S3 consumers to
+        share the IP budget serially.
+        """
+        oi = _oi_lsr_step()
+        pi = _premium_index_step()
+        warnings = [w for w in (oi.warning, pi.warning) if w]
+        return _StepOutcome(
+            label="vision_chain",
+            log=oi.log + pi.log,
+            warning="; ".join(warnings) if warnings else None,
+        )
+
     parallel_steps = [
         _macro_step,
         _coinmetrics_step,
-        _oi_lsr_step,
+        _vision_chain_step,  # OI/LSR → premium-index, serialized
         _volume_step,
         _sector_map_step,
         _hl_instruments_step,
         _etf_flows_step,
         _stablecoin_supply_step,
-        _premium_index_step,
     ]
     parallel_started = datetime.now(timezone.utc)
     outcomes: list[_StepOutcome | None] = [None] * len(parallel_steps)

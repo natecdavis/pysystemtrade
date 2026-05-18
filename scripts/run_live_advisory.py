@@ -257,6 +257,7 @@ def refresh_active_rule_aux_data(
                 str(oi_raw_dir),
                 "--output",
                 str(oi_output),
+                "--incremental",
             ],
             "Convert Binance OI/LSR parquet",
         )

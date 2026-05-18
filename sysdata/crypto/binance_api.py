@@ -6,6 +6,7 @@ Provides rate-limited API access with caching and retry logic for daily data upd
 
 import hashlib
 import json
+import threading
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -55,33 +56,48 @@ class RateLimiter:
         self.weight_threshold = weight_threshold
         # Most recent X-MBX-USED-WEIGHT-1M; 0 means no header observed yet.
         self.last_used_weight: int = 0
+        # Serializes wait_if_needed across threads so the per-request spacing
+        # (and adaptive backoff) is enforced globally rather than per-thread.
+        # Without this lock, N concurrent threads each see the same
+        # last_request_time and fire simultaneously, defeating the limiter.
+        self._lock = threading.Lock()
 
     def wait_if_needed(self):
-        """Sleep before next request. Sleep extends if used-weight is near cap."""
-        sleep_seconds = self.base_sleep
-        # Adaptive scaling: if the server reports we're past the threshold,
-        # extend each sleep so the 1-minute window has time to slide off
-        # used weight before we add more.
-        if self.last_used_weight > self.weight_cap * self.weight_threshold:
-            headroom = max(self.weight_cap - self.last_used_weight, 1)
-            safe_sleep = 60.0 / headroom  # spread remaining budget over 60s
-            sleep_seconds = max(sleep_seconds, safe_sleep)
-        if self.last_request_time > 0:
-            elapsed = time.time() - self.last_request_time
-            if elapsed < sleep_seconds:
-                time.sleep(sleep_seconds - elapsed)
-        self.last_request_time = time.time()
+        """Sleep before next request. Sleep extends if used-weight is near cap.
+
+        Thread-safe: under concurrent use, callers serialize through the lock
+        so each releases the next thread only after stamping last_request_time.
+        The sleep happens inside the lock on purpose — that *is* the spacing
+        we're enforcing between request issuances across all threads.
+        """
+        with self._lock:
+            sleep_seconds = self.base_sleep
+            # Adaptive scaling: if the server reports we're past the threshold,
+            # extend each sleep so the 1-minute window has time to slide off
+            # used weight before we add more.
+            if self.last_used_weight > self.weight_cap * self.weight_threshold:
+                headroom = max(self.weight_cap - self.last_used_weight, 1)
+                safe_sleep = 60.0 / headroom  # spread remaining budget over 60s
+                sleep_seconds = max(sleep_seconds, safe_sleep)
+            if self.last_request_time > 0:
+                elapsed = time.time() - self.last_request_time
+                if elapsed < sleep_seconds:
+                    time.sleep(sleep_seconds - elapsed)
+            self.last_request_time = time.time()
 
     def update_from_response(self, response) -> None:
         """Parse X-MBX-USED-WEIGHT-1M from response headers. Updates the
         adaptive sleep input so the next wait_if_needed() can throttle."""
         # Header names are case-insensitive on requests.Response.headers.
         weight = response.headers.get("X-MBX-USED-WEIGHT-1M")
-        if weight is not None:
-            try:
-                self.last_used_weight = int(weight)
-            except (TypeError, ValueError):
-                pass
+        if weight is None:
+            return
+        try:
+            parsed = int(weight)
+        except (TypeError, ValueError):
+            return
+        with self._lock:
+            self.last_used_weight = parsed
 
 
 class BinanceAPIClient:

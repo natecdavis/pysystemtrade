@@ -5,7 +5,9 @@ Tests rate limiting, caching, retry logic, and funding aggregation.
 """
 
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
@@ -474,3 +476,111 @@ class TestFundingAggregation:
 
         day2 = daily_df[daily_df['date'] == date(2021, 1, 2)]
         assert day2.iloc[0]['funding_rate'] == 0.0002
+
+
+class TestRateLimiterThreadSafety:
+    """RateLimiter must serialize state mutation + per-request spacing across
+    threads. Without the internal lock, N concurrent workers see the same
+    last_request_time, sleep for the same delta, and burst-fire — defeating
+    the per-IP weight-budget protection."""
+
+    def test_concurrent_wait_if_needed_serializes_requests(self):
+        # 8 threads each call wait_if_needed twice with sleep_ms=50. The
+        # limiter should enforce ≥50ms between successive issuances, so 16
+        # total invocations take ≥ 15 × 0.05 s = 0.75 s.
+        limiter = RateLimiter(sleep_ms=50)
+        N_THREADS = 8
+        N_CALLS_PER_THREAD = 2
+        timestamps: list[float] = []
+        timestamps_lock = threading.Lock()
+
+        def worker():
+            for _ in range(N_CALLS_PER_THREAD):
+                limiter.wait_if_needed()
+                with timestamps_lock:
+                    timestamps.append(time.time())
+
+        t0 = time.time()
+        with ThreadPoolExecutor(max_workers=N_THREADS) as pool:
+            futures = [pool.submit(worker) for _ in range(N_THREADS)]
+            for fut in futures:
+                fut.result()
+        wall = time.time() - t0
+
+        # 16 total issuances need at least 15 gaps × 50ms = 750ms.
+        # Tight check: allow scheduling jitter under 25% (covers CI variance).
+        assert wall >= 0.75 * 0.75, f"wall={wall:.3f}s too short — limiter not serializing"
+
+        # Issuances must be monotonically spaced. Sort observations, then any
+        # adjacent pair where BOTH are non-cache-hits (i.e., both went through
+        # wait_if_needed) should be ≥ sleep_ms apart — minus a small jitter
+        # tolerance for the clock between time.time() inside wait_if_needed
+        # and time.time() back in the worker.
+        timestamps.sort()
+        jitter = 0.02
+        gaps = [b - a for a, b in zip(timestamps, timestamps[1:])]
+        # All but a tiny number of gaps should be ≥ 50ms - jitter.
+        small_gaps = [g for g in gaps if g < 0.05 - jitter]
+        assert len(small_gaps) <= 1, (
+            f"{len(small_gaps)} adjacent gaps < 30ms — limiter not serializing "
+            f"(gaps={[round(g*1000, 1) for g in gaps]})"
+        )
+
+    def test_concurrent_update_from_response_no_torn_state(self):
+        # Hammer update_from_response from many threads with valid + garbage
+        # headers. Final last_used_weight must be one of the valid values
+        # (never a partial integer / Mock leftover).
+        limiter = RateLimiter(sleep_ms=1)
+        valid_weights = list(range(1, 100))
+
+        def worker(weights):
+            for w in weights:
+                resp = MagicMock()
+                resp.headers = {'X-MBX-USED-WEIGHT-1M': str(w)}
+                limiter.update_from_response(resp)
+                resp2 = MagicMock()
+                resp2.headers = {'X-MBX-USED-WEIGHT-1M': 'not-a-number'}
+                limiter.update_from_response(resp2)
+                resp3 = MagicMock()
+                resp3.headers = {}  # No header
+                limiter.update_from_response(resp3)
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(worker, valid_weights) for _ in range(8)]
+            for fut in futures:
+                fut.result()
+
+        assert limiter.last_used_weight in valid_weights, (
+            f"final weight={limiter.last_used_weight} is not one of the values "
+            "written by any thread — state was torn"
+        )
+
+    def test_wait_if_needed_adaptive_sleep_under_concurrency(self):
+        # Set last_used_weight above the 75% threshold so adaptive backoff
+        # kicks in; concurrent callers should all see the extended sleep
+        # because the threshold check happens under the same lock.
+        limiter = RateLimiter(sleep_ms=10, weight_cap=2400, weight_threshold=0.75)
+        limiter.last_used_weight = 2000  # 83% of cap → adaptive should engage
+
+        # safe_sleep = 60 / (2400 - 2000) = 0.15s = 150ms per request.
+        # 3 threads × 1 call = 2 gaps → minimum 0.30s.
+        durations: list[float] = []
+
+        def worker():
+            t0 = time.time()
+            limiter.wait_if_needed()
+            durations.append(time.time() - t0)
+
+        t0 = time.time()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            futures = [pool.submit(worker) for _ in range(3)]
+            for fut in futures:
+                fut.result()
+        wall = time.time() - t0
+
+        # First call returns ~immediately (last_request_time = 0); each
+        # subsequent call waits ≥150ms. So 3 calls ≥ ~0.30s total.
+        assert wall >= 0.25, (
+            f"wall={wall:.3f}s — adaptive backoff did not engage under "
+            "concurrency"
+        )

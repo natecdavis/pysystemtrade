@@ -16,10 +16,18 @@ Data schema:
 - toptrader_long_short_ratio: top trader long/short ratio (optional)
 
 Usage:
-    # Convert all downloaded data
+    # Convert all downloaded data (full rebuild)
     python scripts/convert_oi_to_parquet.py \\
         --input-dir data/binance_oi_raw \\
         --output data/binance_oi_processed.parquet
+
+    # Incremental: only re-read ZIPs whose filename-date is newer than
+    # (per-symbol max date in existing parquet) - safety_days. Falls back to
+    # full rebuild if the output parquet does not already exist.
+    python scripts/convert_oi_to_parquet.py \\
+        --input-dir data/binance_oi_raw \\
+        --output data/binance_oi_processed.parquet \\
+        --incremental
 
     # Dry run to check coverage
     python scripts/convert_oi_to_parquet.py \\
@@ -33,8 +41,10 @@ Date: 2026-02-21
 
 import argparse
 import logging
+import re
 import sys
 import zipfile
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -48,19 +58,38 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Binance Vision daily metrics ZIPs are named {SYMBOL}-metrics-{YYYY-MM-DD}.zip
+_ZIP_DATE_RE = re.compile(r"-metrics-(\d{4}-\d{2}-\d{2})\.zip$")
+
+
 class OIDataConverter:
     """Converts Binance OI metrics CSV/ZIP data to unified parquet format."""
 
-    def __init__(self, input_dir: str, output_path: str):
+    def __init__(
+        self,
+        input_dir: str,
+        output_path: str,
+        incremental: bool = False,
+        safety_days: int = 7,
+    ):
         """
         Initialize converter.
 
         Args:
             input_dir: Directory containing downloaded ZIP files (symbol subdirectories)
             output_path: Output parquet file path
+            incremental: If True and output_path exists, only read ZIPs whose
+                filename-date is newer than (per-symbol max date - safety_days),
+                then merge with the existing parquet. Falls back to full rebuild
+                if output_path is missing.
+            safety_days: Re-read this many days behind each symbol's max date to
+                cover late-arriving / corrected ZIPs. 7d is well clear of the
+                ~2d trailing-edge window the daily downloader produces.
         """
         self.input_dir = Path(input_dir)
         self.output_path = Path(output_path)
+        self.incremental = incremental
+        self.safety_days = safety_days
 
         # Statistics
         self.stats = {
@@ -70,7 +99,11 @@ class OIDataConverter:
             'total_rows_raw': 0,
             'total_rows_daily': 0,
             'date_range_start': None,
-            'date_range_end': None
+            'date_range_end': None,
+            'mode': 'full',
+            'zips_skipped_incremental': 0,
+            'rows_existing': 0,
+            'rows_new': 0,
         }
 
     def find_symbol_directories(self) -> List[Path]:
@@ -87,6 +120,26 @@ class OIDataConverter:
         logger.info(f"Found {len(symbol_dirs)} symbol directories")
 
         return sorted(symbol_dirs)
+
+    @staticmethod
+    def _zip_date(zip_path: Path) -> Optional[date]:
+        """Parse the YYYY-MM-DD date out of a Binance Vision metrics ZIP filename."""
+        match = _ZIP_DATE_RE.search(zip_path.name)
+        if match is None:
+            return None
+        try:
+            return date.fromisoformat(match.group(1))
+        except ValueError:
+            return None
+
+    def _load_existing_max_dates(self) -> Dict[str, pd.Timestamp]:
+        """Return {instrument: max_date} from the existing output parquet, or {}."""
+        if not self.output_path.exists():
+            return {}
+        existing = pd.read_parquet(self.output_path, columns=['date', 'instrument'])
+        existing['date'] = pd.to_datetime(existing['date']).dt.normalize()
+        max_dates = existing.groupby('instrument')['date'].max()
+        return max_dates.to_dict()
 
     def read_csv_from_zip(self, zip_path: Path) -> Optional[pd.DataFrame]:
         """
@@ -120,27 +173,16 @@ class OIDataConverter:
             logger.warning(f"Failed to read {zip_path.name}: {e}")
             return None
 
-    def process_symbol_data(self, symbol_dir: Path) -> Optional[pd.DataFrame]:
+    def _process_zips(self, symbol: str, zip_files: List[Path]) -> Optional[pd.DataFrame]:
         """
-        Process all ZIP files for a single symbol.
+        Aggregate a list of ZIPs for a single symbol into daily rows.
 
-        Args:
-            symbol_dir: Path to symbol directory
-
-        Returns:
-            Daily aggregated DataFrame, or None if failed
+        Shared by both the full-rebuild path (all ZIPs) and the incremental
+        path (filtered ZIPs).
         """
-        symbol = symbol_dir.name
-        logger.debug(f"Processing {symbol}")
-
-        # Find all ZIP files
-        zip_files = sorted(symbol_dir.glob("*-metrics-*.zip"))
-
         if len(zip_files) == 0:
-            logger.warning(f"No ZIP files found for {symbol}")
             return None
 
-        # Read all CSVs and combine
         all_dfs = []
         for zip_path in zip_files:
             df = self.read_csv_from_zip(zip_path)
@@ -192,21 +234,90 @@ class OIDataConverter:
 
         return result
 
-    def convert_all_symbols(self, symbol_dirs: List[Path]) -> pd.DataFrame:
+    def process_symbol_data(
+        self,
+        symbol_dir: Path,
+        since: Optional[date] = None,
+    ) -> Optional[pd.DataFrame]:
+        """
+        Process ZIP files for a single symbol.
+
+        Args:
+            symbol_dir: Path to symbol directory
+            since: If provided, only ZIPs whose filename-date is strictly greater
+                than `since` are read (incremental mode). When None, every ZIP is
+                read (full rebuild).
+
+        Returns:
+            Daily aggregated DataFrame, or None if no eligible ZIPs / no valid data.
+        """
+        symbol = symbol_dir.name
+        logger.debug(f"Processing {symbol}")
+
+        all_zips = sorted(symbol_dir.glob("*-metrics-*.zip"))
+
+        if len(all_zips) == 0:
+            logger.warning(f"No ZIP files found for {symbol}")
+            return None
+
+        if since is None:
+            zip_files = all_zips
+        else:
+            zip_files = []
+            for zip_path in all_zips:
+                zdate = self._zip_date(zip_path)
+                if zdate is None:
+                    # Unparseable filename — be safe and read it.
+                    zip_files.append(zip_path)
+                    continue
+                if zdate > since:
+                    zip_files.append(zip_path)
+                else:
+                    self.stats['zips_skipped_incremental'] += 1
+            if len(zip_files) == 0:
+                logger.debug(f"{symbol}: no new ZIPs since {since}; skipping")
+                return None
+
+        return self._process_zips(symbol, zip_files)
+
+    def convert_all_symbols(
+        self,
+        symbol_dirs: List[Path],
+        max_dates: Optional[Dict[str, pd.Timestamp]] = None,
+    ) -> pd.DataFrame:
         """
         Convert all symbol data to unified format.
 
         Args:
             symbol_dirs: List of symbol directory paths
+            max_dates: Per-symbol max date in the existing parquet. When provided,
+                each symbol is processed incrementally (read only ZIPs whose
+                filename-date > max_date - safety_days). When None, every ZIP is
+                read for every symbol.
 
         Returns:
-            Combined DataFrame with all symbols
+            Combined DataFrame with the rows for which new ZIPs were processed.
+            May be empty (zero rows) in incremental mode when nothing is new —
+            callers must handle that case.
         """
         all_data = []
 
         for symbol_dir in tqdm(symbol_dirs, desc="Converting symbols"):
+            symbol = symbol_dir.name
             try:
-                symbol_data = self.process_symbol_data(symbol_dir)
+                if max_dates is None:
+                    since = None
+                else:
+                    sym_max = max_dates.get(symbol)
+                    if sym_max is None:
+                        since = None  # new symbol — read everything
+                    else:
+                        since = (
+                            pd.Timestamp(sym_max).normalize().date()
+                            - timedelta(days=self.safety_days)
+                        )
+
+                symbol_data = self.process_symbol_data(symbol_dir, since=since)
 
                 if symbol_data is not None:
                     all_data.append(symbol_data)
@@ -219,7 +330,13 @@ class OIDataConverter:
                 self.stats['symbols_failed'] += 1
 
         if len(all_data) == 0:
-            raise ValueError("No valid data found in any symbol directory")
+            if max_dates is None:
+                raise ValueError("No valid data found in any symbol directory")
+            # Incremental mode with no new ZIPs anywhere is a normal no-op.
+            return pd.DataFrame(
+                columns=['date', 'instrument', 'open_interest',
+                         'long_short_ratio', 'toptrader_long_short_ratio']
+            )
 
         # Combine all symbols
         logger.info("Combining all symbol data...")
@@ -232,6 +349,41 @@ class OIDataConverter:
         self.stats['date_range_start'] = combined['date'].min()
         self.stats['date_range_end'] = combined['date'].max()
 
+        return combined
+
+    def _merge_with_existing(self, new_df: pd.DataFrame) -> pd.DataFrame:
+        """Concat new rows with the existing parquet and dedup on (date, instrument).
+
+        Newer rows win on overlap (`keep='last'`), so a re-read ZIP that produces
+        a corrected value supersedes whatever was in the previous parquet. Mirrors
+        the pattern in `scripts/backfill_volume.py`.
+        """
+        existing = pd.read_parquet(self.output_path)
+        existing['date'] = pd.to_datetime(existing['date']).dt.normalize()
+        self.stats['rows_existing'] = len(existing)
+        self.stats['rows_new'] = len(new_df)
+
+        if new_df.empty:
+            # Normalize sort order so callers see a consistent shape.
+            return (
+                existing
+                .sort_values(['date', 'instrument'])
+                .reset_index(drop=True)
+            )
+
+        new_df = new_df.copy()
+        new_df['date'] = pd.to_datetime(new_df['date']).dt.normalize()
+
+        combined = pd.concat([existing, new_df], ignore_index=True)
+        combined = (
+            combined
+            .drop_duplicates(subset=['date', 'instrument'], keep='last')
+            .sort_values(['date', 'instrument'])
+            .reset_index(drop=True)
+        )
+
+        self.stats['date_range_start'] = combined['date'].min()
+        self.stats['date_range_end'] = combined['date'].max()
         return combined
 
     def save_parquet(self, df: pd.DataFrame) -> None:
@@ -259,9 +411,14 @@ class OIDataConverter:
         logger.info("=" * 60)
         logger.info("CONVERSION SUMMARY")
         logger.info("=" * 60)
+        logger.info(f"Mode: {self.stats['mode']}")
         logger.info(f"Symbols processed: {self.stats['symbols_processed']}")
         logger.info(f"Symbols failed: {self.stats['symbols_failed']}")
         logger.info(f"Total ZIP files: {self.stats['total_files']:,}")
+        if self.stats['mode'] == 'incremental':
+            logger.info(f"ZIPs skipped (already covered): {self.stats['zips_skipped_incremental']:,}")
+            logger.info(f"Existing rows: {self.stats['rows_existing']:,}")
+            logger.info(f"New / re-read rows: {self.stats['rows_new']:,}")
         logger.info(f"Total 5-min rows: {self.stats['total_rows_raw']:,}")
         logger.info(f"Total daily rows: {self.stats['total_rows_daily']:,}")
         logger.info(f"Date range: {self.stats['date_range_start']} to {self.stats['date_range_end']}")
@@ -285,8 +442,26 @@ class OIDataConverter:
             logger.error("No symbol directories found")
             return None
 
-        # Convert all data
-        combined = self.convert_all_symbols(symbol_dirs)
+        if self.incremental and not self.output_path.exists():
+            logger.warning(
+                f"--incremental requested but {self.output_path} does not exist — "
+                "falling back to full rebuild"
+            )
+
+        do_incremental = self.incremental and self.output_path.exists()
+
+        if do_incremental:
+            self.stats['mode'] = 'incremental'
+            max_dates = self._load_existing_max_dates()
+            logger.info(
+                f"Incremental mode: existing parquet has {len(max_dates)} symbols; "
+                f"safety_days={self.safety_days}"
+            )
+            new_df = self.convert_all_symbols(symbol_dirs, max_dates=max_dates)
+            combined = self._merge_with_existing(new_df)
+        else:
+            self.stats['mode'] = 'full'
+            combined = self.convert_all_symbols(symbol_dirs, max_dates=None)
 
         # Save (unless dry run)
         if not dry_run:
@@ -356,6 +531,12 @@ Examples:
     --input-dir data/binance_oi_raw \\
     --output data/binance_oi_processed.parquet
 
+  # Incremental update (reuses existing parquet)
+  python scripts/convert_oi_to_parquet.py \\
+    --input-dir data/binance_oi_raw \\
+    --output data/binance_oi_processed.parquet \\
+    --incremental
+
   # Dry run with coverage analysis
   python scripts/convert_oi_to_parquet.py \\
     --input-dir data/binance_oi_raw \\
@@ -386,6 +567,27 @@ Examples:
     )
 
     parser.add_argument(
+        '--incremental',
+        action='store_true',
+        help=(
+            'Update tail only: read just ZIPs newer than '
+            '(per-symbol max date in existing parquet) - safety-days, then '
+            'merge into the existing parquet. Falls back to full rebuild if '
+            'the output parquet does not yet exist.'
+        ),
+    )
+
+    parser.add_argument(
+        '--safety-days',
+        type=int,
+        default=7,
+        help=(
+            'Incremental mode: re-read this many days behind each symbol\'s '
+            'max date to cover late-arriving / corrected ZIPs (default: 7).'
+        ),
+    )
+
+    parser.add_argument(
         '--dry-run',
         action='store_true',
         help='Analyze coverage without saving output file'
@@ -410,7 +612,12 @@ Examples:
         logger.setLevel(logging.DEBUG)
 
     # Run conversion
-    converter = OIDataConverter(args.input_dir, args.output)
+    converter = OIDataConverter(
+        args.input_dir,
+        args.output,
+        incremental=args.incremental,
+        safety_days=args.safety_days,
+    )
     df = converter.run(dry_run=args.dry_run)
 
     # Analyze coverage if requested
