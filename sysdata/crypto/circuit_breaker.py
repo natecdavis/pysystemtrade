@@ -16,13 +16,12 @@ import pandas as pd
 
 from sysdata.crypto.atomic_io import atomic_write_csv, atomic_write_json
 
-DEFAULTS = dict(max_daily_loss_pct=0.09, max_drawdown_pct=0.15)
-# Thresholds set 2026-04-25: notional_trading_capital=$10,000 (2.5× phantom leverage
-# on $4K actual equity) with min_notional_position=$10 (HL constraint).
-# Expected live MaxDD = 5.03% (backtest re: notional) × 2.5 = 12.6% of actual equity.
-# Limits give ~2.5pp headroom:
-#   max_daily_loss_pct: 0.09  (worst day 2.92% × 2.5 = 7.3% + 2pp)
-#   max_drawdown_pct:   0.15  (12.6% expected + 2.5pp buffer)
+DEFAULTS = dict(max_daily_loss_pct=0.11, max_drawdown_pct=0.20)
+# Thresholds updated 2026-05-20 alongside leverage_multiple 2.5→3.0 bump and the
+# β_down overlay removal (out/wf_downside_beta_overlay_off/, backtest MaxDD
+# −5.84%, worst day −2.96%). Expected live MaxDD = 5.84% × 3.0 = 17.5%.
+#   max_daily_loss_pct: 0.11  (worst day 2.96% × 3.0 = 8.9% + 2pp)
+#   max_drawdown_pct:   0.20  (17.5% expected + 2.5pp buffer)
 
 
 class CircuitBreaker:

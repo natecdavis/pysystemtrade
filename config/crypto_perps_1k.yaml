@@ -1,12 +1,12 @@
 system:
-  capital: 9890.08
+  capital: 9813.0
   vol_target_ann: 0.25
   idm_cap: 2.5
   min_position_frac: 0.03
   allow_jagged: true
 percentage_vol_target: 25.0
-leverage_multiple: 2.5
-notional_trading_capital: 9890.08
+leverage_multiple: 3.0
+notional_trading_capital: 9813.0
 min_notional_position: 10.0
 instrument_weight_ewma_span: 1
 use_instrument_div_mult_estimates: true
@@ -1057,7 +1057,7 @@ mvrv_overlay_params:
   oversold_threshold: 1.0
   min_scale: 0.5
   max_mvrv: 5.0
-use_downside_beta_overlay: true
+use_downside_beta_overlay: false
 downside_beta_params:
   window: 90
   min_periods: 20
