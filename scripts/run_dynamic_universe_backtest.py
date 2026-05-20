@@ -757,7 +757,24 @@ def run_backtest(
     use_oi_overlay = config.get_element_or_default('use_oi_overlay', False)
     use_fg_overlay = config.get_element_or_default('use_fg_overlay', False)
     use_mvrv_overlay = config.get_element_or_default('use_mvrv_overlay', False)
-    use_any_overlay = use_oi_overlay or use_fg_overlay or use_mvrv_overlay
+    use_downside_beta_overlay = config.get_element_or_default(
+        'use_downside_beta_overlay', False
+    )
+    use_correlation_shock_overlay = config.get_element_or_default(
+        'use_correlation_shock_overlay', False
+    )
+    # CryptoDynamicPortfolioWithOIOverlay is the only stage that invokes
+    # apply_downside_beta_overlay and apply_correlation_shock_overlay, so it
+    # must be selected when *any* overlay flag is on — not just the three
+    # historical (OI/F&G/MVRV) ones. Missing the latter two caused the
+    # oi_overlay_off run on 2026-05-20 to silently degrade into a both-off run.
+    use_any_overlay = (
+        use_oi_overlay
+        or use_fg_overlay
+        or use_mvrv_overlay
+        or use_downside_beta_overlay
+        or use_correlation_shock_overlay
+    )
     use_greedy_portfolio = config_dict.get('use_greedy_portfolio', False)
 
     if use_greedy_portfolio:
@@ -771,6 +788,8 @@ def run_backtest(
                 "OI" if use_oi_overlay else "",
                 "F&G" if use_fg_overlay else "",
                 "MVRV" if use_mvrv_overlay else "",
+                "β_down" if use_downside_beta_overlay else "",
+                "corr_shock" if use_correlation_shock_overlay else "",
             ]))
             logger.info(f"  Using dynamic portfolio with overlay(s): {overlay_desc}")
         else:
@@ -783,6 +802,8 @@ def run_backtest(
                 "OI" if use_oi_overlay else "",
                 "F&G" if use_fg_overlay else "",
                 "MVRV" if use_mvrv_overlay else "",
+                "β_down" if use_downside_beta_overlay else "",
+                "corr_shock" if use_correlation_shock_overlay else "",
             ]))
             logger.info(f"  Using static portfolio with overlay(s): {overlay_desc}")
         else:
