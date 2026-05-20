@@ -1076,6 +1076,7 @@ def main() -> int:
                 "--data", str(sb_dataset_path),
                 "--outdir", str(forecast_panel_dir),
                 "--all-rules",
+                *environment_cli_args(args),
             ]
         else:
             # Manual path: incremental append for today's row
@@ -1088,6 +1089,7 @@ def main() -> int:
                 "--outdir", str(forecast_panel_dir),
                 "--all-rules",
                 "--since", today_iso,
+                *environment_cli_args(args),
             ]
         c4_forecast_rc, _ = run_subprocess(cmd, log_lines)
         if c4_forecast_rc != 0:
@@ -1126,6 +1128,7 @@ def main() -> int:
             "--out-dir", str(c4_build_outdir),
             "--incremental",
             "--live-panel-path", str(multiplier_panel_path),
+            *environment_cli_args(args),
         ]
         rc, _ = run_subprocess(cmd, log_lines)
         if rc != 0:

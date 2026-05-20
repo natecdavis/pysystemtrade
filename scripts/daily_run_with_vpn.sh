@@ -7,7 +7,15 @@
 # run crashes.
 #
 # Usage:
-#     ./scripts/daily_run_with_vpn.sh
+#     ./scripts/daily_run_with_vpn.sh [ENV]
+#
+# ENV is the environment name passed to daily_paper_run.py (default "dev").
+# The aux-feed freshness check below resolves files under envs/$ENV/data/,
+# so prod-clone invocations should pass "prod" as the first arg.
+#
+# REPO_ROOT is computed from the script's own location so the same file
+# works in both the dev clone and the prod clone without per-clone edits
+# (which would otherwise be reverted on every git pull).
 #
 # Exit codes:
 #     0   daily run succeeded
@@ -16,13 +24,15 @@
 
 set -u
 
-REPO_ROOT="/Users/nathanieldavis/pysystemtrade-crypto-perps"
+ENV="${1:-dev}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON="/opt/homebrew/opt/python@3.10/bin/python3.10"
 PREFLIGHT="$REPO_ROOT/scripts/vpn_preflight.py"
 DAILY_RUN="$REPO_ROOT/scripts/daily_paper_run.py"
 CONFIG="$REPO_ROOT/config/crypto_perps_1k.yaml"
 LOG="$REPO_ROOT/live/daily_run_with_vpn.log"
 MARKER="$REPO_ROOT/live/last_run_utc_date.txt"
+ENV_DATA_DIR="$REPO_ROOT/envs/$ENV/data"
 
 mkdir -p "$(dirname "$LOG")"
 
@@ -61,12 +71,12 @@ log "VPN pre-flight OK"
 # If ANY file is stale or missing, run without the flag and let the full
 # run re-do the prestage — fail-safe behavior on aux-refresh failure days.
 AUX_FILES=(
-    "$REPO_ROOT/envs/dev/data/macro_factors.parquet"
-    "$REPO_ROOT/envs/dev/data/active_addresses.parquet"
-    "$REPO_ROOT/envs/dev/data/market_cap.parquet"
-    "$REPO_ROOT/envs/dev/data/hyperliquid_instruments.json"
-    "$REPO_ROOT/envs/dev/data/binance_oi_processed.parquet"
-    "$REPO_ROOT/envs/dev/data/binance_premium_index_processed.parquet"
+    "$ENV_DATA_DIR/macro_factors.parquet"
+    "$ENV_DATA_DIR/active_addresses.parquet"
+    "$ENV_DATA_DIR/market_cap.parquet"
+    "$ENV_DATA_DIR/hyperliquid_instruments.json"
+    "$ENV_DATA_DIR/binance_oi_processed.parquet"
+    "$ENV_DATA_DIR/binance_premium_index_processed.parquet"
 )
 MAX_AGE_SEC=$((12 * 3600))
 NOW_EPOCH=$(date +%s)
@@ -91,11 +101,11 @@ else
     log "aux freshness FAIL: $STALE_FILE — running full prestage in daily_paper_run.py"
 fi
 
-log "step 2/2: daily_paper_run.py $SKIP_PRESTAGE"
+log "step 2/2: daily_paper_run.py --env $ENV $SKIP_PRESTAGE"
 # Suppress per-instrument forecast-scaling DEBUG chatter (saves ~5-10% wall-
 # clock from stdout I/O alone and keeps launchd_stdout.log from growing
 # 100 MB/week). Honored by syslogging/logger.py::_configure_sim.
-PYSYS_LOG_LEVEL=INFO "$PYTHON" "$DAILY_RUN" --config "$CONFIG" --notify $SKIP_PRESTAGE >> "$LOG" 2>&1
+PYSYS_LOG_LEVEL=INFO "$PYTHON" "$DAILY_RUN" --config "$CONFIG" --env "$ENV" --notify $SKIP_PRESTAGE >> "$LOG" 2>&1
 rc=$?
 if [ $rc -eq 0 ]; then
     log "daily_paper_run.py succeeded"

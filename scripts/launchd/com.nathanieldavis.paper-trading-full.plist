@@ -22,7 +22,8 @@
     -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/scripts/daily_run_with_vpn.sh</string>
+        <string>/Users/nathanieldavis/pysystemtrade-prod/scripts/daily_run_with_vpn.sh</string>
+        <string>prod</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -63,10 +64,10 @@
     </array>
 
     <key>StandardOutPath</key>
-    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_full_run_stdout.log</string>
+    <string>/Users/nathanieldavis/pysystemtrade-prod/live/launchd_full_run_stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_full_run_stderr.log</string>
+    <string>/Users/nathanieldavis/pysystemtrade-prod/live/launchd_full_run_stderr.log</string>
 
     <!-- Do not fire immediately on load — wait for next scheduled time. -->
     <key>RunAtLoad</key>

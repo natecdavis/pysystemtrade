@@ -57,7 +57,11 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 # System builder
 # ---------------------------------------------------------------------------
 
-def build_system(config_path: str, data_path: str) -> System:
+def build_system(
+    config_path: str,
+    data_path: str,
+    env_data_dir: Optional[Path] = None,
+) -> System:
     with open(config_path) as f:
         cfg_dict = yaml.safe_load(f)
     config = Config(cfg_dict)
@@ -71,14 +75,16 @@ def build_system(config_path: str, data_path: str) -> System:
         return arg_not_supplied
 
     data_dir = Path(data_path).parent
-    # Production writes auxiliary feeds to envs/dev/data/ (post-2026-05-06
+    # Production writes auxiliary feeds to envs/<env>/data/ (post-2026-05-06
     # migration). Some legacy tracked files still live at data/<file>.parquet
     # (e.g. data/market_cap.parquet was last refreshed 2026-04-26 and shadows
     # the fresh envs/dev/data/market_cap.parquet) — so env-first resolution
     # is REQUIRED, not optional. Without env-first, the resolver picks up
     # 20-day-stale repo fixtures and rules silently produce stale forecasts
     # (audit F2 root cause, 2026-05-07; mirrors required_data._resolve_path).
-    env_data = repo_root / "envs" / "dev" / "data"
+    # env_data_dir is passed by callers that propagate --env / --env-root;
+    # falls back to envs/dev/data for backward compat with direct invocations.
+    env_data = env_data_dir if env_data_dir is not None else repo_root / "envs" / "dev" / "data"
 
     macro_kwarg = _resolve(
         env_data / "macro_factors.parquet",
@@ -223,6 +229,7 @@ def extract_panels(
     config_path: str, data_path: str, out_dir: Path,
     include_zero_weight: bool = False,
     since: Optional[pd.Timestamp] = None,
+    env_data_dir: Optional[Path] = None,
 ) -> None:
     """Extract per-rule capped forecasts and per-instrument log-returns into
     parquet panels.
@@ -262,7 +269,7 @@ def extract_panels(
         print(f"  existing returns:   {existing_returns.shape}")
 
     print(f"Building system from {config_path} / {data_path}...")
-    system = build_system(config_path, data_path)
+    system = build_system(config_path, data_path, env_data_dir=env_data_dir)
 
     active_rules = get_active_rules(config_path, include_zero_weight=include_zero_weight)
     instruments = system.data.get_instrument_list()
@@ -418,13 +425,36 @@ def main() -> None:
         "appends the freshly-computed tail. Atomic write (tmp + os.replace). "
         "If existing panels are missing, fails with a clear message.",
     )
+    parser.add_argument(
+        "--env",
+        default="dev",
+        help="Environment name (dev/prod). Determines envs/<env>/data/ for aux feed lookup.",
+    )
+    parser.add_argument(
+        "--env-root",
+        type=Path,
+        default=None,
+        help="Override env root path (takes precedence over --env).",
+    )
     args = parser.parse_args()
+
+    # Resolve env_data_dir via LiveOpsEnvironment so prestage_daily.py's
+    # env-specific output paths are picked up.
+    from sysdata.crypto.env_paths import LiveOpsEnvironment
+    repo_root = Path(__file__).resolve().parent.parent
+    env = LiveOpsEnvironment(
+        env=args.env,
+        env_root=args.env_root,
+        project_root=repo_root,
+    )
+    env_data_dir = env.env_root / "data"
 
     since_ts = pd.Timestamp(args.since) if args.since else None
 
     extract_panels(args.config, args.data, Path(args.outdir),
                    include_zero_weight=args.all_rules,
-                   since=since_ts)
+                   since=since_ts,
+                   env_data_dir=env_data_dir)
 
 
 if __name__ == "__main__":

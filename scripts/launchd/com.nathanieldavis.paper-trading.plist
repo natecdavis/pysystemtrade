@@ -24,11 +24,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/opt/python@3.10/bin/python3.10</string>
-        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/scripts/prestage_daily.py</string>
+        <string>/Users/nathanieldavis/pysystemtrade-prod/scripts/prestage_daily.py</string>
         <string>--config</string>
-        <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/config/crypto_perps_1k.yaml</string>
+        <string>/Users/nathanieldavis/pysystemtrade-prod/config/crypto_perps_1k.yaml</string>
         <string>--env</string>
-        <string>dev</string>
+        <string>prod</string>
     </array>
 
     <!--
@@ -45,30 +45,34 @@
     <!--
         macOS launchd evaluates StartCalendarInterval in SYSTEM LOCAL TIME, not
         the TZ env var. System tz is America/New_York, so:
-            Hour=15 → fires at 15:00 EDT (= 19:00 UTC) during DST,
-                       and 15:00 EST (= 20:00 UTC) during winter.
+            Hour=18, Minute=30 → fires at 18:30 EDT (= 22:30 UTC) during DST,
+                                  and 18:30 EST (= 23:30 UTC) during winter.
 
-        We accept the 1-hour drift between EDT/EST. Moved from 18:00 to 15:00
-        on 2026-05-16 to keep the aux refresh comfortably clear of the new
-        automated full-run plist (com.nathanieldavis.paper-trading-full),
-        which fires at 19:05 EST / 20:05 EDT. With a typical aux duration of
-        5-15 min (and occasional 2h+ outliers on slow-API days), 3 hours of
-        headroom keeps the aux refresh out of the full run's way even on
-        bad days.
+        We accept the 1-hour drift between EDT/EST. Moved from 15:00 to 18:30
+        on 2026-05-18 so the aux prestage lands AFTER US-market settlements
+        each day. yfinance-backed feeds (macro_factors: SPX/DXY/US10Y/US5Y/
+        gold/VIX/oil; etf_flows: IBIT/ETHA) only finalize once the underlying
+        cash/futures sessions close at ~21:00 UTC EDT / ~22:00 UTC EST.
+        Firing at 15:00 ET pulled partial intraday bars or stale T-1 closes
+        and the main 00:05 UTC full run skipped re-pull (aux <12h old), so
+        the live system traded on a macro snapshot up to 1 trading day behind
+        the latest available US close. 18:30 ET buys 1.5h (DST) / 0.5h (EST)
+        of buffer ahead of the 00:05 UTC full-run fire — tight in EST winter
+        if an aux outlier runs >30 min, but typical aux runtime is 5-15 min.
     -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>15</integer>
+        <integer>18</integer>
         <key>Minute</key>
-        <integer>0</integer>
+        <integer>30</integer>
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_stdout.log</string>
+    <string>/Users/nathanieldavis/pysystemtrade-prod/live/launchd_stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/nathanieldavis/pysystemtrade-crypto-perps/live/launchd_stderr.log</string>
+    <string>/Users/nathanieldavis/pysystemtrade-prod/live/launchd_stderr.log</string>
 
     <!-- Do not fire immediately on load — wait for next scheduled time. -->
     <key>RunAtLoad</key>

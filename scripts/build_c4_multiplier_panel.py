@@ -522,6 +522,17 @@ def main() -> int:
         "β=0.5 / T=365 are hard-coded constants; use this flag to isolate pure "
         "C4 output for research backtests.",
     )
+    parser.add_argument(
+        "--env",
+        default="dev",
+        help="Environment name (dev/prod). Selects envs/<env>/data/ for aux feed lookup.",
+    )
+    parser.add_argument(
+        "--env-root",
+        type=Path,
+        default=None,
+        help="Override env root path (takes precedence over --env).",
+    )
     args = parser.parse_args()
     freeze_after = (
         pd.Timestamp(args.freeze_training_after)
@@ -557,12 +568,24 @@ def main() -> int:
     # env-first/repo-fallback resolution mirrors required_data._resolve_path.
     # Prevents the silent "FileNotFoundError → [3o] WARN-only → panel ages
     # past 30h → backtest fail-closed" cascade observed 2026-05-07 when the
-    # auxiliary feeds migrated to envs/dev/data/ but defaults pointed at
+    # auxiliary feeds migrated to envs/<env>/data/ but defaults pointed at
     # repo data/ (audit F2-followup, 2026-05-08).
+    #
+    # The env directory is determined by --env / --env-root via LiveOpsEnvironment
+    # so a prod-clone run with `--env prod` reads envs/prod/data/ instead of
+    # envs/dev/data/ (2026-05-20 prod-cutover prep).
+    from sysdata.crypto.env_paths import LiveOpsEnvironment
+    env = LiveOpsEnvironment(
+        env=args.env,
+        env_root=args.env_root,
+        project_root=REPO_ROOT,
+    )
+    env_data_dir = env.env_root / "data"
+
     def _env_first(arg_value: "str | None", filename: str) -> Path:
         if arg_value is not None:
             return REPO_ROOT / arg_value
-        env_p = REPO_ROOT / "envs" / "dev" / "data" / filename
+        env_p = env_data_dir / filename
         if env_p.exists():
             return env_p
         return REPO_ROOT / "data" / filename
