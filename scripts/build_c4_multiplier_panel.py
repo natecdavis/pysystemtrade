@@ -42,6 +42,7 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -52,6 +53,7 @@ from systems.crypto_perps.c4_xgboost_combiner import (  # noqa: E402
     EARLY_STOPPING_ROUNDS,
     FitArtifact,
     FitNotPersistedError,
+    TargetTransform,
     _train_one_fit,
     aggregate_feature_importance,
     build_feature_panel,
@@ -89,6 +91,78 @@ def _load_stablecoin_supply(path: Path) -> pd.Series | None:
             return df[c].sort_index()
     # Fallback: use the first column
     return df.iloc[:, 0].sort_index()
+
+
+# ----------------------------------------------------------------------------
+# Token-maturity penalty composition (live ADOPT 2026-05-19; user override).
+#
+# Maturity multiplier ∈ [1-β, 1] dampens positions for tokens listed within
+# the last T days:
+#     penalty(i, t)    = max(0, (T - days_since_listing(i, t)) / T)   ∈ [0, 1]
+#     multiplier(i, t) = 1 - β × penalty(i, t)                         ∈ [1-β, 1]
+#
+# Composed into the live C4 panel here so the daily flow produces a single
+# panel at data/c4_multiplier_panel_h20.parquet that the live runtime consumes
+# via systems/crypto_perps/forecast_combine_gated.py:_apply_walk_forward_multiplier.
+#
+# B7 walk-forward verdict (2026-05-19): ΔSharpe -0.0076 / ΔCalmar -0.0103 /
+# ΔMaxDD +0.72pp on the 124-rule kitchen-sink + Carver-filter baseline. Adopted
+# under err-on-keeping precedent for the largest single-rule MaxDD improvement
+# in project history. See project_maturity_penalty_adopted_2026-05-19.md.
+#
+# Launch_date is derived from the returns panel's first_valid_index() per
+# instrument (= close-price launch_date + 1 day in lifecycle_df convention).
+# The 1-day offset shifts the multiplier ramp by 1/365 of a step (~0.14% per
+# cell). Negligible vs the WF test's lifecycle source.
+# ----------------------------------------------------------------------------
+
+MATURITY_BETA = 0.5
+MATURITY_THRESHOLD_DAYS = 365
+
+
+def _launch_dates_from_returns(returns: pd.DataFrame) -> pd.Series:
+    """First non-NaN return date per instrument (launch_date + 1d proxy)."""
+    return returns.apply(lambda c: c.first_valid_index())
+
+
+def _apply_maturity_penalty(
+    c4_panel: pd.DataFrame,
+    returns: pd.DataFrame,
+    beta: float = MATURITY_BETA,
+    threshold_days: int = MATURITY_THRESHOLD_DAYS,
+) -> pd.DataFrame:
+    """Compose the C4 multiplier panel with the maturity multiplier element-wise.
+
+    Instruments missing from `returns` (e.g., C4 covers more columns than the
+    returns panel) get maturity=1.0 (no effect). Pre-launch cells also map to
+    maturity=1.0 so the result is `c4_panel` unchanged at those cells — the
+    consumer's `.fillna(1.0)` already handles missing-column cases, so the
+    composed panel must NOT introduce new NaN.
+    """
+    dates = c4_panel.index
+    cols = c4_panel.columns
+
+    launch = _launch_dates_from_returns(returns).reindex(cols)
+
+    # Build maturity multiplier on the (dates × cols) grid via vector ops.
+    date_grid = np.tile(dates.values, (len(cols), 1)).T          # (T, N)
+    launch_grid = np.tile(launch.values, (len(dates), 1))         # (T, N)
+    delta_days = (date_grid - launch_grid).astype("timedelta64[D]").astype("float64")
+    # Pre-launch OR unknown-launch cells: identity (multiplier=1).
+    pre_launch = (delta_days < 0) | np.isnan(delta_days)
+    days_since = np.where(pre_launch, np.nan, delta_days)
+    penalty = np.clip((threshold_days - days_since) / threshold_days, 0.0, 1.0)
+    mult = 1.0 - beta * penalty
+
+    maturity_panel = pd.DataFrame(mult, index=dates, columns=cols).fillna(1.0)
+    composed = c4_panel * maturity_panel
+
+    print(
+        f"  Applied maturity penalty (β={beta}, T={threshold_days}d): "
+        f"affected {(maturity_panel < 1.0).any(axis=0).sum()}/{len(cols)} instruments "
+        f"(min mult={maturity_panel.values.min():.4f}, mean={maturity_panel.values.mean():.4f})"
+    )
+    return composed
 
 
 def _write_training_report(
@@ -314,6 +388,17 @@ def _run_incremental(
     today_row.index.name = live_panel.index.name
     # Reindex to match panel's columns (panel may have instruments not predicted today)
     today_row = today_row.reindex(columns=live_panel.columns)
+
+    # Compose with token-maturity multiplier (live ADOPT 2026-05-19).
+    # CRITICAL: compose ONLY today's row — historical rows in live_panel were
+    # composed at insertion time by previous incremental runs (or by the most
+    # recent full rebuild). Composing the full panel here would multiply
+    # historical rows by maturity AGAIN, giving C4 × maturity² — double-counted
+    # penalty. To recompose historical rows after a code change, run a full
+    # rebuild (drop --incremental).
+    if not args.no_maturity_penalty:
+        today_row = _apply_maturity_penalty(today_row, returns)
+
     new_panel = pd.concat([live_panel.loc[live_panel.index < today], today_row]).sort_index()
     new_panel = new_panel[~new_panel.index.duplicated(keep="last")]
 
@@ -394,6 +479,19 @@ def main() -> int:
         "adaptation stress test.",
     )
     parser.add_argument(
+        "--target-transform",
+        type=str,
+        default=TargetTransform.VOL_NORM_PER_INSTR.value,
+        choices=[t.value for t in TargetTransform],
+        help="Label transformation. Default `vol_norm_per_instr` reproduces the "
+        "original C4 label byte-for-byte. Non-default variants are the "
+        "Cakici-Zaremba 2026 cross-sectional target sweep — when set to a "
+        "non-default variant, the script REROUTES writes to "
+        "`data/research/c4_target_transform/{variant}/` so the live panel and "
+        "persisted production fit are not touched. Incompatible with "
+        "--incremental and --uniform-multipliers.",
+    )
+    parser.add_argument(
         "--incremental",
         action="store_true",
         help="Incremental mode: load the persisted latest fit (data/c4_models/h20/), "
@@ -416,11 +514,42 @@ def main() -> int:
         help="Directory where the persisted latest fit (latest.joblib + .meta.json) "
         "lives. Created on full rebuild; loaded by --incremental.",
     )
+    parser.add_argument(
+        "--no-maturity-penalty",
+        action="store_true",
+        help="Skip the token-maturity multiplier composition (research mode only — "
+        "default-on for the live path per 2026-05-19 user-override ADOPT). "
+        "β=0.5 / T=365 are hard-coded constants; use this flag to isolate pure "
+        "C4 output for research backtests.",
+    )
     args = parser.parse_args()
     freeze_after = (
         pd.Timestamp(args.freeze_training_after)
         if args.freeze_training_after else None
     )
+    target_transform = TargetTransform(args.target_transform)
+    is_research_variant = target_transform is not TargetTransform.VOL_NORM_PER_INSTR
+
+    if is_research_variant:
+        if args.incremental:
+            parser.error("--incremental is incompatible with non-default --target-transform")
+        if args.uniform_multipliers:
+            parser.error("--uniform-multipliers is incompatible with non-default --target-transform")
+        # Reroute all writes to a research scratch dir keyed by the variant
+        # so live `data/c4_multiplier_panel_h20.parquet` and the persisted
+        # production fit are NOT overwritten.
+        variant = target_transform.value
+        research_root = REPO_ROOT / "data" / "research" / "c4_target_transform" / variant
+        # Only override defaults — caller can still pass explicit paths for testing.
+        if args.live_panel_path == "data/c4_multiplier_panel_h20.parquet":
+            args.live_panel_path = str(research_root / "multiplier_panel.parquet")
+        if args.model_store_dir == "data/c4_models/h20":
+            args.model_store_dir = str(research_root / "model")
+        if args.out_dir is None:
+            args.out_dir = str(
+                REPO_ROOT / f"out/wf_c4_xgboost_h{args.horizon}_target_{variant}"
+            )
+        print(f"[target-transform] variant={variant}; writes rerouted under {research_root}")
 
     panels_dir = REPO_ROOT / args.panels_dir
     baseline_dir = REPO_ROOT / args.baseline_dir
@@ -467,11 +596,14 @@ def main() -> int:
     print(f"=== build_c4_multiplier_panel ===")
     print(f"Horizon:      {args.horizon}d")
     print(f"Mode:         {'UNIFORM (self-replication)' if args.uniform_multipliers else 'XGBoost'}")
+    print(f"Target:       {target_transform.value}")
     print(f"Panels dir:   {panels_dir}")
     print(f"Baseline dir: {baseline_dir}")
     print(f"Macro data:   {macro_path}")
     print(f"Stablecoin:   {stable_path} (optional)")
     print(f"Output dir:   {out_dir}")
+    print(f"Live panel:   {live_panel_path}")
+    print(f"Model store:  {model_store_dir}")
     print()
 
     t0 = time.time()
@@ -507,6 +639,8 @@ def main() -> int:
 
     # ---------- Feature panel ----------
     print(f"\nBuilding feature panel for horizon={args.horizon} ...")
+    if is_research_variant:
+        print(f"  target_transform: {target_transform.value} (cross-sectional)")
     bundle = build_feature_panel(
         forecasts=forecasts,
         returns=returns,
@@ -516,6 +650,7 @@ def main() -> int:
         stablecoin_supply=stable,
         horizon_days=args.horizon,
         instruments=instruments,
+        target_transform=target_transform,
     )
     df_after_label = bundle.df.dropna(subset=[bundle.label_col])
     print(f"  Total rows: {len(bundle.df):,}; after label dropna: {len(df_after_label):,}")
@@ -622,12 +757,17 @@ def main() -> int:
         print(f"  Persisted {model_store_dir}/latest.joblib (refit_date={latest_artifact_refit.refit_date.date()})")
 
     # Promote built panel to the live path (atomic).
+    # Composes with the token-maturity multiplier (live ADOPT 2026-05-19) so the
+    # live consumer sees a single combined panel — no second config key needed.
     if not args.uniform_multipliers:
         built_panel = out_dir / "multiplier_panel.parquet"
         if built_panel.exists() and built_panel != live_panel_path:
+            composed = pd.read_parquet(built_panel)
+            if not args.no_maturity_penalty:
+                composed = _apply_maturity_penalty(composed, returns)
             tmp = live_panel_path.with_suffix(".parquet.tmp")
             live_panel_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(built_panel, tmp)
+            composed.to_parquet(tmp)
             os.replace(tmp, live_panel_path)
             print(f"Promoted to live: {live_panel_path}")
 
