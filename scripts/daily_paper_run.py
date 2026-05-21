@@ -1218,6 +1218,7 @@ def main() -> int:
             "--config", args.config,
             "--actual-positions", str(live_dir / "current_positions.csv"),
             "--current-equity", str(equity),
+            "--equity-history", str(equity_history),
             "--output-dir", str(output_dir),
             "--cadence", "daily",
             "--skip-data-update",  # already updated in steps 3 and 3b

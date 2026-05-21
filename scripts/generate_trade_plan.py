@@ -477,6 +477,16 @@ Notes:
         help="Optional: path to registry_changelog.json (for delisting hard exits). If not provided, delisting check skipped.",
     )
     parser.add_argument(
+        "--equity-history",
+        type=Path,
+        help=(
+            "Optional: path to equity_history.csv (columns: date, equity). When "
+            "provided, equity_pnl_pct in the audit bundle is computed as "
+            "(current_equity - first_row_equity) / first_row_equity. When omitted "
+            "the field is left null."
+        ),
+    )
+    parser.add_argument(
         "--run-id",
         type=str,
         default=None,
@@ -585,6 +595,7 @@ Notes:
             args.as_of_date,
             config,
             data_status_path=args.data_status if hasattr(args, "data_status") else None,
+            equity_history_path=args.equity_history if hasattr(args, "equity_history") else None,
         )
 
         # Write outputs

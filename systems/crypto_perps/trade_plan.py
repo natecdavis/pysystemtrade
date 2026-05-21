@@ -417,6 +417,7 @@ def generate_trade_plan(
     as_of_date: str,
     config: dict,
     data_status_path: Optional[Path] = None,
+    equity_history_path: Optional[Path] = None,
 ) -> Tuple[pd.DataFrame, dict, dict]:
     """
     Generate trade plan by comparing backtest targets to actual positions.
@@ -703,11 +704,30 @@ def generate_trade_plan(
     initial_capital = config.get(
         "notional_trading_capital", config.get("system", {}).get("capital", 5000.0)
     )
-    equity_pnl_pct = (
-        (current_equity - initial_capital) / initial_capital
-        if initial_capital > 0
-        else 0.0
-    )
+
+    # PnL pct since inception: read first row of equity_history.csv when provided.
+    # When the path is not supplied or the file is empty, leave the field null —
+    # don't fall back to dividing equity by notional capital (that gave a
+    # nonsensical −66.67% on a leveraged account; pre-2026-05-21 bug).
+    starting_equity: Optional[float] = None
+    inception_date: Optional[str] = None
+    if equity_history_path is not None and equity_history_path.exists():
+        try:
+            history = pd.read_csv(equity_history_path)
+            if len(history) > 0 and "equity" in history.columns:
+                starting_equity = float(history["equity"].iloc[0])
+                if "date" in history.columns:
+                    inception_date = str(history["date"].iloc[0])
+        except Exception as e:
+            logger.warning(
+                f"Failed to read equity_history at {equity_history_path}: {e}. "
+                f"equity_pnl_pct will be null."
+            )
+
+    if starting_equity is not None and starting_equity > 0:
+        equity_pnl_pct: Optional[float] = (current_equity - starting_equity) / starting_equity
+    else:
+        equity_pnl_pct = None
 
     # IDM from diagnostics (target portfolio only, cannot compute from actual)
     idm_cap = config.get("idm_cap", 2.5)
@@ -720,7 +740,9 @@ def generate_trade_plan(
         "as_of_date": as_of_date,
         "current_equity": round(current_equity, 2),
         "initial_capital": round(initial_capital, 2),
-        "equity_pnl_pct": round(equity_pnl_pct, 4),
+        "starting_equity": round(starting_equity, 2) if starting_equity is not None else None,
+        "inception_date": inception_date,
+        "equity_pnl_pct": round(equity_pnl_pct, 4) if equity_pnl_pct is not None else None,
         "checks": {
             "idm_target_portfolio": {
                 "value": round(idm_target, 2) if idm_target is not None else None,
@@ -851,7 +873,9 @@ def generate_trade_plan(
         "equity_info": {
             "current_equity_usd": round(current_equity, 2),
             "initial_capital_usd": round(initial_capital, 2),
-            "total_pnl_pct": round(equity_pnl_pct, 4),
+            "starting_equity_usd": round(starting_equity, 2) if starting_equity is not None else None,
+            "inception_date": inception_date,
+            "total_pnl_pct": round(equity_pnl_pct, 4) if equity_pnl_pct is not None else None,
             "source": "manual_input",
         },
         "forecasts_snapshot": forecasts_snapshot,

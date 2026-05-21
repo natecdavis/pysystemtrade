@@ -394,6 +394,16 @@ Examples:
         help="Current account equity in USD (should reflect actual P&L, not initial capital)",
     )
     parser.add_argument(
+        "--equity-history",
+        type=Path,
+        help=(
+            "Optional: path to equity_history.csv (date, equity). When provided, "
+            "the audit bundle's equity_pnl_pct is computed against the first row "
+            "(since-inception PnL for the current env). Plumbed to "
+            "scripts/generate_trade_plan.py."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         required=True,
@@ -969,6 +979,9 @@ Examples:
             "--run-id",
             run_id,
         ]
+
+        if args.equity_history is not None:
+            trade_plan_cmd.extend(["--equity-history", str(args.equity_history)])
 
         # Add data status for staleness overlay and API staleness hard exits
         data_status_path = output_dir / "raw_data_status.json"
