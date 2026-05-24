@@ -24,8 +24,10 @@ from systems.crypto_perps.c4_xgboost_combiner import (
     FitArtifact,
     MULT_CEILING,
     MULT_FLOOR,
+    TargetTransform,
     XGB_PARAMS,
     aggregate_feature_importance,
+    apply_target_transform,
     assert_multiplier_panel_fresh,
     multiplier_distribution_stats,
     predictions_to_multiplier_panel,
@@ -711,3 +713,172 @@ class TestSummarizeMultiplierRow:
         # Falls back to last available date
         assert s["as_of_date"] == "2026-05-06"
         assert s["mode"] == "modulated"
+
+
+class TestTargetTransforms:
+    """Covers `apply_target_transform` — the Cakici-Zaremba 2026 cross-sectional
+    label variants that overlay on the per-instrument vol-normalized label.
+    """
+
+    @staticmethod
+    def _make_labels(values_by_date: dict[str, list[float]]) -> pd.Series:
+        """Helper: build a MultiIndex (date, instrument) Series.
+
+        `values_by_date` maps "YYYY-MM-DD" -> list of label values. Instruments
+        are auto-labeled "I00", "I01", ... in order. NaN cells are allowed.
+        """
+        rows: list[tuple[pd.Timestamp, str, float]] = []
+        for date_str, vals in values_by_date.items():
+            d = pd.Timestamp(date_str)
+            for i, v in enumerate(vals):
+                rows.append((d, f"I{i:02d}", v))
+        idx = pd.MultiIndex.from_tuples(
+            [(d, i) for d, i, _ in rows], names=["__date__", "__instrument__"]
+        )
+        return pd.Series([v for _, _, v in rows], index=idx)
+
+    def test_vol_norm_per_instr_is_identity(self):
+        labels = self._make_labels({
+            "2024-01-01": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "2024-01-02": [-1.0, 0.0, 1.0, np.nan, 3.0],
+        })
+        out = apply_target_transform(labels, TargetTransform.VOL_NORM_PER_INSTR)
+        # Exact equality (NaN-preserving)
+        pd.testing.assert_series_equal(labels, out, check_names=False)
+
+    def test_cs_demeaned_zero_mean_within_date(self):
+        labels = self._make_labels({
+            "2024-01-01": [10.0, 20.0, 30.0, 40.0, 50.0],
+            "2024-01-02": [-5.0, 0.0, 5.0, 10.0, 15.0],
+        })
+        out = apply_target_transform(labels, TargetTransform.CS_DEMEANED)
+        for date in [pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-02")]:
+            row = out.xs(date, level=0)
+            assert row.mean() == pytest.approx(0.0, abs=1e-12)
+
+    def test_cs_standardized_unit_std_within_date(self):
+        # Use distinct values so population std is well-defined > 0
+        labels = self._make_labels({
+            "2024-01-01": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "2024-01-02": [10.0, 11.0, 12.0, 13.0, 14.0],
+        })
+        out = apply_target_transform(labels, TargetTransform.CS_STANDARDIZED)
+        for date in [pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-02")]:
+            row = out.xs(date, level=0)
+            assert row.mean() == pytest.approx(0.0, abs=1e-12)
+            # ddof=0 (population std) is the implementation's convention
+            assert row.std(ddof=0) == pytest.approx(1.0, rel=1e-9)
+
+    def test_cs_invariant_to_uniform_additive_shift(self):
+        """Cross-sectional demeaned/standardized/rank variants must be invariant
+        to adding a date-uniform constant to every instrument on that date — that
+        constant is exactly the "common market factor" the paper says is noise.
+        """
+        base = self._make_labels({
+            "2024-01-01": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "2024-01-02": [-1.0, 0.0, 0.5, 1.5, 2.5],
+        })
+        shift = pd.Series(
+            base.index.get_level_values(0).map({
+                pd.Timestamp("2024-01-01"): 100.0,
+                pd.Timestamp("2024-01-02"): -42.0,
+            }),
+            index=base.index,
+        )
+        shifted = base + shift
+        for variant in [
+            TargetTransform.CS_DEMEANED,
+            TargetTransform.CS_STANDARDIZED,
+            TargetTransform.CS_PERCENTILE,
+            TargetTransform.CS_RANK,
+            TargetTransform.CS_GAUSSIAN_RANK,
+        ]:
+            out_base = apply_target_transform(base, variant)
+            out_shift = apply_target_transform(shifted, variant)
+            pd.testing.assert_series_equal(
+                out_base, out_shift, check_names=False, rtol=1e-9, atol=1e-12,
+                obj=f"variant={variant.value}",
+            )
+
+    def test_cs_rank_bounded(self):
+        labels = self._make_labels({
+            "2024-01-01": [10.0, 20.0, 30.0, 40.0, 50.0],
+        })
+        # Both rank variants must stay in [-1, 1].
+        for variant in (TargetTransform.CS_PERCENTILE, TargetTransform.CS_RANK):
+            out = apply_target_transform(labels, variant)
+            row = out.xs(pd.Timestamp("2024-01-01"), level=0)
+            assert row.min() >= -1.0 - 1e-12, variant.value
+            assert row.max() <= 1.0 + 1e-12, variant.value
+
+        # CS_RANK uses (rank-1)/(N-1), so both endpoints are attained.
+        out_rank = apply_target_transform(labels, TargetTransform.CS_RANK)
+        row_rank = out_rank.xs(pd.Timestamp("2024-01-01"), level=0)
+        assert row_rank.min() == pytest.approx(-1.0, abs=1e-9)
+        assert row_rank.max() == pytest.approx(1.0, abs=1e-9)
+
+        # CS_PERCENTILE uses rank/N (pandas pct=True), so the min equals
+        # `2/N - 1`, not -1. Only the max hits +1.
+        out_pct = apply_target_transform(labels, TargetTransform.CS_PERCENTILE)
+        row_pct = out_pct.xs(pd.Timestamp("2024-01-01"), level=0)
+        assert row_pct.max() == pytest.approx(1.0, abs=1e-9)
+        n = len(row_pct)
+        assert row_pct.min() == pytest.approx(2.0 / n - 1.0, abs=1e-9)
+
+    def test_cs_gaussian_rank_zero_mean_finite(self):
+        # 21 instruments — symmetric ranks give exact zero mean for Φ⁻¹(k/(N+1))
+        vals = list(range(21))  # any monotone sequence works
+        labels = self._make_labels({"2024-01-01": [float(v) for v in vals]})
+        out = apply_target_transform(labels, TargetTransform.CS_GAUSSIAN_RANK)
+        row = out.xs(pd.Timestamp("2024-01-01"), level=0)
+        assert np.isfinite(row).all()
+        assert row.mean() == pytest.approx(0.0, abs=1e-12)
+        # Symmetric — min and max are antipodes
+        assert row.min() == pytest.approx(-row.max(), abs=1e-9)
+
+    def test_nan_input_emits_nan_output(self):
+        # A cell that's NaN before transform must remain NaN after — the
+        # downstream training step uses `dropna(subset=[label_col])` so NaN
+        # cells must be preserved. Use 6 instruments (1 NaN, 5 valid) so the
+        # cross-section size after dropna stays at the _CS_MIN_N=5 threshold.
+        labels = self._make_labels({
+            "2024-01-01": [1.0, 2.0, np.nan, 4.0, 5.0, 6.0],
+        })
+        for variant in [
+            TargetTransform.CS_DEMEANED,
+            TargetTransform.CS_STANDARDIZED,
+            TargetTransform.CS_PERCENTILE,
+            TargetTransform.CS_RANK,
+            TargetTransform.CS_GAUSSIAN_RANK,
+        ]:
+            out = apply_target_transform(labels, variant)
+            row = out.xs(pd.Timestamp("2024-01-01"), level=0)
+            assert np.isnan(row.loc["I02"]), f"variant={variant.value}"
+            # Non-NaN input cells remain valid floats after transform
+            assert np.isfinite(row.drop("I02")).all(), f"variant={variant.value}"
+
+    def test_thin_cross_section_emits_all_nan(self):
+        # Cross-section with fewer than _CS_MIN_N=5 valid labels: emit NaN to
+        # avoid degenerate within-date stats (single-instrument z-score, etc.).
+        labels = self._make_labels({
+            "2024-01-01": [1.0, 2.0, 3.0],  # only 3 — below the minimum
+            "2024-01-02": [1.0, 2.0, 3.0, 4.0, 5.0],  # at the minimum — should transform
+        })
+        for variant in [
+            TargetTransform.CS_STANDARDIZED,
+            TargetTransform.CS_RANK,
+            TargetTransform.CS_GAUSSIAN_RANK,
+        ]:
+            out = apply_target_transform(labels, variant)
+            assert out.xs(pd.Timestamp("2024-01-01"), level=0).isna().all(), (
+                f"variant={variant.value} should NaN out thin cross-section"
+            )
+            assert out.xs(pd.Timestamp("2024-01-02"), level=0).notna().all(), (
+                f"variant={variant.value} should fill at-minimum cross-section"
+            )
+
+    def test_requires_multi_index(self):
+        # Single-level index: clear error rather than silent wrong-axis op
+        plain = pd.Series([1.0, 2.0, 3.0])
+        with pytest.raises(ValueError, match="MultiIndex"):
+            apply_target_transform(plain, TargetTransform.CS_DEMEANED)

@@ -36,11 +36,13 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
+from scipy.stats import norm as _scipy_norm
 
 logger = logging.getLogger(__name__)
 
@@ -439,6 +441,117 @@ def vol_normalized_forward_return(
 
 
 # ---------------------------------------------------------------------------
+# Target transformations (Cakici-Zaremba 2026 experiment)
+#
+# Six variants. The default `VOL_NORM_PER_INSTR` reproduces the original C4
+# label byte-for-byte — it does NOT route through `apply_target_transform`.
+# The five cross-sectional variants compute their op within each calendar
+# date across instruments, applied to the long-form panel AFTER per-instrument
+# label assembly. Within-date NaN labels are excluded from the cross-section
+# and remain NaN on output.
+# ---------------------------------------------------------------------------
+
+class TargetTransform(str, Enum):
+    VOL_NORM_PER_INSTR = "vol_norm_per_instr"
+    CS_DEMEANED = "cs_demeaned"
+    CS_STANDARDIZED = "cs_standardized"
+    CS_PERCENTILE = "cs_percentile"
+    CS_RANK = "cs_rank"
+    CS_GAUSSIAN_RANK = "cs_gaussian_rank"
+
+
+# Minimum cross-section size for a date to be transformed. Dates with fewer
+# valid labels emit all-NaN for that date (avoids degenerate single-instrument
+# z-scores and Gaussianized-rank inf).
+_CS_MIN_N: int = 5
+
+
+def _cs_unbounded_op(group: pd.Series, op: str) -> pd.Series:
+    """Cross-sectional demean / standardize within a single date."""
+    valid = group.dropna()
+    if len(valid) < _CS_MIN_N:
+        return pd.Series(np.nan, index=group.index)
+    if op == "demeaned":
+        out = group - valid.mean()
+    elif op == "standardized":
+        sd = valid.std(ddof=0)
+        if not np.isfinite(sd) or sd <= 0:
+            return pd.Series(np.nan, index=group.index)
+        out = (group - valid.mean()) / sd
+    else:  # pragma: no cover - defensive
+        raise ValueError(f"Unknown unbounded op: {op}")
+    return out
+
+
+def _cs_rank_op(group: pd.Series, variant: TargetTransform) -> pd.Series:
+    """Cross-sectional rank / percentile / Gaussianized rank within one date.
+
+    Percentile maps to [-1, 1] via `2 * pct_rank - 1`. Rank uses the paper's
+    formula `2*(rank-1)/(N-1) - 1`. Gaussianized rank uses `Φ⁻¹(rank/(N+1))`,
+    bounded away from the {0, 1} singularities by the (N+1) denominator.
+    """
+    valid = group.dropna()
+    n = len(valid)
+    if n < _CS_MIN_N:
+        return pd.Series(np.nan, index=group.index)
+    if variant is TargetTransform.CS_PERCENTILE:
+        pct = valid.rank(method="average", pct=True)
+        out_valid = 2.0 * pct - 1.0
+    elif variant is TargetTransform.CS_RANK:
+        rk = valid.rank(method="average")
+        out_valid = 2.0 * (rk - 1.0) / (n - 1.0) - 1.0 if n > 1 else pd.Series(0.0, index=valid.index)
+    elif variant is TargetTransform.CS_GAUSSIAN_RANK:
+        rk = valid.rank(method="average")
+        # rank/(N+1) keeps values in the open interval (0, 1) so Φ⁻¹ is finite
+        out_valid = pd.Series(_scipy_norm.ppf(rk.values / (n + 1.0)), index=valid.index)
+    else:  # pragma: no cover - defensive
+        raise ValueError(f"Unknown rank variant: {variant}")
+    return out_valid.reindex(group.index)
+
+
+def apply_target_transform(
+    labels: pd.Series,
+    transform: TargetTransform,
+) -> pd.Series:
+    """Apply a target transformation to a long-form per-(date, instrument)
+    label Series.
+
+    `labels` must be indexed by (`__date__`, `__instrument__`) — the same shape
+    as `FeatureBundle.df[label_col]`. Returns a Series with the same index.
+
+    `VOL_NORM_PER_INSTR` is a no-op pass-through (the per-instrument
+    vol-normalization is already in `labels` by construction). Cross-sectional
+    variants group by date and apply the within-date op. Dates with fewer than
+    `_CS_MIN_N` valid labels produce all-NaN rows for that date.
+    """
+    if transform is TargetTransform.VOL_NORM_PER_INSTR:
+        return labels.copy()
+
+    if not isinstance(labels.index, pd.MultiIndex) or labels.index.nlevels < 2:
+        raise ValueError(
+            "apply_target_transform requires a MultiIndex (date, instrument) "
+            "Series; got "
+            f"{type(labels.index).__name__} with nlevels="
+            f"{getattr(labels.index, 'nlevels', 0)}."
+        )
+
+    grouped = labels.groupby(level=0, group_keys=False, sort=False)
+
+    if transform in (TargetTransform.CS_DEMEANED, TargetTransform.CS_STANDARDIZED):
+        op = "demeaned" if transform is TargetTransform.CS_DEMEANED else "standardized"
+        return grouped.apply(lambda g: _cs_unbounded_op(g, op))
+
+    if transform in (
+        TargetTransform.CS_PERCENTILE,
+        TargetTransform.CS_RANK,
+        TargetTransform.CS_GAUSSIAN_RANK,
+    ):
+        return grouped.apply(lambda g: _cs_rank_op(g, transform))
+
+    raise ValueError(f"Unknown TargetTransform: {transform}")  # pragma: no cover
+
+
+# ---------------------------------------------------------------------------
 # Feature panel assembly
 # ---------------------------------------------------------------------------
 
@@ -494,6 +607,7 @@ def build_feature_panel(
     horizon_days: int,
     instruments: Optional[Iterable[str]] = None,
     only_dates: Optional[pd.DatetimeIndex] = None,
+    target_transform: TargetTransform = TargetTransform.VOL_NORM_PER_INSTR,
 ) -> FeatureBundle:
     """Assemble the long-form (date, instrument) -> features+label panel.
 
@@ -505,6 +619,12 @@ def build_feature_panel(
     (rolling-feature lookbacks still see the full history; we just emit
     fewer rows). Used by incremental inference for today-only feature
     construction.
+
+    `target_transform`: optional label transformation applied AFTER per-
+    instrument vol-normalization. Default preserves the original label.
+    Cross-sectional variants (`CS_DEMEANED`, `CS_STANDARDIZED`,
+    `CS_PERCENTILE`, `CS_RANK`, `CS_GAUSSIAN_RANK`) operate within each
+    `__date__` across instruments — see `apply_target_transform`.
     """
     if instruments is None:
         instruments = sorted(set(forecasts.columns.get_level_values("instrument")) & set(returns.columns))
@@ -601,6 +721,9 @@ def build_feature_panel(
 
     full = pd.concat(rows, axis=0, ignore_index=True)
     full = full.set_index(["__date__", "__instrument__"]).sort_index()
+
+    if target_transform is not TargetTransform.VOL_NORM_PER_INSTR:
+        full["__label__"] = apply_target_transform(full["__label__"], target_transform)
 
     rule_cols = [f"rule_fc__{r}" for r in rule_names]
     return FeatureBundle(
