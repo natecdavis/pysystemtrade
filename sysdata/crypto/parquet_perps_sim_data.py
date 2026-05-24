@@ -343,6 +343,13 @@ class parquetCryptoPerpsSimData(simData):
         # xs_low_vol panels (cross-sectional low-vol anomaly, full 319-instrument coverage)
         self._xs_low_vol_20_panel: Optional[pd.DataFrame] = None
         self._xs_low_vol_60_panel: Optional[pd.DataFrame] = None
+        # xs_low_beta panels (cross-sectional low-beta anomaly: rank by rolling beta to equal-weight basket)
+        self._xs_low_beta_60_panel: Optional[pd.DataFrame] = None
+        self._xs_low_beta_90_panel: Optional[pd.DataFrame] = None
+        self._xs_low_beta_blend_panel: Optional[pd.DataFrame] = None
+        # funding × OI-concentration interaction panel (per-instrument funding MR amplified
+        # when OI/ADV concentration is above-average; one-sided amplifier ∈ [0, 2])
+        self._funding_oi_conc_mr_panel: Optional[pd.DataFrame] = None
         # xs_oi_trend panel (cross-sectional OI level trend, EWMAC(30,120), directional)
         self._xs_oi_trend_panel: Optional[pd.DataFrame] = None
         # BTC dominance panels (41-instrument market cap coverage)
@@ -2477,6 +2484,193 @@ class parquetCryptoPerpsSimData(simData):
         if instrument_code not in self._xs_low_vol_60_panel.columns:
             return pd.Series(np.nan, index=self._prices_df.index)
         return self._xs_low_vol_60_panel[instrument_code]
+
+    def _compute_raw_beta(self, lookback: int) -> pd.DataFrame:
+        """
+        Per-instrument rolling beta vs leave-self-out equal-weight log-return basket.
+
+        beta_i(t) = cov_window(r_i, r_basket_loo_i, lookback)
+                  / var_window(r_basket_loo_i, lookback)
+
+        Returns the raw beta panel (no ranking, no scaling) so callers can
+        average across lookbacks before ranking.
+        """
+        log_ret = np.log(self._prices_df / self._prices_df.shift(1))
+        min_p = max(lookback // 2, 2)
+
+        notna_mask = log_ret.notna()
+        n_valid = notna_mask.sum(axis=1)
+        ret_sum = log_ret.fillna(0.0).sum(axis=1)
+
+        beta_df = pd.DataFrame(np.nan, index=log_ret.index, columns=log_ret.columns)
+        for col in log_ret.columns:
+            self_ret_z = log_ret[col].fillna(0.0)
+            self_in = notna_mask[col].astype(int)
+            denom = (n_valid - self_in).clip(lower=1)
+            basket_loo = (ret_sum - self_ret_z) / denom
+            cov_ib = log_ret[col].rolling(lookback, min_periods=min_p).cov(basket_loo)
+            var_b = basket_loo.rolling(lookback, min_periods=min_p).var()
+            beta_df[col] = cov_ib / var_b.replace(0, np.nan)
+        return beta_df
+
+    def _compute_xs_low_beta_panel(self, lookback: int = 90) -> pd.DataFrame:
+        """
+        Cross-sectional low-beta forecast panel (dates × instruments).
+
+        Beta is computed via _compute_raw_beta, then ranked cross-sectionally;
+        low beta → +20, high beta → −20. Same sign/scale convention as
+        xs_low_vol_*: passthrough panel pinned by forecast scalar to ~1.0.
+        """
+        beta_df = self._compute_raw_beta(lookback)
+        pct_rank = beta_df.rank(axis=1, pct=True)
+        return (pct_rank - 0.5) * -40.0
+
+    def _compute_xs_low_beta_blend_panel(self) -> pd.DataFrame:
+        """
+        Blended low-beta panel: average raw β_60 and β_90, then rank once.
+
+        Replaces dual-deploy of xs_low_beta_60 + xs_low_beta_90 (Spearman
+        rank correlation of those panels was 0.92, and the combined-rules
+        ablation showed Calmar regression vs deploying 90d alone). Averaging
+        the raw betas before a single cross-sectional rank smooths
+        lookback-specific noise without double-counting the same signal in
+        the forecast combiner.
+        """
+        b60 = self._compute_raw_beta(60)
+        b90 = self._compute_raw_beta(90)
+        beta_blend = (b60 + b90) / 2.0
+        pct_rank = beta_blend.rank(axis=1, pct=True)
+        return (pct_rank - 0.5) * -40.0
+
+    def get_xs_low_beta_90_forecast(self, instrument_code: str) -> pd.Series:
+        """Per-instrument XS low-beta forecast (90d rolling beta to leave-self-out basket). Low beta → +20."""
+        if self._xs_low_beta_90_panel is None:
+            self._xs_low_beta_90_panel = self._compute_xs_low_beta_panel(lookback=90)
+        if instrument_code not in self._xs_low_beta_90_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_low_beta_90_panel[instrument_code]
+
+    def get_xs_low_beta_60_forecast(self, instrument_code: str) -> pd.Series:
+        """Per-instrument XS low-beta forecast (60d rolling beta to leave-self-out basket). Low beta → +20."""
+        if self._xs_low_beta_60_panel is None:
+            self._xs_low_beta_60_panel = self._compute_xs_low_beta_panel(lookback=60)
+        if instrument_code not in self._xs_low_beta_60_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_low_beta_60_panel[instrument_code]
+
+    def get_xs_low_beta_blend_forecast(self, instrument_code: str) -> pd.Series:
+        """Per-instrument XS low-beta forecast: blend of β_60 and β_90 averaged then ranked once. Low beta → +20."""
+        if self._xs_low_beta_blend_panel is None:
+            self._xs_low_beta_blend_panel = self._compute_xs_low_beta_blend_panel()
+        if instrument_code not in self._xs_low_beta_blend_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._xs_low_beta_blend_panel[instrument_code]
+
+    # ------------------------------------------------------------------
+    # Funding × OI-concentration interaction (2026-05-19)
+    # Per-instrument funding mean reversion amplified when OI/ADV
+    # concentration is above-average. One-sided amplifier preserves the
+    # directional MR claim ("high funding × high concentration → short")
+    # while dampening signal magnitude toward zero at low concentration.
+    # Sign convention: positive funding = longs pay shorts = long-crowded.
+    # ------------------------------------------------------------------
+
+    def _compute_funding_oi_conc_mr_panel(self, lookback: int = 126) -> pd.DataFrame:
+        """
+        Funding × OI-concentration MR forecast panel (dates × instruments).
+
+        For each instrument:
+          funding_ann = funding_rate * 3 * 365
+          funding_z   = (funding_ann − roll_mean) / roll_std   [per-instrument]
+          oi_conc     = OI / adv_smoothed_7d                   [leverage proxy]
+          oi_conc_z   = (oi_conc − roll_mean) / roll_std       [per-instrument]
+          amplifier   = (oi_conc_z.clip(-2, 2) + 2) / 2        [one-sided, ∈ [0, 2]]
+          raw         = -funding_z * amplifier                 [short when both high]
+          forecast    = (raw * SCALE).clip(-20, 20)            [final clip ±20]
+
+        Reuses conventions from get_oi_regime_multiplier (annualisation factor 3×365,
+        min_periods floor of 30, std zero-guard) and get_oi_volume_ratio (per-instrument
+        5th-percentile-of-positive-ADV denominator floor with 1e6 absolute floor).
+        Output reindexed to the full prices grid so consumers always see all instruments
+        (with NaN where data is unavailable).
+        """
+        SCALE = 10.0
+        min_p = max(lookback // 2, 30)
+
+        # Funding panel (wide). _meta_df is multi-indexed by (date, instrument)
+        # with full _PERP-suffixed instrument codes.
+        funding_wide = self._meta_df["funding_rate"].unstack("instrument")
+        funding_ann = funding_wide * 3 * 365
+
+        funding_mean = funding_ann.rolling(lookback, min_periods=min_p).mean()
+        funding_std = funding_ann.rolling(lookback, min_periods=min_p).std().replace(0.0, 0.01)
+        funding_z = (funding_ann - funding_mean) / funding_std
+
+        # OI panel uses bare names (BTCUSDT) — align by adding _PERP suffix.
+        if self._oi_df is None:
+            return pd.DataFrame(
+                np.nan, index=self._prices_df.index, columns=self._prices_df.columns
+            )
+        oi_wide = self._oi_df.copy()
+        oi_wide.columns = [c + "_PERP" for c in oi_wide.columns]
+
+        # ADV panel (smoothed 7d) — reuses get_oi_volume_ratio convention.
+        adv_wide = self._meta_df["adv_notional"].unstack("instrument")
+        adv_smoothed = adv_wide.rolling(7, min_periods=max(7 // 2, 1)).mean()
+
+        # Align OI / ADV / funding to a common date×instrument grid.
+        common_cols = (
+            oi_wide.columns.intersection(adv_smoothed.columns).intersection(funding_z.columns)
+        )
+        common_idx = (
+            oi_wide.index.intersection(adv_smoothed.index).intersection(funding_z.index)
+        )
+        if len(common_cols) == 0 or len(common_idx) == 0:
+            return pd.DataFrame(
+                np.nan, index=self._prices_df.index, columns=self._prices_df.columns
+            )
+
+        oi_a = oi_wide.reindex(index=common_idx, columns=common_cols)
+        adv_a = adv_smoothed.reindex(index=common_idx, columns=common_cols)
+
+        # Per-instrument 5th-percentile of positive ADV as denominator floor,
+        # with a 1e6 absolute floor (matches get_oi_volume_ratio:1460).
+        adv_pos = adv_a.where(adv_a > 0)
+        per_col_floor = adv_pos.quantile(0.05).fillna(1e6).clip(lower=1e6)
+        adv_clipped = adv_a.clip(lower=per_col_floor, axis=1)
+
+        oi_conc = oi_a / adv_clipped
+        oi_conc_mean = oi_conc.rolling(lookback, min_periods=min_p).mean()
+        oi_conc_std = oi_conc.rolling(lookback, min_periods=min_p).std().replace(0.0, 0.01)
+        oi_conc_z = (oi_conc - oi_conc_mean) / oi_conc_std
+
+        # One-sided amplifier in [0, 2]: degenerates to pure funding MR at neutral
+        # concentration (amplifier=1), amplifies at high concentration, dampens
+        # toward 0 at low concentration without flipping sign.
+        amplifier = (oi_conc_z.clip(-2.0, 2.0) + 2.0) / 2.0
+
+        funding_z_a = funding_z.reindex(index=common_idx, columns=common_cols)
+        raw = -funding_z_a * amplifier
+        forecast = (raw * SCALE).clip(-20.0, 20.0)
+
+        return forecast.reindex(
+            index=self._prices_df.index, columns=self._prices_df.columns
+        )
+
+    def get_funding_oi_conc_mr_forecast(self, instrument_code: str) -> pd.Series:
+        """Per-instrument funding × OI-concentration MR forecast (lookback=126d).
+
+        Returns short signal when funding is crowded long AND OI/ADV concentration
+        is above-average; dampens toward zero at low concentration. Signal range
+        clipped to ±20.
+        """
+        if self._funding_oi_conc_mr_panel is None:
+            self._funding_oi_conc_mr_panel = self._compute_funding_oi_conc_mr_panel(
+                lookback=126
+            )
+        if instrument_code not in self._funding_oi_conc_mr_panel.columns:
+            return pd.Series(np.nan, index=self._prices_df.index)
+        return self._funding_oi_conc_mr_panel[instrument_code]
 
     # ------------------------------------------------------------------
     # BTC Dominance — intra-crypto risk appetite (2026-04-18)
