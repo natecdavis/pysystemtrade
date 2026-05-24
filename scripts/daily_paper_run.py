@@ -983,8 +983,13 @@ def main() -> int:
     # Skipped under --non-binance-only because the cron path doesn't have
     # fresh klines anyway.
     base_dataset_path = REPO_ROOT / "data" / "dataset_538registry_6yr_jagged.parquet"
-    registry_path = REPO_ROOT / "envs" / "dev" / "data" / "raw" / "metadata" / "discovered_candidate_instruments.json"
-    binance_data_dir = REPO_ROOT / "envs" / "dev" / "data" / "raw" / "binance"
+    # Env-aware: both registry and raw binance data live under the current env
+    # (envs/dev/... in dev clone, envs/prod/... in prod clone). The earlier
+    # hard-coded `envs/dev/...` path caused step 3k-base to silently skip on
+    # the prod-side clone after the 2026-05-22 cutover (registry "missing"
+    # at a dev-named path that doesn't exist in prod).
+    registry_path = env.env_root / "data" / "raw" / "metadata" / "discovered_candidate_instruments.json"
+    binance_data_dir = env.env_root / "data" / "raw" / "binance"
     log_lines.append("\n[3k-base/10] Rebuilding base 538-registry dataset...")
     if args.non_binance_only:
         log_lines.append("  Skipped (--non-binance-only — no fresh Binance klines in cron path).")
