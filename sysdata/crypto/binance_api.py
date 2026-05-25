@@ -8,7 +8,7 @@ import hashlib
 import json
 import threading
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import logging
@@ -100,6 +100,24 @@ class RateLimiter:
             self.last_used_weight = parsed
 
 
+def _clip_klines_end(df: pd.DataFrame, end_date: date) -> pd.DataFrame:
+    """Drop rows whose UTC `date` is past `end_date`.
+
+    Defends against pre-fix cached parquets (and any Binance endTime-inclusivity
+    quirk) where a partial-tomorrow bar can slip past the requested window.
+    """
+    if df.empty or 'date' not in df.columns:
+        return df
+    return df[df['date'] <= end_date]
+
+
+def _clip_funding_end(df: pd.DataFrame, end_date: date) -> pd.DataFrame:
+    """Drop funding events whose UTC `timestamp` is past `end_date`."""
+    if df.empty or 'timestamp' not in df.columns:
+        return df
+    return df[df['timestamp'].dt.date <= end_date]
+
+
 class BinanceAPIClient:
     """
     Binance Futures REST API client for public market data.
@@ -162,14 +180,24 @@ class BinanceAPIClient:
             cached_df = self._load_cached(cache_key)
             if cached_df is not None:
                 logger.debug(f"Cache hit for {cache_key}")
-                return cached_df
+                # Pre-fix caches may contain a partial-tomorrow bar; clip.
+                return _clip_klines_end(cached_df, end_date).reset_index(drop=True)
 
         # Fetch from API
         logger.info(f"Fetching klines for {symbol} from {start_date} to {end_date}")
 
-        # Convert dates to millisecond timestamps
-        start_ts = int(datetime.combine(start_date, datetime.min.time()).timestamp() * 1000)
-        end_ts = int(datetime.combine(end_date + timedelta(days=1), datetime.min.time()).timestamp() * 1000)
+        # Convert dates to millisecond timestamps in UTC. Using naive
+        # `datetime.combine(...).timestamp()` interprets the value as LOCAL
+        # time, which in negative-UTC-offset shells (US east coast) shifted
+        # endTime past today's 00:00 UTC and swept in the still-open daily
+        # bar (partial-day bug, 2026-05-24).
+        start_ts = int(
+            datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc).timestamp() * 1000
+        )
+        end_ts = int(
+            (datetime.combine(end_date, datetime.min.time(), tzinfo=timezone.utc)
+             + timedelta(days=1) - timedelta(microseconds=1)).timestamp() * 1000
+        )
 
         params = {
             'symbol': symbol,
@@ -200,6 +228,10 @@ class BinanceAPIClient:
 
         # Select and order columns
         df = df[['date', 'open', 'high', 'low', 'close', 'volume', 'quote_volume']]
+
+        # Belt-and-suspenders: Binance's endTime inclusivity has been loose
+        # in practice; explicitly drop any returned bar past end_date.
+        df = _clip_klines_end(df, end_date).reset_index(drop=True)
 
         # Cache result
         self._cache_response(cache_key, df)
@@ -234,14 +266,20 @@ class BinanceAPIClient:
             cached_df = self._load_cached(cache_key)
             if cached_df is not None:
                 logger.debug(f"Cache hit for {cache_key}")
-                return cached_df
+                # Pre-fix caches may contain events past end_date; clip.
+                return _clip_funding_end(cached_df, end_date).reset_index(drop=True)
 
         # Fetch from API
         logger.info(f"Fetching funding rates for {symbol} from {start_date} to {end_date}")
 
-        # Convert dates to millisecond timestamps
-        start_ts = int(datetime.combine(start_date, datetime.min.time()).timestamp() * 1000)
-        end_ts = int(datetime.combine(end_date + timedelta(days=1), datetime.min.time()).timestamp() * 1000)
+        # UTC-explicit endTime — same fix as fetch_klines (partial-day bug, 2026-05-24).
+        start_ts = int(
+            datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc).timestamp() * 1000
+        )
+        end_ts = int(
+            (datetime.combine(end_date, datetime.min.time(), tzinfo=timezone.utc)
+             + timedelta(days=1) - timedelta(microseconds=1)).timestamp() * 1000
+        )
 
         params = {
             'symbol': symbol,
@@ -266,6 +304,9 @@ class BinanceAPIClient:
 
         # Select and order columns
         df = df[['timestamp', 'funding_rate', 'symbol']]
+
+        # Belt-and-suspenders: drop any returned events past end_date UTC.
+        df = _clip_funding_end(df, end_date).reset_index(drop=True)
 
         # Cache result
         self._cache_response(cache_key, df)

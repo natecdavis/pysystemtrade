@@ -1002,8 +1002,12 @@ def main() -> int:
         log_lines.append(f"  WARNING: binance data dir missing at {binance_data_dir}. Skipping.")
         warnings.append("Base dataset rebuild: binance data dir missing")
     else:
-        from datetime import datetime as _dt, timezone as _tz
-        end_date = _dt.now(_tz.utc).date().isoformat()
+        # D-1 policy: pin dataset to yesterday-UTC. Today's still-open Binance
+        # bar accumulates throughout the UTC day; including it makes trade-plan
+        # output depend on the UTC hour the script runs (partial-day bug,
+        # 2026-05-24).
+        from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+        end_date = (_dt.now(_tz.utc).date() - _td(days=1)).isoformat()
         cmd = [
             sys.executable, "scripts/build_example_dataset.py",
             "--source", "real",

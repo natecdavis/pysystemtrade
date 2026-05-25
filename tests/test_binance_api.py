@@ -584,3 +584,115 @@ class TestRateLimiterThreadSafety:
             f"wall={wall:.3f}s — adaptive backoff did not engage under "
             "concurrency"
         )
+
+
+class TestPartialDayBarClipping:
+    """Regression: fetch_klines / fetch_funding_rates must NOT return bars or
+    events past the requested `end_date`.
+
+    Pre-2026-05-24 the endTime millis were computed with naive
+    `datetime.combine(...).timestamp()`, which interpreted the value as LOCAL
+    time. On EDT (UTC-4) this pushed endTime past 00:00 UTC of (end_date + 1)
+    and swept in the still-open daily bar, making trade-plan output depend on
+    what UTC hour the daily flow ran (the "partial-day bug"). Fix:
+    UTC-explicit endTime + post-fetch / post-cache-load `_clip_*_end` filters.
+    """
+
+    @pytest.fixture
+    def temp_cache_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def client(self, temp_cache_dir):
+        return BinanceAPIClient(cache_dir=temp_cache_dir, sleep_ms=1, max_retries=3)
+
+    @staticmethod
+    def _kline_row(open_time_ms: int, close_str: str = "100.0", volume_str: str = "1.0"):
+        """Build a Binance-format kline row (12 fields) for the given open_time."""
+        return [
+            open_time_ms,
+            "100.0", "100.0", "100.0", close_str,  # OHLC
+            volume_str,                              # volume
+            open_time_ms + 86_400_000 - 1,           # close_time = open + 1d - 1ms
+            "100.0", 1, "0.5", "50.0", "0",          # quote_volume + remaining
+        ]
+
+    def test_fetch_klines_drops_tomorrow_partial_bar(self, client):
+        """API returns a partial-tomorrow bar; fetch_klines must filter it out
+        so end_date acts as a hard cap regardless of Binance's inclusivity."""
+        # Three bars: 2024-01-01, 2024-01-02 (= end_date), 2024-01-03 (partial,
+        # the leaky bar Binance might return when endTime drifts past 00:00 UTC).
+        mock_data = [
+            self._kline_row(1704067200000),   # 2024-01-01 00:00 UTC
+            self._kline_row(1704153600000),   # 2024-01-02 00:00 UTC
+            self._kline_row(1704240000000, close_str="999.0"),  # 2024-01-03 partial
+        ]
+        with patch.object(client, '_request_with_retry', return_value=mock_data):
+            df = client.fetch_klines(
+                'BTCUSDT', date(2024, 1, 1), date(2024, 1, 2), use_cache=False
+            )
+        assert len(df) == 2, f"partial 2024-01-03 bar leaked: {df['date'].tolist()}"
+        assert df['date'].max() == date(2024, 1, 2)
+
+    def test_fetch_klines_clips_past_end_date_from_cache(self, client, temp_cache_dir):
+        """A pre-fix cached parquet may already contain a partial-tomorrow row;
+        the post-load filter must drop it so callers never see it."""
+        # Pre-poison cache: fits the new key shape but has a row past end_date.
+        cache_key = "BTCUSDT_2024-01-01_2024-01-02_klines"
+        poisoned = pd.DataFrame({
+            'date': [date(2024, 1, 1), date(2024, 1, 2), date(2024, 1, 3)],
+            'open': [100.0, 100.0, 100.0],
+            'high': [100.0, 100.0, 100.0],
+            'low': [100.0, 100.0, 100.0],
+            'close': [100.0, 100.0, 999.0],
+            'volume': [1.0, 1.0, 1.0],
+            'quote_volume': [100.0, 100.0, 100.0],
+        })
+        client._cache_response(cache_key, poisoned)
+
+        df = client.fetch_klines(
+            'BTCUSDT', date(2024, 1, 1), date(2024, 1, 2), use_cache=True
+        )
+        assert len(df) == 2
+        assert date(2024, 1, 3) not in df['date'].tolist()
+
+    def test_fetch_klines_end_ts_is_utc_not_local(self, client):
+        """endTime millis must equal end_date 23:59:59.999 UTC regardless of
+        the runner's local timezone. Pre-fix this used local TZ via
+        `.timestamp()` on a naive datetime."""
+        captured = {}
+
+        def capture_params(method, endpoint, params=None):
+            captured.update(params)
+            return []
+
+        with patch.object(client, '_request_with_retry', side_effect=capture_params):
+            client.fetch_klines(
+                'BTCUSDT', date(2024, 1, 1), date(2024, 1, 2), use_cache=False
+            )
+        # Expected: 2024-01-03 00:00:00 UTC - 1us = 1704239999999 (ms)
+        # = end_date + 1 day midnight UTC minus 1 microsecond, rounded to ms.
+        expected_end_ms = 1704239999999
+        assert captured['endTime'] == expected_end_ms, (
+            f"endTime={captured['endTime']} != {expected_end_ms} (UTC end-of-day). "
+            "Likely the local-TZ bug regressed."
+        )
+        # And startTime is exactly 2024-01-01 00:00 UTC = 1704067200000 ms.
+        assert captured['startTime'] == 1704067200000
+
+    def test_fetch_funding_rates_drops_past_end_date_events(self, client):
+        """Funding events past end_date (UTC) must be clipped."""
+        mock_data = [
+            {'symbol': 'BTCUSDT', 'fundingTime': 1704067200000, 'fundingRate': '0.0001'},   # 2024-01-01 00:00 UTC
+            {'symbol': 'BTCUSDT', 'fundingTime': 1704153600000, 'fundingRate': '0.0002'},   # 2024-01-02 00:00 UTC
+            {'symbol': 'BTCUSDT', 'fundingTime': 1704182400000, 'fundingRate': '0.0003'},   # 2024-01-02 08:00 UTC
+            {'symbol': 'BTCUSDT', 'fundingTime': 1704240000000, 'fundingRate': '0.0099'},   # 2024-01-03 00:00 UTC (partial day)
+        ]
+        with patch.object(client, '_request_with_retry', return_value=mock_data):
+            df = client.fetch_funding_rates(
+                'BTCUSDT', date(2024, 1, 1), date(2024, 1, 2), use_cache=False
+            )
+        assert len(df) == 3
+        assert df['timestamp'].dt.date.max() == date(2024, 1, 2)
+        assert 0.0099 not in df['funding_rate'].tolist()

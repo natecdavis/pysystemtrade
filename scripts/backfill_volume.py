@@ -22,7 +22,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -46,7 +46,10 @@ _CACHE_DIR = Path("data/raw/binance/api_cache")
 _CHUNK1_START = date(2020, 1, 1)
 _CHUNK1_END = date(2023, 12, 31)
 _CHUNK2_START = date(2024, 1, 1)
-_CHUNK2_END = date.today()
+# D-1 policy: yesterday-UTC. `date.today()` returns local-TZ and could include
+# today's still-open Binance bar, making the cached chunk2 file depend on which
+# UTC hour the script first ran (partial-day bug, 2026-05-24).
+_CHUNK2_END = datetime.utcnow().date() - timedelta(days=1)
 
 
 def _instrument_to_symbol(instrument: str) -> str:
@@ -104,13 +107,18 @@ def _get_latest_dates() -> dict[str, date]:
 def _fetch_volume_incremental(
     client: BinanceAPIClient, instrument: str, since: date
 ) -> pd.DataFrame:
-    """Fetch volume for instrument from `since` date to today."""
+    """Fetch volume for instrument from `since` date through yesterday-UTC.
+
+    Stops at yesterday so the volume parquet contains only complete daily
+    bars — including today's still-open bar made the parquet content depend
+    on which UTC hour this script ran (partial-day bug, 2026-05-24).
+    """
     symbol = _instrument_to_symbol(instrument)
-    today = date.today()
-    if since >= today:
+    as_of = datetime.utcnow().date() - timedelta(days=1)
+    if since > as_of:
         return pd.DataFrame(columns=["date", "quote_volume", "instrument"])
     try:
-        klines = client.fetch_klines(symbol, since, today, use_cache=False)
+        klines = client.fetch_klines(symbol, since, as_of, use_cache=False)
         if klines.empty or "quote_volume" not in klines.columns:
             return pd.DataFrame(columns=["date", "quote_volume", "instrument"])
         chunk = klines[["date", "quote_volume"]].copy()
