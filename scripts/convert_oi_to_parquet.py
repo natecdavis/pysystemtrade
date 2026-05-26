@@ -200,8 +200,14 @@ class OIDataConverter:
 
         logger.debug(f"{symbol}: {len(combined):,} 5-min rows from {len(zip_files)} files")
 
-        # Parse timestamp (some symbols have mixed formats, e.g. ICPUSDT, TLMUSDT)
-        combined['create_time'] = pd.to_datetime(combined['create_time'], infer_datetime_format=True)
+        # Parse timestamp. Most rows are "YYYY-MM-DD HH:MM:SS", but a handful of
+        # Binance Vision files (ICPUSDT 2022-10-30 etc., a few TLMUSDT days) have
+        # rows where `create_time` is a date-only string ("2022-10-30") with no
+        # time component. The deprecated `infer_datetime_format=True` was a no-op
+        # in pandas 2.x and failed strictly on these date-only rows, dropping
+        # 10+ instrument-day rows in the processed parquet. `format='ISO8601'`
+        # accepts both shapes (date alone → midnight UTC).
+        combined['create_time'] = pd.to_datetime(combined['create_time'], format='ISO8601')
 
         # Extract date
         combined['date'] = combined['create_time'].dt.date

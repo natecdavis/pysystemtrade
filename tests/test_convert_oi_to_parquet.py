@@ -276,3 +276,83 @@ def test_incremental_matches_full_rebuild_byte_for_byte(tmp_path):
     a = pd.read_parquet(out_inc).sort_values(['date', 'instrument']).reset_index(drop=True)
     b = pd.read_parquet(out_full).sort_values(['date', 'instrument']).reset_index(drop=True)
     pd.testing.assert_frame_equal(a, b)
+
+
+# ---------------------------------------------------------------------------
+# Regression: mixed-format `create_time` (date-only rows on certain Vision days)
+# ---------------------------------------------------------------------------
+
+def _make_date_only_csv_bytes(zdate: date, oi: float,
+                              lsr: float = 1.0, tt_lsr: float = 1.5) -> bytes:
+    """Vision file with a single row whose `create_time` is just the date string
+    (no time component). Empirically observed for ICPUSDT 2022-10-30 and a few
+    TLMUSDT days. Pre-fix the converter dropped these rows because pandas'
+    strict format inference saw a mix of `YYYY-MM-DD` and `YYYY-MM-DD HH:MM:SS`
+    and errored."""
+    rows = [{
+        'create_time': zdate.isoformat(),   # date-only, the toxic case
+        'sum_open_interest_value': oi,
+        'sum_taker_long_short_vol_ratio': lsr,
+        'sum_toptrader_long_short_ratio': tt_lsr,
+    }]
+    df = pd.DataFrame(rows)
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    return buf.getvalue().encode()
+
+
+def _write_date_only_zip(symbol_dir: Path, symbol: str, zdate: date, oi: float) -> Path:
+    symbol_dir.mkdir(parents=True, exist_ok=True)
+    zpath = symbol_dir / f"{symbol}-metrics-{zdate.isoformat()}.zip"
+    with zipfile.ZipFile(zpath, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"{symbol}-metrics-{zdate.isoformat()}.csv",
+                    _make_date_only_csv_bytes(zdate, oi))
+    return zpath
+
+
+def test_mixed_create_time_formats_parse_cleanly(tmp_path):
+    """ICPUSDT/TLMUSDT regression: a symbol with a mix of normal
+    `YYYY-MM-DD HH:MM:SS` rows AND a few date-only `YYYY-MM-DD` rows must
+    produce one row per ZIP date, not fail or silently drop the date-only
+    days. Pre-fix this errored: `time data "2022-10-30" doesn't match format
+    "%Y-%m-%d %H:%M:%S"`.
+    """
+    raw = tmp_path / "binance_oi_raw"
+    icp_dir = raw / "ICPUSDT"
+
+    # 2 days of normal data
+    _write_zip(icp_dir, 'ICPUSDT', date(2022, 6, 1), 100.0)
+    _write_zip(icp_dir, 'ICPUSDT', date(2022, 6, 2), 101.0)
+    # 1 day of the toxic date-only format
+    _write_date_only_zip(icp_dir, 'ICPUSDT', date(2022, 10, 30), 102.0)
+    # And another normal day after
+    _write_zip(icp_dir, 'ICPUSDT', date(2022, 11, 1), 103.0)
+
+    out = tmp_path / "oi.parquet"
+    OIDataConverter(str(raw), str(out)).run()
+
+    df = pd.read_parquet(out)
+    assert len(df) == 4, (
+        f"Expected 4 ICPUSDT rows including the date-only 2022-10-30 day; "
+        f"got {len(df)}. Dates present: {df['date'].tolist()}"
+    )
+    assert pd.Timestamp("2022-10-30") in df['date'].tolist(), (
+        "The date-only 2022-10-30 row was dropped — partial-format regression."
+    )
+    # Value from the date-only row preserved
+    row = df.query("date == @pd.Timestamp('2022-10-30')").iloc[0]
+    assert row['open_interest'] == 102.0
+
+
+def test_date_only_only_file_does_not_crash(tmp_path):
+    """A symbol where the *only* ZIP is the date-only-format flavor must still
+    parse without an exception. Belt-and-suspenders for the pure-edge-case."""
+    raw = tmp_path / "binance_oi_raw"
+    _write_date_only_zip(raw / "TLMUSDT", 'TLMUSDT', date(2022, 6, 14), 50.0)
+
+    out = tmp_path / "oi.parquet"
+    OIDataConverter(str(raw), str(out)).run()
+    df = pd.read_parquet(out)
+    assert len(df) == 1
+    assert df.iloc[0]['instrument'] == 'TLMUSDT'
+    assert df.iloc[0]['open_interest'] == 50.0
