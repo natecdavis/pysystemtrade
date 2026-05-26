@@ -1088,16 +1088,21 @@ def main() -> int:
                 *environment_cli_args(args),
             ]
         else:
-            # Manual path: incremental append for today's row
-            today_iso = datetime.now(timezone.utc).date().isoformat()
-            log_lines.append(f"  Mode: INCREMENTAL append --since {today_iso} (~3-7 min).")
+            # Manual path: incremental append for yesterday's row.
+            # D-1 policy (partial-day fix, 2026-05-24): the SB dataset stops at
+            # yesterday-UTC. Pre-D-1 this was --since today_iso because the
+            # dataset included today's partial bar; under D-1 that produces no
+            # rows and silently leaves the panel one day stale (which the
+            # 2026-05-25 dev↔prod parity test surfaced).
+            yesterday_iso = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+            log_lines.append(f"  Mode: INCREMENTAL append --since {yesterday_iso} (~3-7 min).")
             cmd = [
                 sys.executable, "scripts/extract_rule_forecasts.py",
                 "--config", args.config,
                 "--data", str(sb_dataset_path),
                 "--outdir", str(forecast_panel_dir),
                 "--all-rules",
-                "--since", today_iso,
+                "--since", yesterday_iso,
                 *environment_cli_args(args),
             ]
         c4_forecast_rc, _ = run_subprocess(cmd, log_lines)
