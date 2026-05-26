@@ -15,7 +15,7 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def download_macro_factors(
     start: str = "2019-01-01",
     output_path: str = "data/macro_factors.parquet",
+    end: str | None = None,
 ) -> pd.DataFrame:
     """
     Download SPX, DXY, and US 10Y yield from Yahoo Finance.
@@ -33,6 +34,10 @@ def download_macro_factors(
         start: Start date string (YYYY-MM-DD). Defaults to 2019-01-01 to provide
                warm-up data before the 2020 backtest start.
         output_path: Path to write parquet output.
+        end: End date string (YYYY-MM-DD). yfinance treats `end` as EXCLUSIVE,
+             so passing today-UTC fetches through yesterday-UTC. Default: today
+             in UTC. Pass an explicit value (e.g., yesterday-UTC + 1 day) from
+             the daily flow to make output deterministic across fire times.
 
     Returns:
         DataFrame with columns: spx, dxy, us10y.
@@ -43,8 +48,14 @@ def download_macro_factors(
         print("ERROR: yfinance not installed. Run: pip install yfinance")
         sys.exit(1)
 
-    end = date.today().strftime("%Y-%m-%d")
-    print(f"Downloading macro factors: {start} → {end}")
+    if end is None:
+        # D-1 policy: use UTC (not local TZ via `date.today()`). yfinance's
+        # `end` is exclusive, so end=today-UTC fetches through yesterday-UTC.
+        # Pre-fix this used local `date.today()` which made the file content
+        # depend on what local-clock hour the script ran (partial-day bug
+        # generalization, 2026-05-25).
+        end = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
+    print(f"Downloading macro factors: {start} → {end} (end exclusive)")
 
     tickers = {
         "spx": "^GSPC",
@@ -127,9 +138,18 @@ def main():
         default="data/macro_factors.parquet",
         help="Output parquet path (default: data/macro_factors.parquet)",
     )
+    parser.add_argument(
+        "--end",
+        default=None,
+        help=(
+            "End date YYYY-MM-DD, EXCLUSIVE (yfinance semantics). Default: today-UTC, "
+            "which fetches through yesterday-UTC. Pass explicitly to pin the fetch "
+            "window across runs and avoid intraday-yfinance drift."
+        ),
+    )
     args = parser.parse_args()
 
-    df = download_macro_factors(start=args.start, output_path=args.output)
+    df = download_macro_factors(start=args.start, output_path=args.output, end=args.end)
 
     # Basic sanity checks
     assert len(df) > 1000, f"Expected >1000 rows, got {len(df)}"
