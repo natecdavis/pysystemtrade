@@ -808,15 +808,21 @@ def main() -> int:
         # Premium index = (mark - index) / index, sampled by Binance every 5s
         # and aggregated to daily OHLCV. Source for the C2c basis_mr_5 rule.
         # Hits Binance Vision (VPN required), so it skips under --non-binance-only.
+        #
+        # NOTE: This step deliberately does NOT honor `--skip-prestage`. Vision
+        # publishes the previous UTC day's archive at 00:00 UTC. The aux cron
+        # (~22:30 UTC the night before) runs before Vision has published
+        # yesterday's file, so its fetch only catches D-2. By the daily fire's
+        # 00:05 UTC trigger, D-1's Vision file is available — but only if we
+        # re-fetch here. Pre-2026-05-26 this step was gated on --skip-prestage,
+        # so the daily fire never saw D-1 premium data on canonical fires.
+        # Cost is ~30 seconds for the 3-day incremental window.
         log: list[str] = ["\n[3m/10] Updating Binance premium-index (basis)..."]
         if args.non_binance_only:
             log.append("  Skipped (--non-binance-only).")
             return _StepOutcome("premium_index", log)
         if args.dry_run:
             log.append("  Skipped (--dry-run).")
-            return _StepOutcome("premium_index", log)
-        if args.skip_prestage:
-            log.append("  Skipped (--skip-prestage).")
             return _StepOutcome("premium_index", log)
         try:
             symbols = candidate_binance_symbols(args.config, env.env_root)

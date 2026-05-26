@@ -277,15 +277,22 @@ def _sb_dataset_rebuild_step(dry_run: bool) -> Callable[[], StepResult]:
     return run
 
 
-def _stablecoin_supply_step(dry_run: bool) -> Callable[[], StepResult]:
-    """Fetch total stablecoin supply (DefiLlama) for C2b stablecoin_supply_trend rule."""
+def _stablecoin_supply_step(env_data_dir: Path, dry_run: bool) -> Callable[[], StepResult]:
+    """Fetch total stablecoin supply (DefiLlama) for C2b stablecoin_supply_trend rule.
+
+    Writes to env-local path so the rule loader (which checks env_data first)
+    sees the fresh file. Pre-fix this wrote to repo-root `data/`, leaving any
+    pre-existing env-local copy to shadow the freshly-fetched version.
+    """
     def run() -> StepResult:
         log = ["[7] Stablecoin supply (DefiLlama)"]
         if dry_run:
             log.append("  Skipped (--dry-run).")
             return StepResult("stablecoin_supply", -1, log)
+        output_path = env_data_dir / "stablecoin_supply.parquet"
         rc = run_subprocess(
-            [sys.executable, "scripts/download_stablecoin_supply.py"],
+            [sys.executable, "scripts/download_stablecoin_supply.py",
+             "--output", str(output_path)],
             log,
         )
         if rc != 0:
@@ -297,15 +304,21 @@ def _stablecoin_supply_step(dry_run: bool) -> Callable[[], StepResult]:
     return run
 
 
-def _etf_flows_step(dry_run: bool) -> Callable[[], StepResult]:
-    """Fetch BTC/ETH spot-ETF activity (yfinance) for C2a btc_etf_flow_trend rule."""
+def _etf_flows_step(env_data_dir: Path, dry_run: bool) -> Callable[[], StepResult]:
+    """Fetch BTC/ETH spot-ETF activity (yfinance) for C2a btc_etf_flow_trend rule.
+
+    Writes to env-local for the same shadowing-avoidance reason as
+    `_stablecoin_supply_step`.
+    """
     def run() -> StepResult:
         log = ["[8] ETF flows (yfinance IBIT/ETHA)"]
         if dry_run:
             log.append("  Skipped (--dry-run).")
             return StepResult("etf_flows", -1, log)
+        output_path = env_data_dir / "etf_flows.parquet"
         rc = run_subprocess(
-            [sys.executable, "scripts/download_etf_flows.py"],
+            [sys.executable, "scripts/download_etf_flows.py",
+             "--output", str(output_path)],
             log,
         )
         if rc != 0:
@@ -449,8 +462,8 @@ def main() -> int:
         _vision_chain,  # OI/LSR → premium-index, serialized
         _volume_step(requirements, args.dry_run),
         _sb_dataset_rebuild_step(args.dry_run),
-        _stablecoin_supply_step(args.dry_run),
-        _etf_flows_step(args.dry_run),
+        _stablecoin_supply_step(env_data_dir, args.dry_run),
+        _etf_flows_step(env_data_dir, args.dry_run),
     ]
 
     results: list[StepResult] = [None] * len(step_runners)  # preserve order in output

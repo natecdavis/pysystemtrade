@@ -294,3 +294,118 @@ class TestRankTradesByPriority:
         # Should be sorted by priority (1, 2, 3)
         priorities = ranked['priority'].tolist()
         assert priorities == sorted(priorities)
+
+
+# ---------------------------------------------------------------------------
+# Audit-trail fixes from the 2026-05-26 system audit
+# ---------------------------------------------------------------------------
+
+class TestLoadBacktestDiagnosticsLayout:
+    """Regression: the loader must handle current long-form layout AND legacy
+    MultiIndex. Pre-fix it assumed MultiIndex and silently returned empty
+    frames on the current layout, which made the audit bundle's
+    `forecasts_snapshot` always empty (audit 2026-05-26)."""
+
+    def test_long_form_columns_layout(self, tmp_path):
+        """Current writer: `date` + `instrument` as columns, RangeIndex."""
+        from systems.crypto_perps.trade_plan import load_backtest_diagnostics
+
+        df = pd.DataFrame({
+            "date": pd.to_datetime(["2026-05-25", "2026-05-25", "2026-05-24"]),
+            "instrument": ["BTCUSDT_PERP", "ETHUSDT_PERP", "BTCUSDT_PERP"],
+            "position": [0.5, -1.2, 0.4],
+            "combined_forecast": [8.5, -4.3, 7.1],
+            "instrument_weight": [0.03, 0.03, 0.03],
+            "fdm": [2.5, 2.5, 2.5],
+            "idm": [2.15, 2.15, 2.15],
+        })
+        (tmp_path / "diagnostics.parquet").parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(tmp_path / "diagnostics.parquet")
+
+        out = load_backtest_diagnostics(tmp_path, "2026-05-25")
+        assert len(out) == 2, f"expected 2 May-25 rows, got {len(out)}"
+        assert set(out.index) == {"BTCUSDT_PERP", "ETHUSDT_PERP"}
+        assert "date" not in out.columns
+        assert "combined_forecast" in out.columns
+        assert float(out.loc["BTCUSDT_PERP", "combined_forecast"]) == 8.5
+
+    def test_multiindex_legacy_layout(self, tmp_path):
+        """Legacy: MultiIndex of (date, instrument). Must still work."""
+        from systems.crypto_perps.trade_plan import load_backtest_diagnostics
+
+        idx = pd.MultiIndex.from_tuples([
+            (pd.Timestamp("2026-05-25"), "BTCUSDT_PERP"),
+            (pd.Timestamp("2026-05-25"), "ETHUSDT_PERP"),
+            (pd.Timestamp("2026-05-24"), "BTCUSDT_PERP"),
+        ], names=["date", "instrument"])
+        df = pd.DataFrame({
+            "combined_forecast": [8.5, -4.3, 7.1],
+            "position": [0.5, -1.2, 0.4],
+        }, index=idx)
+        df.to_parquet(tmp_path / "diagnostics.parquet")
+
+        out = load_backtest_diagnostics(tmp_path, "2026-05-25")
+        assert len(out) == 2
+        # After reset_index(level=0, drop=True), instrument is the remaining index
+        assert "BTCUSDT_PERP" in out.index.tolist()
+
+    def test_missing_file_raises(self, tmp_path):
+        from systems.crypto_perps.trade_plan import load_backtest_diagnostics
+        with pytest.raises(FileNotFoundError):
+            load_backtest_diagnostics(tmp_path, "2026-05-25")
+
+
+class TestPopulateBacktestMetadata:
+    """Regression: audit bundle's `backtest_metadata` must have real values,
+    not 'unknown' for every field (audit 2026-05-26)."""
+
+    def test_populates_hashes_and_paths(self, tmp_path):
+        from systems.crypto_perps.trade_plan import populate_backtest_metadata
+
+        # Plant a config and a dataset to hash
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text("notional_trading_capital: 12000\n")
+        ds = tmp_path / "dataset.parquet"
+        pd.DataFrame({"date": [pd.Timestamp("2026-05-25")], "instrument": ["X"], "close": [1.0]}).to_parquet(ds)
+
+        meta = {
+            "config_path": str(cfg),
+            "data_path": str(ds),
+            "backtest_start_date": "2020-01-01",
+            "backtest_end_date": "2026-05-25",
+        }
+        backtest_dir = tmp_path / "backtest_latest"
+        backtest_dir.mkdir()
+        out = populate_backtest_metadata(meta, backtest_dir)
+
+        # Hashes are 64 hex chars (sha256) — not 'unknown'
+        assert len(out["config_hash"]) == 64
+        assert len(out["dataset_fingerprint"]) == 64
+        assert out["config_hash"] != "unknown"
+        assert out["dataset_fingerprint"] != "unknown"
+        assert out["dataset_path"] == str(ds)
+        assert out["dataset_date_range"] == ["2020-01-01", "2026-05-25"]
+        assert out["backtest_dir"] == str(backtest_dir)
+        # git_commit either real sha or 'unknown' (depending on whether the
+        # test is being run inside a git checkout). Both are acceptable.
+        assert out["git_commit"] is not None
+
+    def test_handles_missing_paths_gracefully(self, tmp_path):
+        from systems.crypto_perps.trade_plan import populate_backtest_metadata
+
+        meta = {}  # no config_path, no data_path
+        out = populate_backtest_metadata(meta, tmp_path)
+        assert out["config_hash"] == "unknown"
+        assert out["dataset_fingerprint"] == "unknown"
+        assert out["dataset_path"] == "unknown"
+
+    def test_missing_config_file_gives_missing_marker(self, tmp_path):
+        from systems.crypto_perps.trade_plan import populate_backtest_metadata
+
+        meta = {"config_path": str(tmp_path / "nonexistent.yaml"),
+                "data_path": str(tmp_path / "nonexistent.parquet"),
+                "backtest_start_date": "2020-01-01",
+                "backtest_end_date": "2026-05-25"}
+        out = populate_backtest_metadata(meta, tmp_path)
+        assert out["config_hash"] == "missing"
+        assert out["dataset_fingerprint"] == "missing"

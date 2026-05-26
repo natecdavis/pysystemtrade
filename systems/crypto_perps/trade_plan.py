@@ -7,8 +7,10 @@ to generate actionable trade recommendations with risk checks and audit trail.
 V1 Extension: Staleness-based eligibility overlay for daily operations.
 """
 
+import hashlib
 import pandas as pd
 import numpy as np
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime, date as Date
@@ -134,28 +136,49 @@ def load_backtest_positions(backtest_dir: Path, as_of_date: str) -> pd.Series:
     return targets
 
 
-def load_backtest_diagnostics(backtest_dir: Path, as_of_date: str) -> pd.Series:
+def load_backtest_diagnostics(backtest_dir: Path, as_of_date: str) -> pd.DataFrame:
     """
-    Load diagnostics (forecasts, constraints, state) for specific date.
+    Load diagnostics (forecasts, constraints, state) for a specific date.
 
     Returns:
-        Series with instrument as index
+        DataFrame indexed by instrument, with diagnostic columns.
+
+    Handles two diagnostics layouts:
+      - Current: long-form with `date` and `instrument` as regular columns
+        plus a default RangeIndex (what run_dynamic_universe_backtest writes
+        today, ~1.1M rows for 6+ years of history).
+      - Legacy: MultiIndex of (date, instrument).
+
+    Pre-fix this only handled the MultiIndex case; on the current layout it
+    silently returned an empty frame, so the audit bundle's
+    `forecasts_snapshot` was always empty (audit 2026-05-26).
     """
     diagnostics_path = backtest_dir / "diagnostics.parquet"
     if not diagnostics_path.exists():
         raise FileNotFoundError(f"Backtest diagnostics not found: {diagnostics_path}")
 
-    # Load diagnostics
     df = pd.read_parquet(diagnostics_path)
-
-    # Filter to as_of_date
     as_of_dt = pd.to_datetime(as_of_date)
-    df_date = df[df.index.get_level_values(0) == as_of_dt]
 
-    # Reset index to get instrument column
-    df_date = df_date.reset_index(level=0, drop=True)
+    if isinstance(df.index, pd.MultiIndex):
+        df_date = df[df.index.get_level_values(0) == as_of_dt]
+        df_date = df_date.reset_index(level=0, drop=True)
+        return df_date
 
-    return df_date
+    if "date" in df.columns and "instrument" in df.columns:
+        # Long-form columns layout (current writer)
+        df = df.copy()
+        df["date"] = pd.to_datetime(df["date"])
+        df_date = df[df["date"] == as_of_dt].copy()
+        if df_date.empty:
+            return df_date.set_index("instrument").drop(columns=["date"], errors="ignore")
+        return df_date.set_index("instrument").drop(columns=["date"])
+
+    raise ValueError(
+        f"Unrecognized diagnostics layout: cols={list(df.columns)[:8]}, "
+        f"index_type={type(df.index).__name__}. Expected MultiIndex "
+        "(date, instrument) OR columns containing both 'date' and 'instrument'."
+    )
 
 
 def load_backtest_metadata(backtest_dir: Path) -> dict:
@@ -166,6 +189,62 @@ def load_backtest_metadata(backtest_dir: Path) -> dict:
 
     with open(metadata_path) as f:
         return json.load(f)
+
+
+def _file_sha256(path: Path) -> str:
+    """Compute sha256 of a file, returning 'missing' if absent or 'error:<exc>' on failure."""
+    try:
+        if not path.exists():
+            return "missing"
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 16), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception as exc:  # pragma: no cover - defensive
+        return f"error:{type(exc).__name__}"
+
+
+def _git_commit_hash(repo_root: Optional[Path] = None) -> str:
+    """Return current HEAD sha for the repo containing trade_plan.py (or 'unknown')."""
+    try:
+        cwd = str(repo_root) if repo_root else str(Path(__file__).resolve().parent)
+        out = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        return out.stdout.strip()
+    except Exception:
+        return "unknown"
+
+
+def populate_backtest_metadata(metadata: dict, backtest_dir: Path) -> dict:
+    """Derive the audit-bundle `backtest_metadata` block from what's available.
+
+    The backtest's own metadata.json records `config_path` and `data_path` but
+    NOT the corresponding hashes / commits — so prior versions of this audit
+    block reported every field as "unknown" (audit 2026-05-26). This helper
+    fills in the missing pieces deterministically: hashes the actual files,
+    grabs the git HEAD sha, and uses the start/end dates as the date-range
+    pair.
+    """
+    config_path = metadata.get("config_path")
+    data_path = metadata.get("data_path")
+    return {
+        "backtest_dir": str(backtest_dir),
+        "config_hash": _file_sha256(Path(config_path)) if config_path else "unknown",
+        "dataset_fingerprint": _file_sha256(Path(data_path)) if data_path else "unknown",
+        "git_commit": _git_commit_hash(),
+        "dataset_path": str(data_path) if data_path else "unknown",
+        "dataset_date_range": [
+            metadata.get("backtest_start_date"),
+            metadata.get("backtest_end_date"),
+        ],
+    }
 
 
 def load_backtest_prices(backtest_dir: Path) -> pd.Series:
@@ -855,14 +934,7 @@ def generate_trade_plan(
             datetime.utcnow().date() - pd.to_datetime(backtest_end_date).date()
         ).days,
         "advisory_cadence": "daily" if staleness_overlay_applied else "monthly",
-        "backtest_metadata": {
-            "backtest_dir": str(backtest_dir),
-            "config_hash": metadata.get("config_hash", "unknown"),
-            "dataset_fingerprint": metadata.get("dataset_fingerprint", "unknown"),
-            "git_commit": metadata.get("git_commit", "unknown"),
-            "dataset_path": metadata.get("dataset_path", "unknown"),
-            "dataset_date_range": metadata.get("dataset_date_range", [None, None]),
-        },
+        "backtest_metadata": populate_backtest_metadata(metadata, backtest_dir),
         "actual_positions": {
             "source_file": str(actual_positions_path),
             "timestamp": actuals["timestamp"].iloc[0]

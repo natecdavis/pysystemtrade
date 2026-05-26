@@ -66,10 +66,15 @@ if ! "$PYTHON" "$PREFLIGHT" --connect >> "$LOG" 2>&1; then
 fi
 log "VPN pre-flight OK"
 
-# Freshness guard: if all six aux files prestage produces are < 12h old,
+# Freshness guard: if all aux files prestage produces are < 12h old,
 # pass --skip-prestage to daily_paper_run so it doesn't re-fetch them.
 # If ANY file is stale or missing, run without the flag and let the full
 # run re-do the prestage — fail-safe behavior on aux-refresh failure days.
+#
+# The list MUST cover every file that gates a live rule's input. Missing
+# entries here let stale data slip past the daily-flow's skip-prestage path
+# (audit 2026-05-26: binance_volume_daily, etf_flows, stablecoin_supply
+# were absent, so step 3e/[8]/[7] never re-ran when their files aged out).
 AUX_FILES=(
     "$ENV_DATA_DIR/macro_factors.parquet"
     "$ENV_DATA_DIR/active_addresses.parquet"
@@ -77,6 +82,9 @@ AUX_FILES=(
     "$ENV_DATA_DIR/hyperliquid_instruments.json"
     "$ENV_DATA_DIR/binance_oi_processed.parquet"
     "$ENV_DATA_DIR/binance_premium_index_processed.parquet"
+    "$REPO_ROOT/data/binance_volume_daily.parquet"
+    "$ENV_DATA_DIR/etf_flows.parquet"
+    "$ENV_DATA_DIR/stablecoin_supply.parquet"
 )
 MAX_AGE_SEC=$((12 * 3600))
 NOW_EPOCH=$(date +%s)
@@ -96,7 +104,7 @@ for f in "${AUX_FILES[@]}"; do
 done
 if [ -z "$STALE_FILE" ]; then
     SKIP_PRESTAGE="--skip-prestage"
-    log "aux freshness OK: all 6 files < 12h old — passing --skip-prestage"
+    log "aux freshness OK: all ${#AUX_FILES[@]} files < 12h old — passing --skip-prestage"
 else
     log "aux freshness FAIL: $STALE_FILE — running full prestage in daily_paper_run.py"
 fi
